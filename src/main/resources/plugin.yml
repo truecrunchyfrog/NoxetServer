@@ -1,0 +1,4 @@
+name: NoxetServer
+version: '${project.version}'
+main: org.noxet.noxetserver.NoxetServer
+api-version: 1.19
