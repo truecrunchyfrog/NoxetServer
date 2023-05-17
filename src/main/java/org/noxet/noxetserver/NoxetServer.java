@@ -6,6 +6,7 @@ public final class NoxetServer extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        getLogger().info("Noxet server plugin is up!");
     }
 
     @Override
