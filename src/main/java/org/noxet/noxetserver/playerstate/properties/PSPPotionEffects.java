@@ -14,7 +14,7 @@ public class PSPPotionEffects extends PlayerStateProperty {
 
     @Override
     public Object getSerializedPropertyFromPlayer(Player player) {
-        return player.getActivePotionEffects().toArray(new PotionEffect[] {});
+        return player.getActivePotionEffects().toArray(new PotionEffect[0]);
     }
 
     @Override

@@ -16,7 +16,12 @@ import java.util.Iterator;
 import java.util.List;
 
 public class PlayerState {
-    private enum PlayerStateType {
+
+    /**
+     * The different player state types. Every player can save one state in each state type.
+     */
+    public enum PlayerStateType {
+        GLOBAL,
         SMP,
         ANARCHY
     }
@@ -90,6 +95,16 @@ public class PlayerState {
     }
 
     /**
+     * Whether the player has a state saved with the provided type or not.
+     * @param player The player to check whether the state exists on
+     * @param stateType The state to see
+     * @return true if a state with the specified type exists, otherwise false
+     */
+    public static boolean hasState(Player player, PlayerStateType stateType) {
+        return getConfig(player).isConfigurationSection(stateType.name());
+    }
+
+    /**
      * Saves the player's current state in-game (inventory, health, etc.) to the given YAML configuration. This does NOT mean that the file is saved!
      * It must be saved to the file after saving to the config using this method.
      * @param config The config to save the player's current state to
@@ -104,14 +119,17 @@ public class PlayerState {
      * Saves the player's current state to their own state file (saved to plugins/NoxetServer/PlayerStates/uuid.yml where uuid is the player's UUID).
      * @param player The player whose state should be saved to disk
      * @param stateType What state section to save it to
-     * @throws IOException The configuration saving failed
      */
-    public static void saveState(Player player, PlayerStateType stateType) throws IOException {
+    public static void saveState(Player player, PlayerStateType stateType) {
         YamlConfiguration config = getConfig(player);
 
         saveStateToConfig(config, player, stateType);
 
-        config.save(getStateFile(player));
+        try {
+            config.save(getStateFile(player));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -195,6 +213,6 @@ public class PlayerState {
                     ).getAwardedCriteria() // Get requirements for the advancement.
             );
 
-        return criteriaListTemp.toArray(new String[] {});
+        return criteriaListTemp.toArray(new String[0]);
     }
 }

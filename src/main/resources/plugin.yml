@@ -6,3 +6,16 @@ commands:
   smp:
     description: Join the SMP server
     usage: /smp
+    aliases:
+      - survival
+  anarchy:
+    description: Join the Anarchy server
+    usage: /anarchy
+    aliases:
+      - anarchy-islands
+  hub:
+    description: Go to the hub
+    usage: /hub
+    aliases:
+      - leave
+      - lobby

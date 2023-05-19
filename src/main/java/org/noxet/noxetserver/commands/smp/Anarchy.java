@@ -9,16 +9,16 @@ import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 
 import static org.noxet.noxetserver.RealmManager.migrateToRealm;
 
-public class SMP implements CommandExecutor {
+public class Anarchy implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
-            new NoxetErrorMessage("Only players can be sent to the SMP server.").send(commandSender);
+            new NoxetErrorMessage("Only players can be sent to the Anarchy server.").send(commandSender);
             return true;
         }
 
         Player player = (Player) commandSender;
-        migrateToRealm(player, RealmManager.Realm.SMP);
+        migrateToRealm(player, RealmManager.Realm.ANARCHY);
 
         return true;
     }
