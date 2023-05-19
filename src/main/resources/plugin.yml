@@ -19,3 +19,6 @@ commands:
     aliases:
       - leave
       - lobby
+  spawn:
+    description: Go to spawn
+    usage: /spawn

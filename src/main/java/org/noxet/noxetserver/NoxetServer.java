@@ -1,10 +1,11 @@
 package org.noxet.noxetserver;
 
 import org.bukkit.World;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.noxet.noxetserver.commands.smp.Anarchy;
+import org.noxet.noxetserver.commands.smp.Hub;
 import org.noxet.noxetserver.commands.smp.SMP;
+import org.noxet.noxetserver.commands.smp.Spawn;
 
 import java.io.File;
 import java.util.Objects;
@@ -36,14 +37,14 @@ public final class NoxetServer extends JavaPlugin {
         }
     }
 
-    World smpSpawn, smpWorld;
-
     @Override
     public void onEnable() {
         plugin = this;
 
         Objects.requireNonNull(getCommand("smp")).setExecutor(new SMP());
         Objects.requireNonNull(getCommand("anarchy")).setExecutor(new Anarchy());
+        Objects.requireNonNull(getCommand("hub")).setExecutor(new Hub());
+        Objects.requireNonNull(getCommand("spawn")).setExecutor(new Spawn());
 
         getLogger().info("Noxet server plugin is up!");
     }
