@@ -9,7 +9,27 @@ import java.lang.reflect.InvocationTargetException;
 
 public class PSPManager {
     private static final Class<?>[] propertyClassList = {
-            PSPAdvancementCriteria.class, PSPAllowFlight.class, PSPExperienceLevel.class, PSPExperienceProgress.class, PSPFlying.class, PSPFoodLevel.class, PSPGameMode.class, PSPHealth.class, PSPInvisible.class, PSPInvulnerable.class, PSPLocation.class, PSPPlayerInventory.class, PSPPotionEffects.class, PSPVelocity.class
+            PSPAbsorptionAmount.class,
+            PSPAdvancementCriteria.class,
+            PSPAllowFlight.class,
+            PSPEnderChest.class,
+            PSPExperienceLevel.class,
+            PSPExperienceProgress.class,
+            PSPFireTicks.class,
+            PSPFlying.class,
+            PSPFoodLevel.class,
+            PSPGameMode.class,
+            PSPHealth.class,
+            PSPHealthScale.class,
+            PSPHealthScaled.class,
+            PSPInvisible.class,
+            PSPInvulnerable.class,
+            PSPLocation.class,
+            PSPPlayerInventory.class,
+            PSPPotionEffects.class,
+            PSPSaturation.class,
+            PSPStatistics.class,
+            PSPVelocity.class
     };
 
     @SuppressWarnings("unchecked")

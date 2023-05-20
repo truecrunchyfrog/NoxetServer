@@ -87,6 +87,9 @@ public class PlayerState {
 
         prepareNormal(player, true);
 
+        if(!hasState(player, stateType))
+            return; // Player has no saved state! Return to prevent trying to restore null values.
+
         PSPManager.restoreFromConfiguration(
                 getConfigSection(
                         getConfig(player), stateType

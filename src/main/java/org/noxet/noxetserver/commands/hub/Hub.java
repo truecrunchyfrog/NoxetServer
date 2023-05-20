@@ -1,4 +1,4 @@
-package org.noxet.noxetserver.commands.smp;
+package org.noxet.noxetserver.commands.hub;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

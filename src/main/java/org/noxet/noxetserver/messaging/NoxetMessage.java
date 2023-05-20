@@ -5,7 +5,11 @@ import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
+
+import java.util.Collection;
+import java.util.List;
 
 public class NoxetMessage {
     private final String text;
@@ -31,7 +35,7 @@ public class NoxetMessage {
     }
 
     public String getMessagePrefix() {
-        return "§8§l[ §bno§3x§bet §8§l] §7";
+        return "§8§l[ §bɴo§3§lx§bᴇᴛ §8§l] §7";
     }
 
     private String getBakedMessage() {
@@ -55,13 +59,13 @@ public class NoxetMessage {
         commandSender.spigot().sendMessage(asTextComponent());
     }
 
-    public void send(Player[] players) {
+    public void send(Collection<? extends Player> players) {
         for(Player player : players)
             send(player);
     }
 
     public void send(World world) {
-        send(world.getPlayers().toArray(new Player[0]));
+        send(world.getPlayers());
     }
 
     public void send(World[] worlds) {
@@ -71,5 +75,9 @@ public class NoxetMessage {
 
     public void send(RealmManager.Realm realm) {
         send(realm.getWorlds().toArray(new World[0]));
+    }
+
+    public void broadcast() {
+        send(NoxetServer.getPlugin().getServer().getOnlinePlayers());
     }
 }

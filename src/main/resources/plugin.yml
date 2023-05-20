@@ -3,16 +3,6 @@ version: '${project.version}'
 main: org.noxet.noxetserver.NoxetServer
 api-version: 1.19
 commands:
-  smp:
-    description: Join the SMP server
-    usage: /smp
-    aliases:
-      - survival
-  anarchy:
-    description: Join the Anarchy server
-    usage: /anarchy
-    aliases:
-      - anarchy-islands
   hub:
     description: Go to the hub
     usage: /hub
@@ -22,3 +12,13 @@ commands:
   spawn:
     description: Go to spawn
     usage: /spawn
+  smp:
+    description: Join the SMP server
+    usage: /smp
+    aliases:
+      - survival
+  anarchy:
+    description: Join the Anarchy server
+    usage: /anarchy
+    aliases:
+      - anarchy-island
