@@ -1,12 +1,16 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPFireTicks extends PlayerStateProperty {
+public class PSPFireTicks extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "fire_ticks";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return 0;
     }
 
     @Override

@@ -2,12 +2,16 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPLastDeathLocation extends PlayerStateProperty {
+public class PSPLastDeathLocation extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "last_death_location";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return null;
     }
 
     @Override

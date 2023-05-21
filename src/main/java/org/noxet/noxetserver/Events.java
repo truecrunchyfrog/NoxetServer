@@ -1,8 +1,11 @@
 package org.noxet.noxetserver;
 
+import org.bukkit.Location;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
 import static org.noxet.noxetserver.RealmManager.*;
@@ -22,5 +25,16 @@ public class Events implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) {
         goToHub(e.getPlayer());
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent e) {
+
+    }
+
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent e) {
+        e.getEntity().setBedSpawnLocation(getRespawnLocation(e.getEntity())); // Set respawn location to spawn if not already existing.
+        e.getEntity().spigot().respawn();
     }
 }

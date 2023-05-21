@@ -4,8 +4,10 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 
+import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
 import static org.noxet.noxetserver.RealmManager.goToSpawn;
 
 public class Spawn implements CommandExecutor {
@@ -17,7 +19,12 @@ public class Spawn implements CommandExecutor {
         }
 
         Player player = (Player) commandSender;
-        goToSpawn(player);
+        RealmManager.Realm realm = getCurrentRealm(player);
+        if(realm == null || realm.doesAllowSpawnCommand()) {
+            goToSpawn(player);
+        } else {
+            new NoxetErrorMessage("You cannot use this command here.").send(player);
+        }
 
         return true;
     }

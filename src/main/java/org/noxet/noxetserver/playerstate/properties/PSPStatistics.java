@@ -5,15 +5,25 @@ import org.bukkit.Statistic;
 import org.bukkit.configuration.MemorySection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class PSPStatistics extends PlayerStateProperty {
+public class PSPStatistics extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "statistics";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        Map<String, Map<String, ?>> allPlayerStatistics = new HashMap<>();
+
+        allPlayerStatistics.put("untyped", new HashMap<String, Integer>());
+        allPlayerStatistics.put("material", new HashMap<String, Map<String, Integer>>());
+        allPlayerStatistics.put("entity", new HashMap<String, Map<String, Integer>>());
+
+        return allPlayerStatistics;
     }
 
     @Override

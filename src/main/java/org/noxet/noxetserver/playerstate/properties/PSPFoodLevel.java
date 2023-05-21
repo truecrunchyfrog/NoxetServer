@@ -1,12 +1,16 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPFoodLevel extends PlayerStateProperty {
+public class PSPFoodLevel extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "food_level";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return 20;
     }
 
     @Override

@@ -5,17 +5,21 @@ import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
 import java.util.Iterator;
 import java.util.List;
 
 import static org.noxet.noxetserver.playerstate.PlayerState.getAdvancementCriteriaList;
 
-public class PSPAdvancementCriteria extends PlayerStateProperty {
+public class PSPAdvancementCriteria extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "advancement_criteria";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return new String[0];
     }
 
     @Override

@@ -143,35 +143,7 @@ public class PlayerState {
         if(player.isDead())
             player.spigot().respawn();
 
-        player.setGameMode(GameMode.SURVIVAL);
-        player.setHealth(20);
-        player.setFoodLevel(20);
-
-        player.setLevel(0);
-        player.setExp(0);
-
-        player.setFireTicks(0);
-        player.setHealthScaled(false);
-
-        player.setArrowsInBody(0);
-        player.setAbsorptionAmount(0);
-        player.setLastDamage(0);
-        player.setLastDamageCause(null);
-        player.setSaturation(0);
-        player.setGravity(true);
-
-        player.getInventory().clear();
-
-        for(PotionEffect potionEffect : player.getActivePotionEffects())
-            player.removePotionEffect(potionEffect.getType());
-
-        Iterator<Advancement> advancementIterator = NoxetServer.getPlugin().getServer().advancementIterator();
-
-        while(advancementIterator.hasNext()) {
-            AdvancementProgress progress = player.getAdvancementProgress(advancementIterator.next());
-            for(String criteria : progress.getAwardedCriteria())
-                progress.revokeCriteria(criteria); // Remove all advancement criteria, resetting the advancement state.
-        }
+        PSPManager.restoreToDefault(player);
     }
 
     /**

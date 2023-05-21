@@ -2,12 +2,16 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPGameMode extends PlayerStateProperty {
+public class PSPGameMode extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "game_mode";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return GameMode.SURVIVAL.name();
     }
 
     @Override

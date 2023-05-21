@@ -6,6 +6,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.noxet.noxetserver.commands.anarchy.Anarchy;
 import org.noxet.noxetserver.commands.hub.Hub;
 import org.noxet.noxetserver.commands.smp.SMP;
+import org.noxet.noxetserver.commands.smp.Wild;
 import org.noxet.noxetserver.commands.spawn.Spawn;
 
 import java.io.File;
@@ -58,6 +59,8 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("anarchy")).setExecutor(new Anarchy());
         Objects.requireNonNull(getCommand("hub")).setExecutor(new Hub());
         Objects.requireNonNull(getCommand("spawn")).setExecutor(new Spawn());
+
+        getCommand("wild").setExecutor(new Wild());
 
         logInfo("Noxet plugin is ready!");
     }

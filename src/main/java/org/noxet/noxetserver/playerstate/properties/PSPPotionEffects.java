@@ -2,14 +2,18 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
 import java.util.List;
 
-public class PSPPotionEffects extends PlayerStateProperty {
+public class PSPPotionEffects extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "potion_effects";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return new PotionEffect[0];
     }
 
     @Override

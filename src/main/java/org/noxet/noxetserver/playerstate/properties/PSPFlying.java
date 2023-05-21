@@ -1,12 +1,16 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPFlying extends PlayerStateProperty {
+public class PSPFlying extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "flying";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return false;
     }
 
     @Override

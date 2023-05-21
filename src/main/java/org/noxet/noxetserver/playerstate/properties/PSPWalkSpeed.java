@@ -1,12 +1,16 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPWalkSpeed extends PlayerStateProperty {
+public class PSPWalkSpeed extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "walk_speed";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return 1;
     }
 
     @Override

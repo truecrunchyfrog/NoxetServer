@@ -1,12 +1,16 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPRemainingAir extends PlayerStateProperty {
+public class PSPRemainingAir extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "remaining_air";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return 20 * 10; // 1 bubble (of 10) per second (20 ticks).
     }
 
     @Override

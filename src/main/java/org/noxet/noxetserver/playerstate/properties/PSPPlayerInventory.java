@@ -4,17 +4,26 @@ import org.bukkit.configuration.MemorySection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class PSPPlayerInventory extends PlayerStateProperty {
+public class PSPPlayerInventory extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "inventory";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        Map<String, Object> inventoryMap = new HashMap<>();
+        inventoryMap.put("contents", new ItemStack[0]);
+        inventoryMap.put("armor", new ItemStack[0]);
+        inventoryMap.put("off_hand", null);
+
+        return inventoryMap;
     }
 
     @Override

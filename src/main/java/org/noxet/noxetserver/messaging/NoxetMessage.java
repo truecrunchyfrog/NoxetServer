@@ -34,7 +34,7 @@ public class NoxetMessage {
     }
 
     public String getMessagePrefix() {
-        return "§8§l[ §bɴo§3§lx§bᴇᴛ §8§l] §7";
+        return "§bɴo§3§lx§bᴇᴛ §8§l| §7";
     }
 
     private String getBakedMessage() {

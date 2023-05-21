@@ -1,12 +1,16 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPExperienceProgress extends PlayerStateProperty {
+public class PSPExperienceProgress extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "experience_progress";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return 0;
     }
 
     @Override

@@ -1,12 +1,16 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPInvulnerable extends PlayerStateProperty {
+public class PSPInvulnerable extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "invulnerable";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return false;
     }
 
     @Override

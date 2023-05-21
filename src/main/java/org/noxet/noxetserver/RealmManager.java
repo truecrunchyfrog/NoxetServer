@@ -3,6 +3,8 @@ package org.noxet.noxetserver;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.playerstate.PlayerState.PlayerStateType;
@@ -16,15 +18,17 @@ public class RealmManager {
      * Contains all registered realms and their properties.
      */
     public enum Realm {
-        SMP("SMP", PlayerStateType.SMP),
-        ANARCHY("Anarchy Island", PlayerStateType.ANARCHY);
+        SMP("SMP", PlayerStateType.SMP, true),
+        ANARCHY("Anarchy Island", PlayerStateType.ANARCHY, false);
 
         private final String displayName;
         private final PlayerStateType playerStateType;
+        private final boolean allowSpawnCommand;
 
-        Realm(String displayName, PlayerStateType playerStateType) {
+        Realm(String displayName, PlayerStateType playerStateType, boolean allowSpawnCommand) {
             this.displayName = displayName;
             this.playerStateType = playerStateType;
+            this.allowSpawnCommand = allowSpawnCommand;
         }
 
         public PlayerStateType getPlayerStateType() {
@@ -40,7 +44,11 @@ public class RealmManager {
                 if(serverWorld.getRealm() == this)
                     return serverWorld.getWorld().getSpawnLocation();
 
-            throw new RuntimeException("Realm has no registered server worlds to spawn into.");
+            throw new RuntimeException("Realm has no registered server world to spawn into.");
+        }
+
+        public boolean doesAllowSpawnCommand() {
+            return allowSpawnCommand;
         }
 
         public List<World> getWorlds() {
@@ -89,15 +97,17 @@ public class RealmManager {
         if(migratingPlayers.contains(player))
             return;
 
-        if(toRealm != null)
-            new NoxetMessage("You are entering §e" + toRealm.getDisplayName() + "§7 ...").send(player);
-
         // Save state in current realm:
 
         Realm fromRealm = getCurrentRealm(player);
 
-        if(toRealm == fromRealm)
+        if(toRealm == fromRealm) {
+            new NoxetErrorMessage("You are already in " + toRealm.getDisplayName() + ".").send(player);
             return; // Already in that realm. Do nothing.
+        }
+
+        if(toRealm != null)
+            new NoxetMessage("You are entering §e" + toRealm.getDisplayName() + "§7 ...").send(player);
 
         if(fromRealm != null) { // Source location is a realm.
             PlayerState.saveState(player, fromRealm.getPlayerStateType()); // Save state in old location's realm.
@@ -108,6 +118,13 @@ public class RealmManager {
         // Migrate to realm:
 
         migratingPlayers.add(player);
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                migratingPlayers.remove(player);
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 60); // 3 seconds of migration margin.
 
         if(toRealm != null) { // Destination is a realm.
             if(!PlayerState.hasState(player, toRealm.getPlayerStateType())) // Player has no state for destination.
@@ -128,15 +145,24 @@ public class RealmManager {
             new NoxetMessage("§f" + player.getDisplayName() + "§7 joined §f" + toRealm.getDisplayName() + "§7.").send(toRealm);
     }
 
+    public static Location getSpawnLocation(Player player) {
+        Realm realm = getCurrentRealm(player);
+
+        return realm != null ? realm.getSpawnLocation() : player.getWorld().getSpawnLocation();
+    }
+
+    public static Location getRespawnLocation(Player player) {
+        Location bed = player.getBedSpawnLocation();
+
+        return bed != null ? bed : getSpawnLocation(player);
+    }
+
     /**
      * Send a player to the spawn. If in a realm, sent to realm spawn. If not in a realm, sent to world spawn.
      * @param player The player to send to spawn
      */
     public static void goToSpawn(Player player) {
-        Realm realm = getCurrentRealm(player);
-
-        player.teleport(realm != null ? realm.getSpawnLocation() : player.getWorld().getSpawnLocation());
-
+        player.teleport(getSpawnLocation(player));
         new NoxetMessage("You have been sent to spawn!").send(player);
     }
 

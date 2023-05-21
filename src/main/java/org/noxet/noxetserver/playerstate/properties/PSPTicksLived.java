@@ -1,27 +1,25 @@
 package org.noxet.noxetserver.playerstate.properties;
 
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.NoxetServer;
 
-public class PSPLocation extends _PlayerStateProperty {
+public class PSPTicksLived extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
-        return "location";
+        return "ticks_lived";
     }
 
     @Override
     public Object getDefaultSerializedProperty() {
-        return NoxetServer.ServerWorld.HUB.getWorld().getSpawnLocation();
+        return 0;
     }
 
     @Override
     public Object getSerializedPropertyFromPlayer(Player player) {
-        return player.getLocation();
+        return player.getTicksLived();
     }
 
     @Override
     public void restoreProperty(Player player, Object value) {
-        player.teleport((Location) value);
+        player.setTicksLived((int) value);
     }
 }

@@ -22,3 +22,10 @@ commands:
     usage: /anarchy
     aliases:
       - anarchy-island
+  wild:
+    description: Enter the wilderness...
+    usage: /wild
+    aliases:
+      - wilderness
+      - rtp
+      - touch-grass

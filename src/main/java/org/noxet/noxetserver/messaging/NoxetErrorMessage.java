@@ -7,6 +7,6 @@ public class NoxetErrorMessage extends NoxetMessage {
 
     @Override
     public String getMessagePrefix() {
-        return super.getMessagePrefix() + "§4ERROR: §c";
+        return super.getMessagePrefix() + "§4Error: §c";
     }
 }

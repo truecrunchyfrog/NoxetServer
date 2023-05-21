@@ -1,12 +1,16 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPHealthScale extends PlayerStateProperty {
+public class PSPHealthScale extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "health_scale";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return 20D;
     }
 
     @Override

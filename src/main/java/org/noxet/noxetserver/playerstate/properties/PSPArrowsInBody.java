@@ -1,12 +1,16 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPArrowsInBody extends PlayerStateProperty {
+public class PSPArrowsInBody extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "arrows_in_body";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return 0;
     }
 
     @Override

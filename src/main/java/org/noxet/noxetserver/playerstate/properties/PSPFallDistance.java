@@ -1,12 +1,16 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPFallDistance extends PlayerStateProperty {
+public class PSPFallDistance extends _PlayerStateProperty {
     @Override
     public String getConfigName() {
         return "fall_distance";
+    }
+
+    @Override
+    public Object getDefaultSerializedProperty() {
+        return 0;
     }
 
     @Override

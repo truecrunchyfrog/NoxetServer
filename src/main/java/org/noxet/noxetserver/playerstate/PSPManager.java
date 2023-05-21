@@ -4,64 +4,54 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.playerstate.properties.*;
 
-import java.lang.reflect.InvocationTargetException;
-
 public class PSPManager {
-    private static final Class<?>[] propertyClassList = {
-            PSPAbsorptionAmount.class,
-            PSPAdvancementCriteria.class,
-            PSPAllowFlight.class,
-            PSPArrowsInBody.class,
-            PSPBedSpawnLocation.class,
-            PSPCollidable.class,
-            PSPCompassTarget.class,
-            PSPEnderChest.class,
-            PSPExperienceLevel.class,
-            PSPExperienceProgress.class,
-            PSPFallDistance.class,
-            PSPFireTicks.class,
-            PSPFlying.class,
-            PSPFlySpeed.class,
-            PSPFoodLevel.class,
-            PSPGameMode.class,
-            PSPGravity.class,
-            PSPHealth.class,
-            PSPHealthScale.class,
-            PSPHealthScaled.class,
-            PSPInvisible.class,
-            PSPInvulnerable.class,
-            PSPLastDeathLocation.class,
-            PSPLocation.class,
-            PSPPlayerInventory.class,
-            PSPPotionEffects.class,
-            PSPRemainingAir.class,
-            PSPSaturation.class,
-            PSPStatistics.class,
-            PSPVelocity.class,
-            PSPWalkSpeed.class
+    private static final PlayerStateProperty<?>[] propertyTypes = {
+            new PSPAbsorptionAmount(),
+            new PSPAdvancementCriteria(),
+            new PSPAllowFlight(),
+            new PSPArrowsInBody(),
+            new PSPBedSpawnLocation(),
+            new PSPCollidable(),
+            new PSPCompassTarget(),
+            new PSPEnderChest(),
+            new PSPExperienceLevel(),
+            new PSPExperienceProgress(),
+            new PSPFallDistance(),
+            new PSPFireTicks(),
+            new PSPFlying(),
+            new PSPFlySpeed(),
+            new PSPFoodLevel(),
+            new PSPFreezeTicks(),
+            new PSPGameMode(),
+            new PSPGravity(),
+            new PSPHealth(),
+            new PSPHealthScale(),
+            new PSPHealthScaled(),
+            new PSPInvisible(),
+            new PSPInvulnerable(),
+            new PSPLastDeathLocation(),
+            new PSPLocation(),
+            new PSPPlayerInventory(),
+            new PSPPotionEffects(),
+            new PSPRemainingAir(),
+            new PSPSaturation(),
+            new PSPStatistics(),
+            new PSPTicksLived(),
+            new PSPVelocity(),
+            new PSPWalkSpeed()
     };
 
-    @SuppressWarnings("unchecked")
     public static void addToConfiguration(ConfigurationSection configSection, Player player) {
-        for(Class<?> propertyClass : propertyClassList) {
-            Class<? extends PlayerStateProperty> playerStatePropertyClass = (Class<? extends PlayerStateProperty>) propertyClass;
-            try {
-                playerStatePropertyClass.getDeclaredConstructor().newInstance().addToConfiguration(configSection, player);
-            } catch (InstantiationException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        for(PlayerStateProperty<?> propertyType : propertyTypes)
+            configSection.set(propertyType.getConfigName(), propertyType.getSerializedPropertyFromPlayer(player));
     }
 
-    @SuppressWarnings("unchecked")
     public static void restoreFromConfiguration(ConfigurationSection configSection, Player player) {
-        for(Class<?> propertyClass : propertyClassList) {
-            Class<? extends PlayerStateProperty> playerStatePropertyClass = (Class<? extends PlayerStateProperty>) propertyClass;
-            try {
-                playerStatePropertyClass.getDeclaredConstructor().newInstance().restoreProperty(configSection, player);
-            } catch (InstantiationException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        for(PlayerStateProperty<?> propertyType : propertyTypes)
+            propertyType.restoreProperty(player, configSection.get(propertyType.getConfigName()));
+        // todo fix this
+    }
+
+    public static void restoreToDefault(Player player) {
     }
 }
