@@ -4,6 +4,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
+import java.util.ArrayList;
+
 public class PSPEnderChest extends PlayerStateProperty {
     @Override
     public String getConfigName() {
@@ -16,7 +18,8 @@ public class PSPEnderChest extends PlayerStateProperty {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void restoreProperty(Player player, Object value) {
-        player.getEnderChest().setContents((ItemStack[]) value);
+        player.getEnderChest().setContents(((ArrayList<ItemStack>) value).toArray(new ItemStack[0]));
     }
 }

@@ -16,6 +16,6 @@ public class PSPExperienceProgress extends PlayerStateProperty {
 
     @Override
     public void restoreProperty(Player player, Object value) {
-        player.setExp((float) value);
+        player.setExp(((Double) value).floatValue());
     }
 }

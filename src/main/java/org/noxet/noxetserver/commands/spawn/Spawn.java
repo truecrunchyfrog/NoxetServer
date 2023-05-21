@@ -4,11 +4,9 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 
 import static org.noxet.noxetserver.RealmManager.goToSpawn;
-import static org.noxet.noxetserver.RealmManager.migrateToRealm;
 
 public class Spawn implements CommandExecutor {
     @Override

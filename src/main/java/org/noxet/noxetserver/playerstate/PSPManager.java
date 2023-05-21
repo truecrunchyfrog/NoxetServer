@@ -1,7 +1,6 @@
 package org.noxet.noxetserver.playerstate;
 
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.playerstate.properties.*;
 
@@ -12,24 +11,34 @@ public class PSPManager {
             PSPAbsorptionAmount.class,
             PSPAdvancementCriteria.class,
             PSPAllowFlight.class,
+            PSPArrowsInBody.class,
+            PSPBedSpawnLocation.class,
+            PSPCollidable.class,
+            PSPCompassTarget.class,
             PSPEnderChest.class,
             PSPExperienceLevel.class,
             PSPExperienceProgress.class,
+            PSPFallDistance.class,
             PSPFireTicks.class,
             PSPFlying.class,
+            PSPFlySpeed.class,
             PSPFoodLevel.class,
             PSPGameMode.class,
+            PSPGravity.class,
             PSPHealth.class,
             PSPHealthScale.class,
             PSPHealthScaled.class,
             PSPInvisible.class,
             PSPInvulnerable.class,
+            PSPLastDeathLocation.class,
             PSPLocation.class,
             PSPPlayerInventory.class,
             PSPPotionEffects.class,
+            PSPRemainingAir.class,
             PSPSaturation.class,
             PSPStatistics.class,
-            PSPVelocity.class
+            PSPVelocity.class,
+            PSPWalkSpeed.class
     };
 
     @SuppressWarnings("unchecked")

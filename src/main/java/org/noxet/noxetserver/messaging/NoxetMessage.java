@@ -9,7 +9,6 @@ import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
 
 import java.util.Collection;
-import java.util.List;
 
 public class NoxetMessage {
     private final String text;

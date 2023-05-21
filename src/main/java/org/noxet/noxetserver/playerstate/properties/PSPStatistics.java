@@ -2,6 +2,7 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.Material;
 import org.bukkit.Statistic;
+import org.bukkit.configuration.MemorySection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.playerstate.PlayerStateProperty;
@@ -63,28 +64,32 @@ public class PSPStatistics extends PlayerStateProperty {
     @Override
     @SuppressWarnings("unchecked")
     public void restoreProperty(Player player, Object value) {
-        Map<String, Map<String, ?>> allPlayerStatistics = (Map<String, Map<String, ?>>) value;
+        MemorySection allPlayerStatistics = (MemorySection) value;
 
-        Map<String, Integer> untypedPlayerStatistics = (Map<String, Integer>) allPlayerStatistics.get("untyped");
-        Map<String, Map<String, Integer>> materialPlayerStatistics = (Map<String, Map<String, Integer>>) allPlayerStatistics.get("material");
-        Map<String, Map<String, Integer>> entityPlayerStatistics = (Map<String, Map<String, Integer>>) allPlayerStatistics.get("entity");
+        MemorySection untypedPlayerStatistics = (MemorySection) allPlayerStatistics.get("untyped");
+        MemorySection materialPlayerStatistics = (MemorySection) allPlayerStatistics.get("material");
+        MemorySection entityPlayerStatistics = (MemorySection) allPlayerStatistics.get("entity");
+
+        assert untypedPlayerStatistics != null;
+        assert materialPlayerStatistics != null;
+        assert entityPlayerStatistics != null;
 
         for(Statistic statistic : Statistic.values()) {
             switch(statistic.getType()) {
                 case UNTYPED:
-                    player.setStatistic(statistic, untypedPlayerStatistics.get(statistic.name()));
+                    player.setStatistic(statistic, untypedPlayerStatistics.getInt(statistic.name(), 0));
                     break;
                 case BLOCK:
                 case ITEM:
-                    if(materialPlayerStatistics.containsKey(statistic.name()))
+                    if(materialPlayerStatistics.contains(statistic.name()))
                         for(Material material : Material.values())
-                            player.setStatistic(statistic, material, materialPlayerStatistics.get(statistic.name()).getOrDefault(material.name(), 0));
+                            player.setStatistic(statistic, material, materialPlayerStatistics.getConfigurationSection(statistic.name()).getInt(material.name(), 0));
                     break;
                 case ENTITY:
-                    if(entityPlayerStatistics.containsKey(statistic.name()))
+                    if(entityPlayerStatistics.contains(statistic.name()))
                         for(EntityType entityType : EntityType.values()) {
                             try {
-                                player.setStatistic(statistic, entityType, entityPlayerStatistics.get(statistic.name()).getOrDefault(entityType.name(), 0));
+                                player.setStatistic(statistic, entityType, entityPlayerStatistics.getConfigurationSection(statistic.name()).getInt(entityType.name(), 0));
                             } catch(IllegalArgumentException e) {
                                 // We expected this. I don't know how else to check whether an entity is statistical.
                             }

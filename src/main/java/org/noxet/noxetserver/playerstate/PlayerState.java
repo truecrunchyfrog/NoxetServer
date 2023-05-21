@@ -153,6 +153,13 @@ public class PlayerState {
         player.setFireTicks(0);
         player.setHealthScaled(false);
 
+        player.setArrowsInBody(0);
+        player.setAbsorptionAmount(0);
+        player.setLastDamage(0);
+        player.setLastDamageCause(null);
+        player.setSaturation(0);
+        player.setGravity(true);
+
         player.getInventory().clear();
 
         for(PotionEffect potionEffect : player.getActivePotionEffects())

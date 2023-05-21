@@ -3,19 +3,19 @@ package org.noxet.noxetserver.playerstate.properties;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPSaturation extends PlayerStateProperty {
+public class PSPGravity extends PlayerStateProperty {
     @Override
     public String getConfigName() {
-        return "saturation";
+        return "gravity";
     }
 
     @Override
     public Object getSerializedPropertyFromPlayer(Player player) {
-        return player.getSaturation();
+        return player.hasGravity();
     }
 
     @Override
     public void restoreProperty(Player player, Object value) {
-        player.setSaturation(((Double) value).floatValue());
+        player.setGravity((boolean) value);
     }
 }

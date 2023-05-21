@@ -33,12 +33,8 @@ public final class NoxetServer extends JavaPlugin {
             return NoxetServer.getPlugin().getServer().getWorld(worldName);
         }
 
-        protected void loadWorld() {
+        private void loadWorld() {
             NoxetServer.getPlugin().getServer().createWorld(new WorldCreator(worldName));
-        }
-        
-        public String getWorldName() {
-            return worldName;
         }
 
         public RealmManager.Realm getRealm() {
