@@ -1,12 +1,10 @@
 package org.noxet.noxetserver;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
 import static org.noxet.noxetserver.RealmManager.*;

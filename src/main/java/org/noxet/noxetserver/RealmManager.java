@@ -4,7 +4,6 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.playerstate.PlayerState.PlayerStateType;

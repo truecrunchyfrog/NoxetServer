@@ -2,16 +2,12 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.Material;
 import org.bukkit.Statistic;
-import org.bukkit.configuration.Configuration;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.MemorySection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public class PSPStatistics implements PlayerStateProperty<Map<String, Object>> {
     @Override

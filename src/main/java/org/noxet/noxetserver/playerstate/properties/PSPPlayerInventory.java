@@ -5,10 +5,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public class PSPPlayerInventory implements PlayerStateProperty<Map<String, Object>> {
     @Override
