@@ -1,25 +1,31 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPHealthScaled extends _PlayerStateProperty {
+public class PSPHealthScaled implements PlayerStateProperty<Boolean> {
     @Override
     public String getConfigName() {
         return "health_scaled";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public Boolean getDefaultSerializedProperty() {
         return false;
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Boolean getSerializedPropertyFromPlayer(Player player) {
         return player.isHealthScaled();
     }
 
     @Override
-    public void restoreProperty(Player player, Object value) {
-        player.setHealthScaled((boolean) value);
+    public void restoreProperty(Player player, Boolean scaled) {
+        player.setHealthScaled(scaled);
+    }
+
+    @Override
+    public Class<Boolean> getTypeClass() {
+        return Boolean.class;
     }
 }

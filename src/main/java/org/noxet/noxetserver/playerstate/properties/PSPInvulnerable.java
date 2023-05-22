@@ -1,25 +1,31 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPInvulnerable extends _PlayerStateProperty {
+public class PSPInvulnerable implements PlayerStateProperty<Boolean> {
     @Override
     public String getConfigName() {
         return "invulnerable";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public Boolean getDefaultSerializedProperty() {
         return false;
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Boolean getSerializedPropertyFromPlayer(Player player) {
         return player.isInvulnerable();
     }
 
     @Override
-    public void restoreProperty(Player player, Object value) {
-        player.setInvulnerable((boolean) value);
+    public void restoreProperty(Player player, Boolean invulnerable) {
+        player.setInvulnerable(invulnerable);
+    }
+
+    @Override
+    public Class<Boolean> getTypeClass() {
+        return Boolean.class;
     }
 }

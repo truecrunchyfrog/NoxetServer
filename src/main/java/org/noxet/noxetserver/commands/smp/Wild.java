@@ -31,7 +31,7 @@ public class Wild implements CommandExecutor {
             return true;
         }
 
-        new NoxetMessage("Wilderness teleportation commencing...").send(player);
+        new NoxetMessage("Wilderness teleportation commencing. Please wait ...").send(player);
 
         Location teleportTo = new Location(
                 NoxetServer.ServerWorld.SMP_WORLD.getWorld(),
@@ -40,8 +40,8 @@ public class Wild implements CommandExecutor {
                 0
         );
 
-        teleportTo.setX(getRandomXZValue());
-        teleportTo.setZ(getRandomXZValue());
+        teleportTo.setX(getWildXZValue());
+        teleportTo.setZ(getWildXZValue());
 
         teleportTo.setY(Objects.requireNonNull(teleportTo.getWorld()).getHighestBlockYAt(teleportTo));
 
@@ -52,8 +52,10 @@ public class Wild implements CommandExecutor {
         return true;
     }
 
-    int getRandomXZValue() {
+    private static final int wildBound = 15 * (int) Math.pow(10, 3);
+
+    int getWildXZValue() {
         Random random = new Random();
-        return random.nextInt((int) -Math.pow(10, 8), (int) Math.pow(10, 8));
+        return random.nextInt(-wildBound, wildBound);
     }
 }

@@ -2,31 +2,32 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-import java.util.List;
-
-public class PSPPotionEffects extends _PlayerStateProperty {
+public class PSPPotionEffects implements PlayerStateProperty<PotionEffect[]> {
     @Override
     public String getConfigName() {
         return "potion_effects";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public PotionEffect[] getDefaultSerializedProperty() {
         return new PotionEffect[0];
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public PotionEffect[] getSerializedPropertyFromPlayer(Player player) {
         return player.getActivePotionEffects().toArray(new PotionEffect[0]);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public void restoreProperty(Player player, Object value) {
-        List<PotionEffect> potionEffectList = (List<PotionEffect>) value;
-
+    public void restoreProperty(Player player, PotionEffect[] potionEffectList) {
         for(PotionEffect potionEffect : potionEffectList)
             player.addPotionEffect(potionEffect);
+    }
+
+    @Override
+    public Class<PotionEffect[]> getTypeClass() {
+        return PotionEffect[].class;
     }
 }

@@ -22,7 +22,12 @@ public class PSPCompassTarget implements PlayerStateProperty<Location> {
     }
 
     @Override
-    public void restoreProperty(Player player, Location value) {
-        player.setCompassTarget(value);
+    public void restoreProperty(Player player, Location target) {
+        player.setCompassTarget(target);
+    }
+
+    @Override
+    public Class<Location> getTypeClass() {
+        return Location.class;
     }
 }

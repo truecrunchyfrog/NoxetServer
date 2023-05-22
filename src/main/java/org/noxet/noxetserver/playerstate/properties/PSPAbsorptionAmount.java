@@ -20,7 +20,12 @@ public class PSPAbsorptionAmount implements PlayerStateProperty<Double> {
     }
 
     @Override
-    public void restoreProperty(Player player, Double value) {
-        player.setAbsorptionAmount(value);
+    public void restoreProperty(Player player, Double absorption) {
+        player.setAbsorptionAmount(absorption);
+    }
+
+    @Override
+    public Class<Double> getTypeClass() {
+        return Double.class;
     }
 }

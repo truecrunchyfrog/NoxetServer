@@ -1,25 +1,31 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPCollidable extends _PlayerStateProperty {
+public class PSPCollidable implements PlayerStateProperty<Boolean> {
     @Override
     public String getConfigName() {
         return "collidable";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public Boolean getDefaultSerializedProperty() {
         return true;
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Boolean getSerializedPropertyFromPlayer(Player player) {
         return player.isCollidable();
     }
 
     @Override
-    public void restoreProperty(Player player, Object value) {
-        player.setCollidable((boolean) value);
+    public void restoreProperty(Player player, Boolean collidable) {
+        player.setCollidable(collidable);
+    }
+
+    @Override
+    public Class<Boolean> getTypeClass() {
+        return Boolean.class;
     }
 }

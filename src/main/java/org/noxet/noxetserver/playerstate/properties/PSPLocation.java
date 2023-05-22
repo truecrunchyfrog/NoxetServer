@@ -3,25 +3,31 @@ package org.noxet.noxetserver.playerstate.properties;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPLocation extends _PlayerStateProperty {
+public class PSPLocation implements PlayerStateProperty<Location> {
     @Override
     public String getConfigName() {
         return "location";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public Location getDefaultSerializedProperty() {
         return NoxetServer.ServerWorld.HUB.getWorld().getSpawnLocation();
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Location getSerializedPropertyFromPlayer(Player player) {
         return player.getLocation();
     }
 
     @Override
-    public void restoreProperty(Player player, Object value) {
-        player.teleport((Location) value);
+    public void restoreProperty(Player player, Location location) {
+        player.teleport(location);
+    }
+
+    @Override
+    public Class<Location> getTypeClass() {
+        return Location.class;
     }
 }

@@ -1,23 +1,23 @@
 package org.noxet.noxetserver.playerstate.properties;
 
-import org.bukkit.configuration.MemorySection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class PSPPlayerInventory extends _PlayerStateProperty {
+public class PSPPlayerInventory implements PlayerStateProperty<Map<String, Object>> {
     @Override
     public String getConfigName() {
         return "inventory";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public Map<String, Object> getDefaultSerializedProperty() {
         Map<String, Object> inventoryMap = new HashMap<>();
         inventoryMap.put("contents", new ItemStack[0]);
         inventoryMap.put("armor", new ItemStack[0]);
@@ -27,7 +27,7 @@ public class PSPPlayerInventory extends _PlayerStateProperty {
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Map<String, Object> getSerializedPropertyFromPlayer(Player player) {
         PlayerInventory inventory = player.getInventory();
 
         Map<String, Object> inventoryMap = new HashMap<>();
@@ -39,13 +39,17 @@ public class PSPPlayerInventory extends _PlayerStateProperty {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public void restoreProperty(Player player, Object value) {
-        MemorySection inventoryValues = (MemorySection) value;
-
+    public void restoreProperty(Player player, Map<String, Object> inventoryValues) {
         PlayerInventory playerInventory = player.getInventory();
-        playerInventory.setContents(((ArrayList<ItemStack>) Objects.requireNonNull(inventoryValues.get("contents"))).toArray(new ItemStack[0]));
-        playerInventory.setArmorContents(((ArrayList<ItemStack>) Objects.requireNonNull(inventoryValues.get("armor"))).toArray(new ItemStack[0]));
+
+        playerInventory.setContents((ItemStack[]) inventoryValues.get("contents"));
+        playerInventory.setArmorContents((ItemStack[]) inventoryValues.get("armor"));
         playerInventory.setItemInOffHand((ItemStack) inventoryValues.get("off_hand"));
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Class<Map<String, Object>> getTypeClass() {
+        return (Class<Map<String, Object>>) (Class<?>) HashMap.class;
     }
 }

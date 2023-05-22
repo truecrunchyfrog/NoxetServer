@@ -60,7 +60,7 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("hub")).setExecutor(new Hub());
         Objects.requireNonNull(getCommand("spawn")).setExecutor(new Spawn());
 
-        getCommand("wild").setExecutor(new Wild());
+        Objects.requireNonNull(getCommand("wild")).setExecutor(new Wild());
 
         logInfo("Noxet plugin is ready!");
     }

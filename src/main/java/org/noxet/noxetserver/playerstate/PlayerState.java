@@ -1,12 +1,9 @@
 package org.noxet.noxetserver.playerstate;
 
-import org.bukkit.GameMode;
 import org.bukkit.advancement.Advancement;
-import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.potion.PotionEffect;
 import org.noxet.noxetserver.NoxetServer;
 
 import java.io.File;
@@ -184,17 +181,17 @@ public class PlayerState {
      * @param player The player to get the criteria from
      * @return The advancement criteria as String[] (serializable to config)
      */
-    public static String[] getAdvancementCriteriaList(Player player) {
-        List<String> criteriaListTemp = new ArrayList<>();
+    public static List<String> getAdvancementCriteriaList(Player player) {
+        List<String> criteriaList = new ArrayList<>();
         Iterator<Advancement> advancementIterator = NoxetServer.getPlugin().getServer().advancementIterator();
 
         while(advancementIterator.hasNext())
-            criteriaListTemp.addAll(
+            criteriaList.addAll(
                     player.getAdvancementProgress( // Advancement progression for player.
                             advancementIterator.next() // This advancement.
                     ).getAwardedCriteria() // Get requirements for the advancement.
             );
 
-        return criteriaListTemp.toArray(new String[0]);
+        return criteriaList;
     }
 }

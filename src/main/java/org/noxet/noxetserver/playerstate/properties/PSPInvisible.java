@@ -1,25 +1,31 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPInvisible extends _PlayerStateProperty {
+public class PSPInvisible implements PlayerStateProperty<Boolean> {
     @Override
     public String getConfigName() {
         return "invisible";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public Boolean getDefaultSerializedProperty() {
         return false;
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Boolean getSerializedPropertyFromPlayer(Player player) {
         return player.isInvisible();
     }
 
     @Override
-    public void restoreProperty(Player player, Object value) {
-        player.setInvisible((boolean) value);
+    public void restoreProperty(Player player, Boolean invisible) {
+        player.setInvisible(invisible);
+    }
+
+    @Override
+    public Class<Boolean> getTypeClass() {
+        return Boolean.class;
     }
 }

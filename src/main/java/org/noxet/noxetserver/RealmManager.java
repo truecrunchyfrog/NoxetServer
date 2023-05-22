@@ -102,12 +102,11 @@ public class RealmManager {
         Realm fromRealm = getCurrentRealm(player);
 
         if(toRealm == fromRealm) {
-            new NoxetErrorMessage("You are already in " + toRealm.getDisplayName() + ".").send(player);
             return; // Already in that realm. Do nothing.
         }
 
         if(toRealm != null)
-            new NoxetMessage("You are entering §e" + toRealm.getDisplayName() + "§7 ...").send(player);
+            new NoxetMessage("Joining §e" + toRealm.getDisplayName() + "§7 ...").send(player);
 
         if(fromRealm != null) { // Source location is a realm.
             PlayerState.saveState(player, fromRealm.getPlayerStateType()); // Save state in old location's realm.
@@ -127,9 +126,12 @@ public class RealmManager {
         }.runTaskLater(NoxetServer.getPlugin(), 60); // 3 seconds of migration margin.
 
         if(toRealm != null) { // Destination is a realm.
-            if(!PlayerState.hasState(player, toRealm.getPlayerStateType())) // Player has no state for destination.
-                player.teleport(toRealm.getSpawnLocation()); // Teleport to spawn (first join).
+            boolean teleportToSpawn = !PlayerState.hasState(player, toRealm.getPlayerStateType());
+
             PlayerState.restoreState(player, toRealm.getPlayerStateType()); // Restores player state (including initial reset), and teleports to last location (in a world belonging to the realm).
+
+            if(teleportToSpawn)
+                player.teleport(toRealm.getSpawnLocation()); // Teleport to spawn (first join).
         } else {
             PlayerState.restoreState(player, PlayerStateType.GLOBAL); // Regular world. Load global state.
         }

@@ -5,7 +5,7 @@ import org.bukkit.entity.Player;
 import org.noxet.noxetserver.playerstate.properties.*;
 
 public class PSPManager {
-    private static final PlayerStateProperty<?>[] propertyTypes = {
+    private static final PlayerStateProperty<?>[] properties = {
             new PSPAbsorptionAmount(),
             new PSPAdvancementCriteria(),
             new PSPAllowFlight(),
@@ -42,16 +42,32 @@ public class PSPManager {
     };
 
     public static void addToConfiguration(ConfigurationSection configSection, Player player) {
-        for(PlayerStateProperty<?> propertyType : propertyTypes)
-            configSection.set(propertyType.getConfigName(), propertyType.getSerializedPropertyFromPlayer(player));
+        for(PlayerStateProperty<?> property : properties)
+            configSection.set(property.getConfigName(), property.getSerializedPropertyFromPlayer(player));
     }
 
     public static void restoreFromConfiguration(ConfigurationSection configSection, Player player) {
-        for(PlayerStateProperty<?> propertyType : propertyTypes)
-            propertyType.restoreProperty(player, configSection.get(propertyType.getConfigName()));
-        // todo fix this
+        for(PlayerStateProperty<?> property : properties) {
+            Class<?> type = property.getTypeClass();
+            Object value = configSection.getObject(property.getConfigName(), property.getTypeClass());
+
+            if(type != null && value != null) {
+                @SuppressWarnings("unchecked")
+                PlayerStateProperty<Object> typedProperty = (PlayerStateProperty<Object>) property;
+                typedProperty.restoreProperty(player, value);
+            }
+        }
     }
 
     public static void restoreToDefault(Player player) {
+        for(PlayerStateProperty<?> property : properties) {
+            Class<?> type = property.getTypeClass();
+
+            if(type != null) {
+                @SuppressWarnings("unchecked")
+                PlayerStateProperty<Object> typedProperty = (PlayerStateProperty<Object>) property;
+                typedProperty.restoreProperty(player, typedProperty.getDefaultSerializedProperty());
+            }
+        }
     }
 }

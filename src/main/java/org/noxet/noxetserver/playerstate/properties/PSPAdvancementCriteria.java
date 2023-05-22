@@ -5,33 +5,30 @@ import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
 import java.util.Iterator;
-import java.util.List;
 
 import static org.noxet.noxetserver.playerstate.PlayerState.getAdvancementCriteriaList;
 
-public class PSPAdvancementCriteria extends _PlayerStateProperty {
+public class PSPAdvancementCriteria implements PlayerStateProperty<String[]> {
     @Override
     public String getConfigName() {
         return "advancement_criteria";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public String[] getDefaultSerializedProperty() {
         return new String[0];
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
-        return getAdvancementCriteriaList(player);
+    public String[] getSerializedPropertyFromPlayer(Player player) {
+        return getAdvancementCriteriaList(player).toArray(new String[0]);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public void restoreProperty(Player player, Object value) {
-        List<String> restoreCriteriaList = (List<String>) value;
-
+    public void restoreProperty(Player player, String[] restoreCriteriaList) {
         Iterator<Advancement> advancementIterator = NoxetServer.getPlugin().getServer().advancementIterator();
 
         boolean oldAnnouncementValue = Boolean.TRUE.equals(player.getWorld().getGameRuleValue(GameRule.ANNOUNCE_ADVANCEMENTS));
@@ -40,11 +37,17 @@ public class PSPAdvancementCriteria extends _PlayerStateProperty {
         while(advancementIterator.hasNext()) {
             AdvancementProgress progress = player.getAdvancementProgress(advancementIterator.next());
             for(String criteria : progress.getRemainingCriteria())
-                if(restoreCriteriaList.contains(criteria))
-                    progress.awardCriteria(criteria);
+                for(String hasCriteria : restoreCriteriaList)
+                    if(criteria.equals(hasCriteria))
+                        progress.awardCriteria(criteria);
         }
 
         if(oldAnnouncementValue)
             player.getWorld().setGameRule(GameRule.ANNOUNCE_ADVANCEMENTS, true);
+    }
+
+    @Override
+    public Class<String[]> getTypeClass() {
+        return String[].class;
     }
 }

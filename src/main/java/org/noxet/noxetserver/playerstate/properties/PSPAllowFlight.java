@@ -1,25 +1,31 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPAllowFlight extends _PlayerStateProperty {
+public class PSPAllowFlight implements PlayerStateProperty<Boolean> {
     @Override
     public String getConfigName() {
         return "allow_flight";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public Boolean getDefaultSerializedProperty() {
         return false;
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Boolean getSerializedPropertyFromPlayer(Player player) {
         return player.getAllowFlight();
     }
 
     @Override
-    public void restoreProperty(Player player, Object value) {
-        player.setAllowFlight((boolean) value);
+    public void restoreProperty(Player player, Boolean allow) {
+        player.setAllowFlight(allow);
+    }
+
+    @Override
+    public Class<Boolean> getTypeClass() {
+        return Boolean.class;
     }
 }

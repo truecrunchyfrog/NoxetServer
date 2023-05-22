@@ -1,25 +1,31 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPGravity extends _PlayerStateProperty {
+public class PSPGravity implements PlayerStateProperty<Boolean> {
     @Override
     public String getConfigName() {
         return "gravity";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public Boolean getDefaultSerializedProperty() {
         return true;
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Boolean getSerializedPropertyFromPlayer(Player player) {
         return player.hasGravity();
     }
 
     @Override
-    public void restoreProperty(Player player, Object value) {
-        player.setGravity((boolean) value);
+    public void restoreProperty(Player player, Boolean gravity) {
+        player.setGravity(gravity);
+    }
+
+    @Override
+    public Class<Boolean> getTypeClass() {
+        return Boolean.class;
     }
 }

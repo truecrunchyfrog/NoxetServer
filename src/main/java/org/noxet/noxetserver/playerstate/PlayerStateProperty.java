@@ -7,4 +7,5 @@ public interface PlayerStateProperty<T> {
     T getDefaultSerializedProperty();
     T getSerializedPropertyFromPlayer(Player player);
     void restoreProperty(Player player, T value);
+    Class<T> getTypeClass();
 }

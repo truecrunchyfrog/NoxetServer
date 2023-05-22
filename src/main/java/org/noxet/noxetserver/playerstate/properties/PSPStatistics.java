@@ -2,22 +2,26 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.Material;
 import org.bukkit.Statistic;
+import org.bukkit.configuration.Configuration;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemorySection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
-public class PSPStatistics extends _PlayerStateProperty {
+public class PSPStatistics implements PlayerStateProperty<Map<String, Object>> {
     @Override
     public String getConfigName() {
         return "statistics";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
-        Map<String, Map<String, ?>> allPlayerStatistics = new HashMap<>();
+    public Map<String, Object> getDefaultSerializedProperty() {
+        Map<String, Object> allPlayerStatistics = new HashMap<>();
 
         allPlayerStatistics.put("untyped", new HashMap<String, Integer>());
         allPlayerStatistics.put("material", new HashMap<String, Map<String, Integer>>());
@@ -27,7 +31,7 @@ public class PSPStatistics extends _PlayerStateProperty {
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Map<String, Object> getSerializedPropertyFromPlayer(Player player) {
         Map<String, Integer> untypedPlayerStatistics = new HashMap<>();
         Map<String, Map<String, Integer>> materialPlayerStatistics = new HashMap<>();
         Map<String, Map<String, Integer>> entityPlayerStatistics = new HashMap<>();
@@ -62,7 +66,7 @@ public class PSPStatistics extends _PlayerStateProperty {
             }
         }
 
-        Map<String, Map<String, ?>> allPlayerStatistics = new HashMap<>();
+        Map<String, Object> allPlayerStatistics = new HashMap<>();
 
         allPlayerStatistics.put("untyped", untypedPlayerStatistics);
         allPlayerStatistics.put("material", materialPlayerStatistics);
@@ -73,33 +77,27 @@ public class PSPStatistics extends _PlayerStateProperty {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void restoreProperty(Player player, Object value) {
-        MemorySection allPlayerStatistics = (MemorySection) value;
-
-        MemorySection untypedPlayerStatistics = (MemorySection) allPlayerStatistics.get("untyped");
-        MemorySection materialPlayerStatistics = (MemorySection) allPlayerStatistics.get("material");
-        MemorySection entityPlayerStatistics = (MemorySection) allPlayerStatistics.get("entity");
-
-        assert untypedPlayerStatistics != null;
-        assert materialPlayerStatistics != null;
-        assert entityPlayerStatistics != null;
+    public void restoreProperty(Player player, Map<String, Object> statistics) {
+        Map<String, Integer> untypedPlayerStatistics = (Map<String, Integer>) statistics.get("untyped");
+        Map<String, Map<String, Integer>> materialPlayerStatistics = (Map<String, Map<String, Integer>>) statistics.get("material");
+        Map<String, Map<String, Integer>> entityPlayerStatistics = (Map<String, Map<String, Integer>>) statistics.get("entity");
 
         for(Statistic statistic : Statistic.values()) {
             switch(statistic.getType()) {
                 case UNTYPED:
-                    player.setStatistic(statistic, untypedPlayerStatistics.getInt(statistic.name(), 0));
+                    player.setStatistic(statistic, untypedPlayerStatistics.getOrDefault(statistic.name(), 0));
                     break;
                 case BLOCK:
                 case ITEM:
-                    if(materialPlayerStatistics.contains(statistic.name()))
+                    if(materialPlayerStatistics.containsKey(statistic.name()))
                         for(Material material : Material.values())
-                            player.setStatistic(statistic, material, materialPlayerStatistics.getConfigurationSection(statistic.name()).getInt(material.name(), 0));
+                            player.setStatistic(statistic, material, materialPlayerStatistics.get(statistic.name()).getOrDefault(material.name(), 0));
                     break;
                 case ENTITY:
-                    if(entityPlayerStatistics.contains(statistic.name()))
+                    if(entityPlayerStatistics.containsKey(statistic.name()))
                         for(EntityType entityType : EntityType.values()) {
                             try {
-                                player.setStatistic(statistic, entityType, entityPlayerStatistics.getConfigurationSection(statistic.name()).getInt(entityType.name(), 0));
+                                player.setStatistic(statistic, entityType, entityPlayerStatistics.get(statistic.name()).getOrDefault(entityType.name(), 0));
                             } catch(IllegalArgumentException e) {
                                 // We expected this. I don't know how else to check whether an entity is statistical.
                             }
@@ -107,5 +105,11 @@ public class PSPStatistics extends _PlayerStateProperty {
                     break;
             }
         }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Class<Map<String, Object>> getTypeClass() {
+        return (Class<Map<String, Object>>) (Class<?>) HashMap.class;
     }
 }

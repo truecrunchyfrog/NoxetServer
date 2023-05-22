@@ -1,5 +1,6 @@
 package org.noxet.noxetserver;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -28,13 +29,10 @@ public class Events implements Listener {
     }
 
     @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent e) {
-
-    }
-
-    @EventHandler
     public void onPlayerDeath(PlayerDeathEvent e) {
         e.getEntity().setBedSpawnLocation(getRespawnLocation(e.getEntity())); // Set respawn location to spawn if not already existing.
-        e.getEntity().spigot().respawn();
+        Bukkit.getScheduler().scheduleSyncDelayedTask(NoxetServer.getPlugin(), () -> {
+            e.getEntity().spigot().respawn();
+        }, 2);
     }
 }

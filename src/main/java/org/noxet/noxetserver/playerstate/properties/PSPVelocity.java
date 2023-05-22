@@ -2,25 +2,31 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPVelocity extends _PlayerStateProperty {
+public class PSPVelocity implements PlayerStateProperty<Vector> {
     @Override
     public String getConfigName() {
         return "velocity";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public Vector getDefaultSerializedProperty() {
         return new Vector();
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Vector getSerializedPropertyFromPlayer(Player player) {
         return player.getVelocity();
     }
 
     @Override
-    public void restoreProperty(Player player, Object value) {
-        player.setVelocity((Vector) value);
+    public void restoreProperty(Player player, Vector velocity) {
+        player.setVelocity(velocity);
+    }
+
+    @Override
+    public Class<Vector> getTypeClass() {
+        return Vector.class;
     }
 }

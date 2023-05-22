@@ -2,28 +2,31 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-import java.util.ArrayList;
-
-public class PSPEnderChest extends _PlayerStateProperty {
+public class PSPEnderChest implements PlayerStateProperty<ItemStack[]> {
     @Override
     public String getConfigName() {
         return "ender_chest";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
+    public ItemStack[] getDefaultSerializedProperty() {
         return new ItemStack[0];
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public ItemStack[] getSerializedPropertyFromPlayer(Player player) {
         return player.getEnderChest().getContents();
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public void restoreProperty(Player player, Object value) {
-        player.getEnderChest().setContents(((ArrayList<ItemStack>) value).toArray(new ItemStack[0]));
+    public void restoreProperty(Player player, ItemStack[] chestContents) {
+        player.getEnderChest().setContents(chestContents);
+    }
+
+    @Override
+    public Class<ItemStack[]> getTypeClass() {
+        return ItemStack[].class;
     }
 }

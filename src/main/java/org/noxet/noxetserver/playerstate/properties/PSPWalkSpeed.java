@@ -1,25 +1,31 @@
 package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
-public class PSPWalkSpeed extends _PlayerStateProperty {
+public class PSPWalkSpeed implements PlayerStateProperty<Float> {
     @Override
     public String getConfigName() {
         return "walk_speed";
     }
 
     @Override
-    public Object getDefaultSerializedProperty() {
-        return 1;
+    public Float getDefaultSerializedProperty() {
+        return 0.2F;
     }
 
     @Override
-    public Object getSerializedPropertyFromPlayer(Player player) {
+    public Float getSerializedPropertyFromPlayer(Player player) {
         return player.getWalkSpeed();
     }
 
     @Override
-    public void restoreProperty(Player player, Object value) {
-        player.setWalkSpeed(((Double) value).floatValue());
+    public void restoreProperty(Player player, Float speed) {
+        player.setWalkSpeed(speed);
+    }
+
+    @Override
+    public Class<Float> getTypeClass() {
+        return Float.class;
     }
 }
