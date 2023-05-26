@@ -1,5 +1,6 @@
 package org.noxet.noxetserver.playerstate.properties;
 
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
@@ -25,7 +26,7 @@ public class PSPHealthScale implements PlayerStateProperty<Double> {
     }
 
     @Override
-    public Class<Double> getTypeClass() {
-        return Double.class;
+    public Double getValueFromConfig(ConfigurationSection config) {
+        return config.getDouble(getConfigName());
     }
 }

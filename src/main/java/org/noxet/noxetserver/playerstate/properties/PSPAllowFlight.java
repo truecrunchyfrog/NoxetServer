@@ -23,9 +23,4 @@ public class PSPAllowFlight implements PlayerStateProperty<Boolean> {
     public void restoreProperty(Player player, Boolean allow) {
         player.setAllowFlight(allow);
     }
-
-    @Override
-    public Class<Boolean> getTypeClass() {
-        return Boolean.class;
-    }
 }

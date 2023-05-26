@@ -24,9 +24,4 @@ public class PSPBedSpawnLocation implements PlayerStateProperty<Location> {
     public void restoreProperty(Player player, Location spawnLocation) {
         player.setBedSpawnLocation(spawnLocation);
     }
-
-    @Override
-    public Class<Location> getTypeClass() {
-        return Location.class;
-    }
 }

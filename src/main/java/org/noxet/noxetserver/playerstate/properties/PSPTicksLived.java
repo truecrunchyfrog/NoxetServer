@@ -23,9 +23,4 @@ public class PSPTicksLived implements PlayerStateProperty<Integer> {
     public void restoreProperty(Player player, Integer ticks) {
         player.setTicksLived(ticks);
     }
-
-    @Override
-    public Class<Integer> getTypeClass() {
-        return Integer.class;
-    }
 }

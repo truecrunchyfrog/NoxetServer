@@ -23,9 +23,4 @@ public class PSPFireTicks implements PlayerStateProperty<Integer> {
     public void restoreProperty(Player player, Integer ticks) {
         player.setFireTicks(ticks);
     }
-
-    @Override
-    public Class<Integer> getTypeClass() {
-        return Integer.class;
-    }
 }

@@ -23,9 +23,4 @@ public class PSPHealthScaled implements PlayerStateProperty<Boolean> {
     public void restoreProperty(Player player, Boolean scaled) {
         player.setHealthScaled(scaled);
     }
-
-    @Override
-    public Class<Boolean> getTypeClass() {
-        return Boolean.class;
-    }
 }

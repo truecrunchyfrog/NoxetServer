@@ -23,9 +23,4 @@ public class PSPRemainingAir implements PlayerStateProperty<Integer> {
     public void restoreProperty(Player player, Integer ticks) {
         player.setRemainingAir(ticks);
     }
-
-    @Override
-    public Class<Integer> getTypeClass() {
-        return Integer.class;
-    }
 }

@@ -24,9 +24,4 @@ public class PSPLastDeathLocation implements PlayerStateProperty<Location> {
     public void restoreProperty(Player player, Location deathLocation) {
         player.setLastDeathLocation(deathLocation);
     }
-
-    @Override
-    public Class<Location> getTypeClass() {
-        return Location.class;
-    }
 }

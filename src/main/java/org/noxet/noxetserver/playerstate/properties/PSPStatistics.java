@@ -2,6 +2,8 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.Material;
 import org.bukkit.Statistic;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.MemorySection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.playerstate.PlayerStateProperty;
@@ -104,8 +106,9 @@ public class PSPStatistics implements PlayerStateProperty<Map<String, Object>> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public Class<Map<String, Object>> getTypeClass() {
-        return (Class<Map<String, Object>>) (Class<?>) HashMap.class;
+    public Map<String, Object> getValueFromConfig(ConfigurationSection config) {
+        MemorySection statisticValues = (MemorySection) config.get(getConfigName());
+        assert statisticValues != null;
+        return statisticValues.getValues(false);
     }
 }

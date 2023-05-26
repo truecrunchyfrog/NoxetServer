@@ -2,6 +2,7 @@ package org.noxet.noxetserver.playerstate;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.playerstate.properties.*;
 
 public class PSPManager {
@@ -27,11 +28,13 @@ public class PSPManager {
             new PSPHealth(),
             new PSPHealthScale(),
             new PSPHealthScaled(),
+            new PSPInventoryArmor(),
+            new PSPInventoryContents(),
             new PSPInvisible(),
             new PSPInvulnerable(),
             new PSPLastDeathLocation(),
             new PSPLocation(),
-            new PSPPlayerInventory(),
+            new PSPOffHand(),
             new PSPPotionEffects(),
             new PSPRemainingAir(),
             new PSPSaturation(),
@@ -48,26 +51,24 @@ public class PSPManager {
 
     public static void restoreFromConfiguration(ConfigurationSection configSection, Player player) {
         for(PlayerStateProperty<?> property : properties) {
-            Class<?> type = property.getTypeClass();
-            Object value = configSection.getObject(property.getConfigName(), property.getTypeClass());
+            Object value = property.getValueFromConfig(configSection);
 
-            if(type != null && value != null) {
+            if(value != null) {
                 @SuppressWarnings("unchecked")
                 PlayerStateProperty<Object> typedProperty = (PlayerStateProperty<Object>) property;
                 typedProperty.restoreProperty(player, value);
+                continue;
             }
+
+            NoxetServer.logInfo("Null object");
         }
     }
 
     public static void restoreToDefault(Player player) {
         for(PlayerStateProperty<?> property : properties) {
-            Class<?> type = property.getTypeClass();
-
-            if(type != null) {
-                @SuppressWarnings("unchecked")
-                PlayerStateProperty<Object> typedProperty = (PlayerStateProperty<Object>) property;
-                typedProperty.restoreProperty(player, typedProperty.getDefaultSerializedProperty());
-            }
+            @SuppressWarnings("unchecked")
+            PlayerStateProperty<Object> typedProperty = (PlayerStateProperty<Object>) property;
+            typedProperty.restoreProperty(player, property.getDefaultSerializedProperty());
         }
     }
 }

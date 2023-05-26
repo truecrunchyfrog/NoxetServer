@@ -23,9 +23,4 @@ public class PSPGravity implements PlayerStateProperty<Boolean> {
     public void restoreProperty(Player player, Boolean gravity) {
         player.setGravity(gravity);
     }
-
-    @Override
-    public Class<Boolean> getTypeClass() {
-        return Boolean.class;
-    }
 }

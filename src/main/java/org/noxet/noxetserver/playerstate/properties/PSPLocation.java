@@ -25,9 +25,4 @@ public class PSPLocation implements PlayerStateProperty<Location> {
     public void restoreProperty(Player player, Location location) {
         player.teleport(location);
     }
-
-    @Override
-    public Class<Location> getTypeClass() {
-        return Location.class;
-    }
 }

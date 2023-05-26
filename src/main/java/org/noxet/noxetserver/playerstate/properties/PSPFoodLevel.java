@@ -23,9 +23,4 @@ public class PSPFoodLevel implements PlayerStateProperty<Integer> {
     public void restoreProperty(Player player, Integer level) {
         player.setFoodLevel(level);
     }
-
-    @Override
-    public Class<Integer> getTypeClass() {
-        return Integer.class;
-    }
 }

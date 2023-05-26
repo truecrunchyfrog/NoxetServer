@@ -23,9 +23,4 @@ public class PSPExperienceLevel implements PlayerStateProperty<Integer> {
     public void restoreProperty(Player player, Integer level) {
         player.setLevel(level);
     }
-
-    @Override
-    public Class<Integer> getTypeClass() {
-        return Integer.class;
-    }
 }

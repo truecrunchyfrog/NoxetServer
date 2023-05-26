@@ -24,9 +24,4 @@ public class PSPGameMode implements PlayerStateProperty<String> {
     public void restoreProperty(Player player, String mode) {
         player.setGameMode(GameMode.valueOf(mode));
     }
-
-    @Override
-    public Class<String> getTypeClass() {
-        return String.class;
-    }
 }

@@ -7,10 +7,10 @@ import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
 import java.util.Objects;
 
-public class PSPEnderChest implements PlayerStateProperty<ItemStack[]> {
+public class PSPInventoryContents implements PlayerStateProperty<ItemStack[]> {
     @Override
     public String getConfigName() {
-        return "ender_chest";
+        return "inventory_contents";
     }
 
     @Override
@@ -20,12 +20,12 @@ public class PSPEnderChest implements PlayerStateProperty<ItemStack[]> {
 
     @Override
     public ItemStack[] getSerializedPropertyFromPlayer(Player player) {
-        return player.getEnderChest().getContents();
+        return player.getInventory().getContents();
     }
 
     @Override
-    public void restoreProperty(Player player, ItemStack[] chestContents) {
-        player.getEnderChest().setContents(chestContents);
+    public void restoreProperty(Player player, ItemStack[] contents) {
+        player.getInventory().setContents(contents);
     }
 
     @Override

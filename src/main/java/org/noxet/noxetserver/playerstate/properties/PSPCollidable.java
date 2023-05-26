@@ -23,9 +23,4 @@ public class PSPCollidable implements PlayerStateProperty<Boolean> {
     public void restoreProperty(Player player, Boolean collidable) {
         player.setCollidable(collidable);
     }
-
-    @Override
-    public Class<Boolean> getTypeClass() {
-        return Boolean.class;
-    }
 }

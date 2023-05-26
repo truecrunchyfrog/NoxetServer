@@ -23,9 +23,4 @@ public class PSPFlying implements PlayerStateProperty<Boolean> {
     public void restoreProperty(Player player, Boolean flying) {
         player.setFlying(flying);
     }
-
-    @Override
-    public Class<Boolean> getTypeClass() {
-        return Boolean.class;
-    }
 }

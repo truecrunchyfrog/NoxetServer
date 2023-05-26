@@ -23,9 +23,4 @@ public class PSPInvisible implements PlayerStateProperty<Boolean> {
     public void restoreProperty(Player player, Boolean invisible) {
         player.setInvisible(invisible);
     }
-
-    @Override
-    public Class<Boolean> getTypeClass() {
-        return Boolean.class;
-    }
 }

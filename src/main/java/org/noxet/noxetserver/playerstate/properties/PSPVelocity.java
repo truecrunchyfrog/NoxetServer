@@ -24,9 +24,4 @@ public class PSPVelocity implements PlayerStateProperty<Vector> {
     public void restoreProperty(Player player, Vector velocity) {
         player.setVelocity(velocity);
     }
-
-    @Override
-    public Class<Vector> getTypeClass() {
-        return Vector.class;
-    }
 }

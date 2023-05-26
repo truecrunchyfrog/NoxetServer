@@ -23,9 +23,4 @@ public class PSPArrowsInBody implements PlayerStateProperty<Integer> {
     public void restoreProperty(Player player, Integer arrows) {
         player.setArrowsInBody(arrows);
     }
-
-    @Override
-    public Class<Integer> getTypeClass() {
-        return Integer.class;
-    }
 }

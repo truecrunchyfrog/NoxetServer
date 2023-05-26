@@ -26,8 +26,4 @@ public class PSPCompassTarget implements PlayerStateProperty<Location> {
         player.setCompassTarget(target);
     }
 
-    @Override
-    public Class<Location> getTypeClass() {
-        return Location.class;
-    }
 }

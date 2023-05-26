@@ -23,9 +23,4 @@ public class PSPInvulnerable implements PlayerStateProperty<Boolean> {
     public void restoreProperty(Player player, Boolean invulnerable) {
         player.setInvulnerable(invulnerable);
     }
-
-    @Override
-    public Class<Boolean> getTypeClass() {
-        return Boolean.class;
-    }
 }

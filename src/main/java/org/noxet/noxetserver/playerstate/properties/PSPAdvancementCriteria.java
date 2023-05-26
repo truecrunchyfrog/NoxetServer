@@ -3,6 +3,7 @@ package org.noxet.noxetserver.playerstate.properties;
 import org.bukkit.GameRule;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.playerstate.PlayerStateProperty;
@@ -47,7 +48,7 @@ public class PSPAdvancementCriteria implements PlayerStateProperty<String[]> {
     }
 
     @Override
-    public Class<String[]> getTypeClass() {
-        return String[].class;
+    public String[] getValueFromConfig(ConfigurationSection config) {
+        return config.getStringList(getConfigName()).toArray(new String[0]);
     }
 }

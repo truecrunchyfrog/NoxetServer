@@ -23,9 +23,4 @@ public class PSPFreezeTicks implements PlayerStateProperty<Integer> {
     public void restoreProperty(Player player, Integer ticks) {
         player.setFreezeTicks(ticks);
     }
-
-    @Override
-    public Class<Integer> getTypeClass() {
-        return Integer.class;
-    }
 }
