@@ -176,6 +176,14 @@ public class PlayerState {
         player.setFlying(true);
     }
 
+    public static void prepareHubState(Player player) {
+        prepareDefault(player);
+
+        player.setAllowFlight(true);
+        player.setGameMode(GameMode.SURVIVAL);
+        HubInventory.applyToPlayer(player);
+    }
+
     /**
      * Gets the advancement criteria for a player. Used for saving player states.
      * @param player The player to get the criteria from
