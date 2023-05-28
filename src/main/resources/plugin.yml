@@ -29,3 +29,8 @@ commands:
       - wilderness
       - rtp
       - touch-grass
+  tpa:
+    description: Send/accept/deny/cancel a teleportation request to/from a player
+    usage: /tpa <player|cancel|accept|deny> [player]
+    aliases:
+      - tpask

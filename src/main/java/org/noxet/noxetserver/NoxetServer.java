@@ -8,6 +8,8 @@ import org.noxet.noxetserver.commands.hub.Hub;
 import org.noxet.noxetserver.commands.smp.SMP;
 import org.noxet.noxetserver.commands.smp.Wild;
 import org.noxet.noxetserver.commands.spawn.Spawn;
+import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
+import org.noxet.noxetserver.messaging.Motd;
 
 import java.io.File;
 import java.util.Objects;
@@ -61,6 +63,8 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("spawn")).setExecutor(new Spawn());
 
         Objects.requireNonNull(getCommand("wild")).setExecutor(new Wild());
+
+        Objects.requireNonNull(getCommand("tpa")).setExecutor(new TeleportAsk());
 
         logInfo("Noxet plugin is ready!");
     }
