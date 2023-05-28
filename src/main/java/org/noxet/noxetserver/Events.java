@@ -73,9 +73,25 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent e) {
-        e.getEntity().setBedSpawnLocation(getRespawnLocation(e.getEntity())); // Set respawn location to spawn if not already existing.
+        Player player = e.getEntity();
+
+        migratingPlayers.add(player);
+
         Bukkit.getScheduler().scheduleSyncDelayedTask(NoxetServer.getPlugin(), () -> {
-            e.getEntity().spigot().respawn();
+            player.sendTitle("§4☠", "§cYou died...", 40, 60, 20);
+            player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40 + 60 + 20, 10, true, false));
+
+            int totalPlays = 10;
+            for(int i = 0; i < totalPlays; i++) {
+                int finalI = i;
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        player.playSound(player.getLocation(), Sound.ENTITY_CHICKEN_DEATH, 1, 2 - 1.5f * ((float) finalI / totalPlays));
+                        player.playSound(player.getLocation(), Sound.BLOCK_BELL_USE, 1 * ((float) finalI / totalPlays), 2 - 1.5f * ((float) finalI / totalPlays));
+                    }
+                }.runTaskLater(NoxetServer.getPlugin(), i * 10);
+            }
         }, 2);
 
         new NoxetMessage("§c" + e.getDeathMessage() + ".").send(getCurrentRealm(player));
