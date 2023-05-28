@@ -1,16 +1,21 @@
 package org.noxet.noxetserver.playerstate;
 
+import org.bukkit.GameMode;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
+import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.inventory.HubInventory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
 
 public class PlayerState {
 
@@ -82,7 +87,7 @@ public class PlayerState {
     public static void restoreState(Player player, PlayerStateType stateType) {
         if(!player.isOnline()) return;
 
-        prepareNormal(player, true);
+        prepareDefault(player);
 
         if(!hasState(player, stateType))
             return; // Player has no saved state! Return to prevent trying to restore null values.
@@ -133,31 +138,23 @@ public class PlayerState {
     }
 
     /**
-     * Reset a player's state.
+     * Works the same as saveState, but it detects the state type automatically.
+     * @param player The player whose state should be saved to disk
+     */
+    public static void saveStateAuto(Player player) {
+        RealmManager.Realm realm = getCurrentRealm(player);
+        saveState(player, realm != null ? realm.getPlayerStateType() : PlayerStateType.GLOBAL);
+    }
+
+    /**
+     * Reset a player's state to "factory" settings.
      * @param player The player to reset
      */
-    private static void prepareDefault(Player player) {
+    public static void prepareDefault(Player player) {
         if(player.isDead())
             player.spigot().respawn();
 
         PSPManager.restoreToDefault(player);
-    }
-
-    /**
-     * Set a player in the "normal" mode (vulnerable, visible, not flying).
-     * @param player The player to prepare to normal mode
-     * @param inherit Whether to reset the player completely
-     */
-    public static void prepareNormal(Player player, boolean inherit) {
-        if(inherit)
-            prepareDefault(player);
-
-        player.setInvulnerable(false);
-        player.setInvisible(false);
-
-        player.setAllowFlight(false);
-        player.setFlying(false);
-        player.setFallDistance(0);
     }
 
     /**

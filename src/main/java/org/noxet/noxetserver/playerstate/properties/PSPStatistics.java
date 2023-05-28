@@ -57,7 +57,7 @@ public class PSPStatistics implements PlayerStateProperty<Map<String, Object>> {
                             if((entityStatistic = player.getStatistic(statistic, entityType)) != 0)
                                 entityPlayerStatistics.get(statistic.name()).put(entityType.name(), entityStatistic);
                         } catch(IllegalArgumentException e) {
-                            // We expected this. I don't know how else to check whether an entity is statistical.
+                            // This is expected. I don't know how else to check whether an entity is statistical.
                         }
                     }
                     break;
@@ -73,31 +73,42 @@ public class PSPStatistics implements PlayerStateProperty<Map<String, Object>> {
         return allPlayerStatistics;
     }
 
+    private static Map<?, ?> getMapSafely(Map<String, ?> map, String key) {
+        Object value = map.get(key);
+
+        if(value instanceof MemorySection)
+            value = ((MemorySection) value).getValues(true);
+
+        return (Map<?, ?>) value;
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public void restoreProperty(Player player, Map<String, Object> statistics) {
-        Map<String, Integer> untypedPlayerStatistics = (Map<String, Integer>) statistics.get("untyped");
-        Map<String, Map<String, Integer>> materialPlayerStatistics = (Map<String, Map<String, Integer>>) statistics.get("material");
-        Map<String, Map<String, Integer>> entityPlayerStatistics = (Map<String, Map<String, Integer>>) statistics.get("entity");
+        Map<String, Object> untypedPlayerStatistics, materialPlayerStatistics, entityPlayerStatistics;
+
+        untypedPlayerStatistics = (Map<String, Object>) getMapSafely(statistics, "untyped");
+        materialPlayerStatistics = (Map<String, Object>) getMapSafely(statistics, "material");
+        entityPlayerStatistics = (Map<String, Object>) getMapSafely(statistics, "entity");
 
         for(Statistic statistic : Statistic.values()) {
             switch(statistic.getType()) {
                 case UNTYPED:
-                    player.setStatistic(statistic, untypedPlayerStatistics.getOrDefault(statistic.name(), 0));
+                    player.setStatistic(statistic, (int) untypedPlayerStatistics.getOrDefault(statistic.name(), 0));
                     break;
                 case BLOCK:
                 case ITEM:
                     if(materialPlayerStatistics.containsKey(statistic.name()))
                         for(Material material : Material.values())
-                            player.setStatistic(statistic, material, materialPlayerStatistics.get(statistic.name()).getOrDefault(material.name(), 0));
+                            player.setStatistic(statistic, material, ((Map<String, Integer>) getMapSafely(materialPlayerStatistics, statistic.name())).getOrDefault(material.name(), 0));
                     break;
                 case ENTITY:
                     if(entityPlayerStatistics.containsKey(statistic.name()))
                         for(EntityType entityType : EntityType.values()) {
                             try {
-                                player.setStatistic(statistic, entityType, entityPlayerStatistics.get(statistic.name()).getOrDefault(entityType.name(), 0));
+                                player.setStatistic(statistic, entityType, ((Map<String, Integer>) getMapSafely(entityPlayerStatistics, statistic.name())).getOrDefault(entityType.name(), 0));
                             } catch(IllegalArgumentException e) {
-                                // We expected this. I don't know how else to check whether an entity is statistical.
+                                // This is expected. I don't know how else to check whether an entity is statistical.
                             }
                         }
                     break;
