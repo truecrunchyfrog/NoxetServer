@@ -21,6 +21,7 @@ import java.util.*;
 
 import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
 
+@SuppressWarnings("ALL")
 public class Wild implements CommandExecutor {
     private static final List<Player> recentlyTeleported = new ArrayList<>();
     private static final List<Biome> wildBiomesExceptions = Arrays.asList(

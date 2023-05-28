@@ -100,6 +100,7 @@ public final class NoxetServer extends JavaPlugin {
         return dir;
     }
     
+    @SuppressWarnings("SameReturnValue")
     private static String getLogPrefix() {
         return "[ NOXET ] ";
     }

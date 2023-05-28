@@ -10,6 +10,7 @@ import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
 import static org.noxet.noxetserver.RealmManager.goToSpawn;
 
+@SuppressWarnings("ALL")
 public class Spawn implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {

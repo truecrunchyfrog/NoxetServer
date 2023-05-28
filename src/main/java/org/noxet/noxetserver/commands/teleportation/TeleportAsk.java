@@ -11,6 +11,7 @@ import org.noxet.noxetserver.messaging.NoxetMessage;
 
 import java.util.*;
 
+@SuppressWarnings("ALL")
 public class TeleportAsk implements TabExecutor {
 
     // Key: requester

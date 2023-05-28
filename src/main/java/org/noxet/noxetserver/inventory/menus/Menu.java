@@ -13,8 +13,8 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.messaging.NoxetMessage;
 
+@SuppressWarnings("ALL")
 public abstract class Menu implements InventoryHolder, Listener {
     private final Inventory inventory;
     private final boolean forceOpen;

@@ -2,12 +2,9 @@ package org.noxet.noxetserver.inventory.menus;
 
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
-import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.messaging.TextBeautifier;
 
 import java.util.Arrays;

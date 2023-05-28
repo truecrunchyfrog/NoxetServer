@@ -8,6 +8,7 @@ import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 
 import static org.noxet.noxetserver.RealmManager.goToHub;
 
+@SuppressWarnings("ALL")
 public class Hub implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
