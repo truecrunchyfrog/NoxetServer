@@ -9,6 +9,7 @@ commands:
     aliases:
       - leave
       - lobby
+      - l
   spawn:
     description: Go to spawn
     usage: /spawn

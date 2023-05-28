@@ -7,8 +7,6 @@ import org.bukkit.entity.Player;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 
-import javax.annotation.Nonnull;
-
 import static org.noxet.noxetserver.RealmManager.migrateToRealm;
 
 public class Anarchy implements CommandExecutor {

@@ -19,17 +19,20 @@ public final class NoxetServer extends JavaPlugin {
     private static NoxetServer plugin;
 
     public enum ServerWorld {
-        HUB("hub", null),
-        SMP_SPAWN("smp_spawn", RealmManager.Realm.SMP),
-        SMP_WORLD("smp_world", RealmManager.Realm.SMP),
-        ANARCHY_WORLD("anarchy", RealmManager.Realm.ANARCHY);
+        HUB("hub", null, true, true),
+        SMP_SPAWN("smp_spawn", RealmManager.Realm.SMP, true, true),
+        SMP_WORLD("smp_world", RealmManager.Realm.SMP, false, false),
+        ANARCHY_WORLD("anarchy", RealmManager.Realm.ANARCHY, false, false);
 
         private final String worldName;
         private final RealmManager.Realm realm;
+        private final boolean preservedWorld, safeZone;
 
-        ServerWorld(String worldName, RealmManager.Realm realm) {
+        ServerWorld(String worldName, RealmManager.Realm realm, boolean preservedWorld, boolean safeZone) {
             this.worldName = worldName;
             this.realm = realm;
+            this.preservedWorld = preservedWorld;
+            this.safeZone = safeZone;
         }
 
         public World getWorld() {
@@ -38,6 +41,14 @@ public final class NoxetServer extends JavaPlugin {
 
         private void loadWorld() {
             NoxetServer.getPlugin().getServer().createWorld(new WorldCreator(worldName));
+        }
+
+        public boolean isPreserved() {
+            return preservedWorld;
+        }
+
+        public boolean isSafeZone() {
+            return safeZone;
         }
 
         public RealmManager.Realm getRealm() {
@@ -50,6 +61,8 @@ public final class NoxetServer extends JavaPlugin {
         plugin = this;
 
         getServer().getPluginManager().registerEvents(new Events(), this);
+
+        Motd.loadQuotes();
 
         logInfo("Loading worlds...");
 
@@ -106,5 +119,19 @@ public final class NoxetServer extends JavaPlugin {
     public static void loadWorlds() {
         for(ServerWorld serverWorld : ServerWorld.values())
             serverWorld.loadWorld();
+    }
+
+    public static boolean isWorldPreserved(World world) {
+        for(ServerWorld serverWorld : ServerWorld.values())
+            if(serverWorld.getWorld() == world)
+                return serverWorld.isPreserved();
+        return false;
+    }
+
+    public static boolean isWorldSafeZone(World world) {
+        for(ServerWorld serverWorld : ServerWorld.values())
+            if(serverWorld.getWorld() == world)
+                return serverWorld.isSafeZone();
+        return false;
     }
 }

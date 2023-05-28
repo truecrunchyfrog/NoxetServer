@@ -2,7 +2,6 @@ package org.noxet.noxetserver.playerstate;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.playerstate.properties.*;
 
 public class PSPManager {
@@ -28,6 +27,7 @@ public class PSPManager {
             new PSPHealth(),
             new PSPHealthScale(),
             new PSPHealthScaled(),
+            new PSPHeldItemSlot(),
             new PSPInventoryArmor(),
             new PSPInventoryContents(),
             new PSPInvisible(),
@@ -57,10 +57,7 @@ public class PSPManager {
                 @SuppressWarnings("unchecked")
                 PlayerStateProperty<Object> typedProperty = (PlayerStateProperty<Object>) property;
                 typedProperty.restoreProperty(player, value);
-                continue;
             }
-
-            NoxetServer.logInfo("Null object");
         }
     }
 

@@ -1,21 +1,42 @@
 package org.noxet.noxetserver.commands.smp;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Sound;
+import org.bukkit.block.Biome;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 
-import java.util.Objects;
-import java.util.Random;
+import java.text.DecimalFormat;
+import java.util.*;
 
 import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
 
 public class Wild implements CommandExecutor {
+    private static final List<Player> recentlyTeleported = new ArrayList<>();
+    private static final List<Biome> wildBiomesExceptions = Arrays.asList(
+            Biome.OCEAN,
+            Biome.FROZEN_OCEAN,
+            Biome.COLD_OCEAN,
+            Biome.LUKEWARM_OCEAN,
+            Biome.WARM_OCEAN,
+            Biome.DEEP_OCEAN,
+            Biome.DEEP_COLD_OCEAN,
+            Biome.DEEP_LUKEWARM_OCEAN,
+            Biome.DEEP_FROZEN_OCEAN,
+            Biome.RIVER,
+            Biome.FROZEN_RIVER
+    );
+
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
@@ -24,6 +45,12 @@ public class Wild implements CommandExecutor {
         }
 
         Player player = (Player) commandSender;
+
+        if(recentlyTeleported.contains(player)) {
+            new NoxetErrorMessage("You recently got a wilderness teleport. You must wait 2 minutes between requests.").send(player);
+            return true;
+        }
+
         RealmManager.Realm realm = getCurrentRealm(player);
 
         if(realm != RealmManager.Realm.SMP) {
@@ -33,21 +60,72 @@ public class Wild implements CommandExecutor {
 
         new NoxetMessage("Wilderness teleportation commencing. Please wait ...").send(player);
 
-        Location teleportTo = new Location(
-                NoxetServer.ServerWorld.SMP_WORLD.getWorld(),
-                0,
-                0,
-                0
-        );
+        Bukkit.getScheduler().scheduleSyncDelayedTask(NoxetServer.getPlugin(), () -> {
+            Location teleportTo = new Location(
+                    NoxetServer.ServerWorld.SMP_WORLD.getWorld(),
+                    0, 0, 0
+            );
 
-        teleportTo.setX(getWildXZValue());
-        teleportTo.setZ(getWildXZValue());
+            int attempts = 0, maxAttempts = 300;
 
-        teleportTo.setY(Objects.requireNonNull(teleportTo.getWorld()).getHighestBlockYAt(teleportTo));
+            do {
+                if(attempts >= maxAttempts) {
+                    new NoxetErrorMessage("Uh oh. We searched far and wide, but we could not find a suiting place for you.").send(player);
+                    break;
+                }
 
-        player.teleport(teleportTo);
+                teleportTo.setX(getWildXZValue());
+                teleportTo.setZ(getWildXZValue());
 
-        new NoxetMessage("Welcome to the wild!").send(player);
+                teleportTo.setY(Objects.requireNonNull(teleportTo.getWorld()).getHighestBlockYAt(teleportTo));
+
+                attempts++;
+            } while(
+                    wildBiomesExceptions.contains(teleportTo.getWorld().getBiome(teleportTo)) // Look for new location until it is not listed in the blacklist.
+            );
+
+            player.teleport(teleportTo);
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if(!teleportTo.getChunk().isLoaded())
+                        return;
+
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            new NoxetMessage("Welcome to the wild!").send(player);
+
+                            player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 420, 10, false, false));
+
+                            player.playSound(player.getLocation(), Sound.ITEM_GOAT_HORN_SOUND_2, 1, 0.5f);
+
+                            player.sendTitle("§2§lINTO THE WILDERNESS!", "§f(§a§l" + ((int) player.getLocation().getX()) + "§7; §a§l" + ((int) player.getLocation().getZ()) + "§f)", 0, 200, 0);
+
+                            new BukkitRunnable() {
+                                @Override
+                                public void run() {
+                                    player.playSound(player.getLocation(), Sound.ITEM_GOAT_HORN_SOUND_3, 1, 0.5f);
+                                    player.sendTitle("§e§l" + new DecimalFormat("#,###").format((int) player.getLocation().distance(new Location(player.getLocation().getWorld(), 0, player.getLocation().getY(), 0))), "§6blocks away from (0; 0).", 0, 200, 0);
+                                }
+                            }.runTaskLater(NoxetServer.getPlugin(), 200);
+                        }
+                    }.runTaskLater(NoxetServer.getPlugin(), 60);
+
+                    this.cancel(); // Stop this timer.
+                }
+            }.runTaskTimer(NoxetServer.getPlugin(), 20, 20);
+
+            recentlyTeleported.add(player);
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    recentlyTeleported.remove(player);
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 20 * 60 * 2);
+        }, 0);
 
         return true;
     }

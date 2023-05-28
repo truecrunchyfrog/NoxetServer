@@ -14,7 +14,6 @@ public class NoxetMessage {
     private final String text;
     private final String clickCommand;
 
-
     /**
      * Constructs a message.
      * @param text The text message to be sent
@@ -45,7 +44,7 @@ public class NoxetMessage {
         TextComponent textComponent = new TextComponent(getBakedMessage());
 
         if(clickCommand != null)
-            textComponent.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, clickCommand));
+            textComponent.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + clickCommand));
 
         return textComponent;
     }
@@ -73,10 +72,14 @@ public class NoxetMessage {
     }
 
     public void send(RealmManager.Realm realm) {
-        send(realm.getWorlds().toArray(new World[0]));
+        if(realm != null)
+            send(realm.getWorlds().toArray(new World[0]));
+        else
+            send(NoxetServer.ServerWorld.HUB.getWorld());
     }
 
     public void broadcast() {
-        send(NoxetServer.getPlugin().getServer().getOnlinePlayers());
+        Collection<? extends Player> sendTo = NoxetServer.getPlugin().getServer().getOnlinePlayers();
+        send(sendTo);
     }
 }
