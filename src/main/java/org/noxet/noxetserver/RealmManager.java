@@ -1,10 +1,14 @@
 package org.noxet.noxetserver;
 
 import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.messaging.TextBeautifier;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.playerstate.PlayerState.PlayerStateType;
 
@@ -58,12 +62,21 @@ public class RealmManager {
             return worlds;
         }
 
+        public List<Player> getPlayers() {
+            List<Player> players = new ArrayList<>();
+
+            for(World world : getWorlds())
+                players.addAll(world.getPlayers());
+
+            return players;
+        }
+
         public String getDisplayName() {
             return displayName;
         }
     }
 
-    private static final List<Player> migratingPlayers = new ArrayList<>();
+    protected static final List<Player> migratingPlayers = new ArrayList<>();
 
     /**
      * Gets the realm that the world belongs to.
@@ -100,9 +113,10 @@ public class RealmManager {
 
         Realm fromRealm = getCurrentRealm(player);
 
-        if(toRealm == fromRealm) {
+        if(toRealm == fromRealm)
             return; // Already in that realm. Do nothing.
-        }
+
+        TeleportAsk.abortPlayerRelatedRequests(player);
 
         if(toRealm != null)
             new NoxetMessage("Joining §e" + toRealm.getDisplayName() + "§7 ...").send(player);
@@ -164,7 +178,10 @@ public class RealmManager {
      */
     public static void goToSpawn(Player player) {
         player.teleport(getSpawnLocation(player));
-        new NoxetMessage("You have been sent to spawn!").send(player);
+
+        Realm realm = getCurrentRealm(player);
+
+        new NoxetMessage("You have been sent to " + (realm != null ? "§f§l" + realm.getDisplayName() + "§7 " : "") + "spawn!").send(player);
     }
 
     /**
@@ -173,5 +190,12 @@ public class RealmManager {
      */
     public static void goToHub(Player player) {
         player.teleport(NoxetServer.ServerWorld.HUB.getWorld().getSpawnLocation());
+
+        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE, 1, 0.5f);
+        player.sendTitle("§b§l" + TextBeautifier.beautify("no") + "§3§l" + TextBeautifier.beautify("x") + "§b§l" + TextBeautifier.beautify("et"), "§eWelcome to the Noxet.org Network.", 0, 60, 5);
+
+        player.spawnParticle(Particle.EXPLOSION_HUGE, player.getLocation().add(player.getLocation().getDirection().multiply(2)).add(0, 1, 0), 10);
+
+        PlayerState.prepareHubState(player);
     }
 }
