@@ -109,13 +109,17 @@ public final class NoxetServer extends JavaPlugin {
         getPlugin().getLogger().info(getLogPrefix() + message);
     }
 
-    public static void logWarning(String message) {
-        getPlugin().getLogger().warning(getLogPrefix() + message);
-    }
+// --Commented out by Inspection START (2023-05-28 19:34):
+//    public static void logWarning(String message) {
+//        getPlugin().getLogger().warning(getLogPrefix() + message);
+//    }
+// --Commented out by Inspection STOP (2023-05-28 19:34)
 
-    public static void logSevere(String message) {
-        getPlugin().getLogger().severe(getLogPrefix() + message);
-    }
+// --Commented out by Inspection START (2023-05-28 19:34):
+//    public static void logSevere(String message) {
+//        getPlugin().getLogger().severe(getLogPrefix() + message);
+//    }
+// --Commented out by Inspection STOP (2023-05-28 19:34)
 
     public static void loadWorlds() {
         for(ServerWorld serverWorld : ServerWorld.values())
