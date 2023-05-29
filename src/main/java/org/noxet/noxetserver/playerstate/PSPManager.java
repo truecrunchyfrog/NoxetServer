@@ -23,6 +23,7 @@ public class PSPManager {
             new PSPFoodLevel(),
             new PSPFreezeTicks(),
             new PSPGameMode(),
+            new PSPGliding(),
             new PSPGravity(),
             new PSPHealth(),
             new PSPHealthScale(),
@@ -39,6 +40,7 @@ public class PSPManager {
             new PSPRemainingAir(),
             new PSPSaturation(),
             new PSPStatistics(),
+            new PSPSwimming(),
             new PSPTicksLived(),
             new PSPVelocity(),
             new PSPWalkSpeed()

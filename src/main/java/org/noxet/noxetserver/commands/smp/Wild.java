@@ -99,6 +99,7 @@ public class Wild implements CommandExecutor {
                             new NoxetMessage("Welcome to the wild!").send(player);
 
                             player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 420, 10, false, false));
+                            player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 420, 100, false, false));
 
                             player.playSound(player.getLocation(), Sound.ITEM_GOAT_HORN_SOUND_2, 1, 0.5f);
 

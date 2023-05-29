@@ -75,7 +75,7 @@ public class NoxetMessage {
     }
 
     public NoxetMessage addButton(String buttonLabel, ChatColor color, String hoverText, String clickCommand) {
-        TextComponent textComponent = new TextComponent("→" + TextBeautifier.beautify(buttonLabel) + "← ");
+        TextComponent textComponent = new TextComponent("→" + TextBeautifier.beautify(buttonLabel) + " ");
 
         textComponent.setColor(color);
         textComponent.setBold(true);

@@ -38,16 +38,16 @@ public class RealmManager {
             return playerStateType;
         }
 
-        public Location getSpawnLocation() {
-            // To detect spawn location for a realm,
-            // we loop through the server worlds
-            // and find the first world that is part of this realm,
-            // and get that world's spawn location.
+        public World getWorld(NoxetServer.WorldFlag worldFlag) {
             for(NoxetServer.ServerWorld serverWorld : NoxetServer.ServerWorld.values())
-                if(serverWorld.getRealm() == this)
-                    return serverWorld.getWorld().getSpawnLocation();
+                if(serverWorld.getWorldFlag() == worldFlag)
+                    return serverWorld.getWorld();
 
-            throw new RuntimeException("Realm has no registered server world to spawn into.");
+            return null;
+        }
+
+        public Location getSpawnLocation() {
+            return getWorld(NoxetServer.WorldFlag.NEUTRAL).getSpawnLocation();
         }
 
         public boolean doesAllowSpawnCommand() {
@@ -117,6 +117,7 @@ public class RealmManager {
             return; // Already in that realm. Do nothing.
 
         TeleportAsk.abortPlayerRelatedRequests(player);
+        Events.abortUnconfirmedPlayerRespawn(player);
 
         if(toRealm != null)
             new NoxetMessage("Joining §e" + toRealm.getDisplayName() + "§7 ...").send(player);

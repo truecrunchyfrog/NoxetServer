@@ -18,21 +18,35 @@ public final class NoxetServer extends JavaPlugin {
 
     private static NoxetServer plugin;
 
+    public enum WorldFlag {
+        NEUTRAL, OVERWORLD, NETHER, END;
+    }
+
     public enum ServerWorld {
-        HUB("hub", null, true, true),
-        SMP_SPAWN("smp_spawn", RealmManager.Realm.SMP, true, true),
-        SMP_WORLD("smp_world", RealmManager.Realm.SMP, false, false),
-        ANARCHY_WORLD("anarchy", RealmManager.Realm.ANARCHY, false, false);
+        HUB("hub", null, true, true, WorldFlag.NEUTRAL),
+        SMP_SPAWN("smp_spawn", RealmManager.Realm.SMP, true, true, WorldFlag.NEUTRAL),
+        SMP_WORLD("smp_world", RealmManager.Realm.SMP, false, false, WorldFlag.OVERWORLD),
+        SMP_NETHER("smp_nether", RealmManager.Realm.SMP, false, false, WorldFlag.NETHER),
+        SMP_END("smp_end", RealmManager.Realm.SMP, false, false, WorldFlag.END),
+        ANARCHY_WORLD("anarchy", RealmManager.Realm.ANARCHY, false, false, WorldFlag.OVERWORLD),
+        ANARCHY_NETHER("anarchy_nether", RealmManager.Realm.ANARCHY, false, false, WorldFlag.NETHER),
+        ANARCHY_END("anarchy_end", RealmManager.Realm.ANARCHY, false, false, WorldFlag.END);
 
         private final String worldName;
         private final RealmManager.Realm realm;
         private final boolean preservedWorld, safeZone;
+        private final WorldFlag flag;
 
-        ServerWorld(String worldName, RealmManager.Realm realm, boolean preservedWorld, boolean safeZone) {
+        ServerWorld(String worldName, RealmManager.Realm realm, boolean preservedWorld, boolean safeZone, WorldFlag flag) {
             this.worldName = worldName;
             this.realm = realm;
             this.preservedWorld = preservedWorld;
             this.safeZone = safeZone;
+            this.flag = flag;
+        }
+
+        ServerWorld(String worldName, RealmManager.Realm realm, boolean preservedWorld, boolean safeZone) {
+            this(worldName, realm, preservedWorld, safeZone, null);
         }
 
         public World getWorld() {
@@ -49,6 +63,10 @@ public final class NoxetServer extends JavaPlugin {
 
         public boolean isSafeZone() {
             return safeZone;
+        }
+
+        public WorldFlag getWorldFlag() {
+            return flag;
         }
 
         public RealmManager.Realm getRealm() {

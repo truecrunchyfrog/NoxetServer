@@ -5,6 +5,7 @@ import org.bukkit.advancement.Advancement;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.inventory.HubInventory;
@@ -89,8 +90,16 @@ public class PlayerState {
 
         prepareDefault(player);
 
-        if(!hasState(player, stateType))
-            return; // Player has no saved state! Return to prevent trying to restore null values.
+        if(!hasState(player, stateType)) { // Player has no saved state!
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    // Do when moved to world.
+                    player.loadData(); // Load the player's data according to the world.
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 10);
+            return; // Return to skip attempt to restore from config (and to not restore null values).
+        }
 
         PSPManager.restoreFromConfiguration(
                 getConfigSection(

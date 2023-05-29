@@ -1,10 +1,9 @@
 package org.noxet.noxetserver;
 
 import net.md_5.bungee.api.ChatColor;
-import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
-import org.bukkit.Material;
-import org.bukkit.Sound;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -17,15 +16,15 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import org.noxet.noxetserver.amateurgenerators.NetherPortalGenerator;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.inventory.HubInventory;
 import org.noxet.noxetserver.inventory.menus.GameNavigationMenu;
 import org.noxet.noxetserver.messaging.Motd;
+import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static org.noxet.noxetserver.RealmManager.*;
 
@@ -68,6 +67,7 @@ public class Events implements Listener {
         migratingPlayers.remove(e.getPlayer());
         Captcha.stopPlayerCaptcha(e.getPlayer());
         TeleportAsk.abortPlayerRelatedRequests(e.getPlayer());
+        abortUnconfirmedPlayerRespawn(e.getPlayer());
 
         new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§7 left Noxet.org.").broadcast();
         e.setQuitMessage(null);
@@ -140,6 +140,21 @@ public class Events implements Listener {
                 return;
 
             Objects.requireNonNull(Captcha.getPlayerCaptcha(e.getPlayer())).chooseAnswer(answer);
+        } else if(e.getMessage().equals("/bedspawnconfirm")) {
+            e.setCancelled(true);
+
+            if(!unconfirmedPlayerRespawns.containsKey(e.getPlayer())) {
+                new NoxetErrorMessage("You cannot do this now.").send(e.getPlayer());
+                return;
+            }
+
+            Location newBedSpawn = unconfirmedPlayerRespawns.remove(e.getPlayer());
+            e.getPlayer().setBedSpawnLocation(newBedSpawn);
+
+            if(e.getPlayer().getBedSpawnLocation() != null && newBedSpawn.getBlock().getType().name().endsWith("_BED"))
+                new NoxetMessage("§aGreat! Your respawn location has been updated.").send(e.getPlayer());
+            else
+                new NoxetErrorMessage("Could not change your respawn location.").send(e.getPlayer());
         }
     }
 
@@ -287,6 +302,73 @@ public class Events implements Listener {
                     player.openInventory(new GameNavigationMenu().getInventory());
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 5);
+        }
+    }
+
+    @EventHandler
+    public void onEntityPortal(EntityPortalEvent e) {
+    }
+
+    @EventHandler
+    public void onPlayerPortal(PlayerPortalEvent e) {
+        World sourceWorld = e.getFrom().getWorld();
+        Realm realm = getRealmFromWorld(sourceWorld);
+
+        if(realm == null)
+            return; // No realm, we don't have to handle this.
+
+        switch(e.getCause()) {
+            case NETHER_PORTAL: // Overworld <-> Nether (to and from)
+                Location searchStart = e.getFrom();
+
+                if(e.getPlayer().getWorld().equals(realm.getWorld(NoxetServer.WorldFlag.OVERWORLD))) {
+                    // Overworld to Nether
+                    searchStart.setWorld(realm.getWorld(NoxetServer.WorldFlag.NETHER));
+                    searchStart.multiply(1d / 8);
+                } else {
+                    // Nether to Overworld
+                    searchStart.setWorld(realm.getWorld(NoxetServer.WorldFlag.OVERWORLD));
+                    searchStart.multiply(8);
+                }
+
+                e.setTo(searchStart);
+                //NetherPortalGenerator.generatePortal(searchStart);
+                break;
+        }
+    }
+
+    private static final Map<Player, Location> unconfirmedPlayerRespawns = new HashMap<>();
+
+    public static void abortUnconfirmedPlayerRespawn(Player player) {
+        if(unconfirmedPlayerRespawns.remove(player) != null)
+            new NoxetMessage("§cYour respawn location was not changed.").send(player);
+    }
+
+    @EventHandler
+    public void onPlayerSpawnChange(PlayerSpawnChangeEvent e) {
+        if(e.getPlayer().getBedSpawnLocation() != null && e.getCause() == PlayerSpawnChangeEvent.Cause.BED) {
+            unconfirmedPlayerRespawns.put(e.getPlayer(), e.getNewSpawn());
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    e.getPlayer().spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§cYour spawn location was §lNOT§c changed! Read chat."));
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 0);
+
+            new NoxetMessage("§e§l§nIMPORTANT! §cYou already have a respawn location. Are you sure that you want to replace it?")
+                    .addButton("Replace", ChatColor.YELLOW, "Set this as your new spawn", "bedspawnconfirm")
+                    .send(e.getPlayer());
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if(unconfirmedPlayerRespawns.remove(e.getPlayer()) != null)
+                        new NoxetMessage("§c§lWARNING! §cYour spawn was NOT changed.");
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 20 * 60);
+
+            e.setCancelled(true);
         }
     }
 }

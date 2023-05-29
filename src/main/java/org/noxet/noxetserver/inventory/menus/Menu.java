@@ -44,7 +44,7 @@ public abstract class Menu implements InventoryHolder, Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent e) {
-        if(e.getInventory().equals(inventory)) {
+        if(e.getClickedInventory().equals(inventory)) {
             Player player = (Player) e.getWhoClicked();
             int slot = e.getSlot();
 
@@ -57,22 +57,27 @@ public abstract class Menu implements InventoryHolder, Listener {
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent e) {
         if(e.getInventory().equals(inventory)) {
-            if(forceOpen)
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if(forceOpen)
                         e.getPlayer().openInventory(e.getInventory());
-                    }
-                }.runTaskLater(NoxetServer.getPlugin(), 5);
-            else
-                stop();
+                    else if(inventory.getViewers().size() == 0)
+                        stop();
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 0);
         }
     }
 
-    private void stop() {
+    protected void stop() {
         HandlerList.unregisterAll(this);
 
         for(HumanEntity humanEntity : inventory.getViewers())
-            humanEntity.closeInventory();
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    humanEntity.closeInventory();
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 0);
     }
 }

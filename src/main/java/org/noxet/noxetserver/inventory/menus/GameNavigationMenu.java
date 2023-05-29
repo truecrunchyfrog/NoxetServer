@@ -13,27 +13,27 @@ import static org.noxet.noxetserver.inventory.ItemGenerator.generateItem;
 
 public class GameNavigationMenu extends Menu {
     public GameNavigationMenu() {
-        super(3, "Game Navigator", false);
+        super(3, TextBeautifier.beautify("Noxet - Choose a game"), false);
     }
 
     @Override
     protected void updateInventory() {
         setSlotItem(generateItem(
+                Material.FLINT_AND_STEEL,
+                "§c§lA" + TextBeautifier.beautify("narchy") + " I" + TextBeautifier.beautify("sland"),
+                Arrays.asList("§7§oInsane vanilla experience.", "§7§oNo rules. Try to live", "§7§oin a destructive world.")
+        ), 2, 1);
+
+        setSlotItem(generateItem(
                 Material.SPRUCE_LOG,
                 "§6§lW" + TextBeautifier.beautify("orld") + "§2§lE" + TextBeautifier.beautify("ater"),
                 Arrays.asList("§7§oHide and seek in one chunk.", "§7§oHiders win if survived for", "§7§o30 minutes.")
-        ), 2, 1);
+        ), 4, 1);
 
         setSlotItem(generateItem(
                 Material.GRASS_BLOCK,
                 "§9§lS" + TextBeautifier.beautify("mp"),
                 Arrays.asList("§7§oThe (somewhat) vanilla", "§7§oexperience.")
-        ), 4, 1);
-
-        setSlotItem(generateItem(
-                Material.FLINT_AND_STEEL,
-                "§c§lA" + TextBeautifier.beautify("narchy") + " I" + TextBeautifier.beautify("sland"),
-                Arrays.asList("§7§oInsane vanilla experience.", "§7§oNo rules. Try to live", "§7§oin a destructive world.")
         ), 6, 1);
     }
 
@@ -42,24 +42,19 @@ public class GameNavigationMenu extends Menu {
         if(y == 1) {
             switch(x) {
                 case 2:
-                    player.performCommand("eatworld play");
+                    RealmManager.migrateToRealm(player, RealmManager.Realm.ANARCHY);
                     break;
                 case 4:
-                    RealmManager.migrateToRealm(player, RealmManager.Realm.SMP);
+                    player.performCommand("eatworld play");
                     break;
                 case 6:
-                    RealmManager.migrateToRealm(player, RealmManager.Realm.ANARCHY);
+                    RealmManager.migrateToRealm(player, RealmManager.Realm.SMP);
                     break;
                 default:
                     return;
             }
 
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    player.closeInventory();
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 1);
+            stop();
         }
     }
 }
