@@ -341,44 +341,43 @@ public class Events implements Listener {
 
     @EventHandler
     public void onEntityPortal(EntityPortalEvent e) {
+        handlePortalTeleport(e.getFrom(), e.getTo());
     }
 
     @EventHandler
     public void onPlayerPortal(PlayerPortalEvent e) {
-        World sourceWorld = e.getFrom().getWorld();
+        handlePortalTeleport(e.getFrom(), e.getTo());
+    }
+
+    private void handlePortalTeleport(Location from, Location to) {
+        World sourceWorld = from.getWorld();
         Realm realm = getRealmFromWorld(sourceWorld);
 
         if(realm == null)
             return; // No realm, we don't have to handle this.
 
-        if(e.getTo() == null) {
-            new NoxetErrorMessage("This portal has no destination!").send(e.getPlayer());
+        if(to == null)
             return;
-        }
 
         World realmOverworld = realm.getWorld(NoxetServer.WorldFlag.OVERWORLD),
                 realmNether = realm.getWorld(NoxetServer.WorldFlag.NETHER),
                 realmEnd = realm.getWorld(NoxetServer.WorldFlag.END);
 
-        World originWorld = e.getFrom().getWorld();
+        World originWorld = from.getWorld();
 
-        switch(e.getCause()) {
-            case NETHER_PORTAL: // Overworld <-> Nether (to and from)
+        switch(Objects.requireNonNull(to.getWorld()).getEnvironment()) {
+            case NETHER: // Overworld <-> Nether (to and from)
                 if(originWorld == realmOverworld) // Overworld to Nether
-                    e.getTo().setWorld(realmNether);
+                    to.setWorld(realmNether);
                 else // Nether to Overworld
-                    e.getTo().setWorld(realmOverworld);
+                    to.setWorld(realmOverworld);
 
                 break;
-            case END_PORTAL: // Overworld <-> End (to and from)
+            case THE_END: // Overworld <-> End (to and from)
                 if(originWorld == realmOverworld) // Overworld to End
-                    e.getTo().setWorld(realmEnd);
+                    to.setWorld(realmEnd);
                 else // End to Overworld (end credits)
-                    e.getTo().setWorld(realmOverworld);
-
-                break;
-            case END_GATEWAY:
-                e.getTo().setWorld(realmEnd);
+                    to.setWorld(realmOverworld);
 
                 break;
         }
