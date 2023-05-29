@@ -1,60 +1,102 @@
 package org.noxet.noxetserver.messaging;
 
+import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 public class NoxetMessage {
-    private final String text;
-    private final String clickCommand;
+    private final List<TextComponent> textComponents = new ArrayList<>();
 
     /**
      * Constructs a message.
-     * @param text The text message to be sent
      */
-    public NoxetMessage(String text) {
-        this(text, null);
+    public NoxetMessage() {
+
     }
 
     /**
-     * Constructs a message with a click command.
+     * Constructs a message with a text.
      * @param text The text message to be sent
-     * @param clickCommand The command to be run when clicked
      */
-    public NoxetMessage(String text, String clickCommand) {
-        this.text = text;
-        this.clickCommand = clickCommand;
+    public NoxetMessage(String text) {
+        add(text, null, null);
     }
 
     public String getMessagePrefix() {
-        return "§bɴo§3§lx§bᴇᴛ §8§l| §7";
+        return "§bɴo§3§lx§bᴇᴛ §8§l| ";
     }
 
-    private String getBakedMessage() {
-        return getMessagePrefix() + text;
+    private TextComponent getBakedMessage() {
+        TextComponent mainComponent = new TextComponent(getMessagePrefix());
+
+        for(TextComponent textComponent : textComponents)
+            mainComponent.addExtra(textComponent); // Add every component.
+
+        return mainComponent;
     }
 
-    private TextComponent asTextComponent() {
-        TextComponent textComponent = new TextComponent(getBakedMessage());
+    public ChatColor getDefaultColor() {
+        return ChatColor.GRAY;
+    }
+
+    public NoxetMessage add(String text, String hoverText, String clickCommand) {
+        TextComponent textComponent = new TextComponent(text + "§r "); // Padding, for better transitions.
+
+        textComponent.setColor(getDefaultColor());
+
+        if(hoverText != null)
+            textComponent.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text(hoverText)));
 
         if(clickCommand != null)
             textComponent.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + clickCommand));
 
-        return textComponent;
+        textComponents.add(textComponent);
+
+        return this;
+    }
+
+    public NoxetMessage add(String text, String hoverText) {
+        return add(text, hoverText, null);
+    }
+
+    public NoxetMessage add(String text) {
+        return add(text, null, null);
+    }
+
+    public NoxetMessage addButton(String buttonLabel, ChatColor color, String hoverText, String clickCommand) {
+        TextComponent textComponent = new TextComponent("→" + TextBeautifier.beautify(buttonLabel) + "← ");
+
+        textComponent.setColor(color);
+        textComponent.setBold(true);
+
+        if(hoverText != null)
+            textComponent.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text(hoverText)));
+
+        if(clickCommand != null)
+            textComponent.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/" + clickCommand));
+
+        textComponents.add(textComponent);
+
+        return this;
     }
 
     public void send(Player player) {
-        player.spigot().sendMessage(asTextComponent());
+        player.spigot().sendMessage(getBakedMessage());
     }
 
     public void send(CommandSender commandSender) {
-        commandSender.spigot().sendMessage(asTextComponent());
+        commandSender.spigot().sendMessage(getBakedMessage());
     }
 
     public void send(Collection<? extends Player> players) {

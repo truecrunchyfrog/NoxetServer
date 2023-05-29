@@ -1,9 +1,11 @@
 package org.noxet.noxetserver.commands.teleportation;
 
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
@@ -154,8 +156,8 @@ public class TeleportAsk implements TabExecutor {
                         break;
                     }
             } else {
-                if(requests.containsKey(specificPlayer)) {
-                    new NoxetErrorMessage(player.getDisplayName() + " has not sent a teleportation request to you.").send(player);
+                if(!requests.containsKey(specificPlayer)) {
+                    new NoxetErrorMessage(specificPlayer.getDisplayName() + " has not sent a teleportation request to you.").send(player);
                     return true;
                 }
 
@@ -204,10 +206,31 @@ public class TeleportAsk implements TabExecutor {
         requests.put(player, targetPlayer);
 
         new NoxetMessage("§eSent a teleportation request to " + targetPlayer.getDisplayName() + ".").send(player);
-        new NoxetMessage("§eTo cancel, type §n/tpa cancel§e or §nclick here.", "tpa cancel").send(player);
+        new NoxetMessage().addButton("Cancel", ChatColor.RED, "Cancel your request", "tpa cancel").send(player);
 
-        new NoxetMessage("§6" + player.getDisplayName() + "§e has sent a teleportation request to you.").send(targetPlayer);
-        new NoxetMessage("§eType §n/tpa accept " + player.getName() + "§e or click here if you want them to teleport to you.", "tpa accept " + player.getName()).send(targetPlayer);
+        new NoxetMessage("§6" + player.getDisplayName() + "§e has sent you a teleportation request.").send(targetPlayer);
+        new NoxetMessage()
+                .addButton(
+                        "Accept",
+                        ChatColor.GREEN,
+                        "Teleport " + player.getName() + " to you",
+                        "tpa accept " + player.getName())
+                .addButton(
+                        "Deny",
+                        ChatColor.RED,
+                        "Deny this request",
+                        "tpa deny " + player.getName())
+                .send(targetPlayer);
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if(requests.remove(player, targetPlayer)) { // If value was removed; was still active.
+                    // Meaning that the request was still valid. But now it has expired.
+                    new NoxetMessage("§cYour teleportation request to " + targetPlayer.getDisplayName() + " has expired.").send(player);
+                }
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * 60);
 
         return true;
     }

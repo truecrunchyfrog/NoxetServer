@@ -1,5 +1,6 @@
 package org.noxet.noxetserver;
 
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
@@ -54,9 +55,10 @@ public class Events implements Listener {
         Bukkit.getScheduler().scheduleSyncDelayedTask(NoxetServer.getPlugin(), () -> {
             Realm realm = getCurrentRealm(e.getPlayer());
 
-            if(realm != null)
+            if(realm != null) {
+                new NoxetMessage("§eYou are in §6§l" + realm.getDisplayName() + "§e.").addButton("Leave", ChatColor.RED, "Go to lobby", "hub").send(e.getPlayer());
                 e.getPlayer().sendTitle("§e§l" + realm.getDisplayName(), "§6Type §e§l/hub §6to leave this realm.", 0, 120, 10);
-            else
+            } else
                 goToHub(e.getPlayer()); // Make sure player is at spawn.
         }, 10);
     }
@@ -260,7 +262,7 @@ public class Events implements Listener {
     @EventHandler
     public void onEntityDamage(EntityDamageEvent e) {
         if(e.getEntity() instanceof Player && NoxetServer.isWorldSafeZone(e.getEntity().getWorld())) {
-            if(e.getCause() == EntityDamageEvent.DamageCause.VOID)
+            if(e.getCause() == EntityDamageEvent.DamageCause.VOID && e.getEntity().getLocation().getY() < e.getEntity().getWorld().getMinHeight())
                 goToSpawn((Player) e.getEntity());
             e.setCancelled(true);
         }

@@ -21,8 +21,6 @@ commands:
   anarchy:
     description: Join the Anarchy server
     usage: /anarchy
-    aliases:
-      - anarchy-island
   wild:
     description: Enter the wilderness...
     usage: /wild
@@ -33,5 +31,3 @@ commands:
   tpa:
     description: Send/accept/deny/cancel a teleportation request to/from a player
     usage: /tpa <player|cancel|accept|deny> [player]
-    aliases:
-      - tpask

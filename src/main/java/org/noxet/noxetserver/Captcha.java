@@ -165,7 +165,7 @@ public class Captcha {
 
         int i = 0;
         for(CaptchaSound captchaSound : captchaSounds)
-            new NoxetMessage("§e§l" + ++i + " §8§l| §b" + captchaSound.getName(), String.valueOf(i - 1)).send(player);
+            new NoxetMessage().add("§e§l" + ++i + " §8§l| §b" + captchaSound.getName(), captchaSound.getName(), String.valueOf(i - 1)).send(player);
 
         player.playSound(player.getLocation(), captchaSounds.get(correctAnswer).getSound(), 1, 1);
 
