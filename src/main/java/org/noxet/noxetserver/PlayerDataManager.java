@@ -8,22 +8,16 @@ import java.io.IOException;
 
 public class PlayerDataManager {
     public enum Attribute {
-        HAS_DONE_CAPTCHA(Boolean.class, false);
+        HAS_DONE_CAPTCHA(false);
 
-        private final Class<?> clazz;
         private final Object defaultValue;
 
-        Attribute(Class<?> clazz, Object defaultValue) {
-            this.clazz = clazz;
+        Attribute(Object defaultValue) {
             this.defaultValue = defaultValue;
         }
 
         public String getKey() {
             return this.name().toLowerCase();
-        }
-
-        public Class<?> getClazz() {
-            return clazz;
         }
 
         public Object getDefaultValue() {
@@ -70,8 +64,7 @@ public class PlayerDataManager {
     }
 
     public Object get(Attribute attribute) {
-        Object value = config.getObject(attribute.getKey(), attribute.getClazz());
-        return value != null ? value : attribute.getDefaultValue();
+        return config.get(attribute.getKey(), attribute.getDefaultValue());
     }
 
     public PlayerDataManager set(Attribute attribute, Object value) {

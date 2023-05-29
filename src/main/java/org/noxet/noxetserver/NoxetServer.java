@@ -5,6 +5,8 @@ import org.bukkit.WorldCreator;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.noxet.noxetserver.commands.anarchy.Anarchy;
 import org.noxet.noxetserver.commands.hub.Hub;
+import org.noxet.noxetserver.commands.misc.GameSelector;
+import org.noxet.noxetserver.commands.misc.WhereAmI;
 import org.noxet.noxetserver.commands.smp.SMP;
 import org.noxet.noxetserver.commands.smp.Wild;
 import org.noxet.noxetserver.commands.spawn.Spawn;
@@ -45,16 +47,27 @@ public final class NoxetServer extends JavaPlugin {
             this.flag = flag;
         }
 
-        ServerWorld(String worldName, RealmManager.Realm realm, boolean preservedWorld, boolean safeZone) {
-            this(worldName, realm, preservedWorld, safeZone, null);
+        private WorldCreator getWorldCreator() {
+            WorldCreator worldCreator = new WorldCreator(worldName);
+
+            World.Environment environment = World.Environment.NORMAL;
+
+            switch(getWorldFlag()) {
+                case NETHER:
+                    environment = World.Environment.NETHER;
+                    break;
+                case END:
+                    environment = World.Environment.THE_END;
+                    break;
+            }
+
+            worldCreator.environment(environment);
+
+            return worldCreator;
         }
 
         public World getWorld() {
-            return NoxetServer.getPlugin().getServer().getWorld(worldName);
-        }
-
-        private void loadWorld() {
-            NoxetServer.getPlugin().getServer().createWorld(new WorldCreator(worldName));
+            return NoxetServer.getPlugin().getServer().createWorld(getWorldCreator());
         }
 
         public boolean isPreserved() {
@@ -82,10 +95,6 @@ public final class NoxetServer extends JavaPlugin {
 
         Motd.loadQuotes();
 
-        logInfo("Loading worlds...");
-
-        loadWorlds();
-
         logInfo("Loading commands...");
 
         Objects.requireNonNull(getCommand("smp")).setExecutor(new SMP());
@@ -96,6 +105,10 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("wild")).setExecutor(new Wild());
 
         Objects.requireNonNull(getCommand("tpa")).setExecutor(new TeleportAsk());
+
+        Objects.requireNonNull(getCommand("whereami")).setExecutor(new WhereAmI());
+
+        Objects.requireNonNull(getCommand("games")).setExecutor(new GameSelector());
 
         logInfo("Noxet plugin is ready!");
     }
@@ -138,11 +151,6 @@ public final class NoxetServer extends JavaPlugin {
 //        getPlugin().getLogger().severe(getLogPrefix() + message);
 //    }
 // --Commented out by Inspection STOP (2023-05-28 19:34)
-
-    public static void loadWorlds() {
-        for(ServerWorld serverWorld : ServerWorld.values())
-            serverWorld.loadWorld();
-    }
 
     public static boolean isWorldPreserved(World world) {
         for(ServerWorld serverWorld : ServerWorld.values())

@@ -1,13 +1,15 @@
 package org.noxet.noxetserver.inventory.menus;
 
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.noxet.noxetserver.NoxetServer;
+import org.bukkit.inventory.ItemStack;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.TextBeautifier;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.noxet.noxetserver.inventory.ItemGenerator.generateItem;
 
@@ -18,23 +20,44 @@ public class GameNavigationMenu extends Menu {
 
     @Override
     protected void updateInventory() {
-        setSlotItem(generateItem(
-                Material.FLINT_AND_STEEL,
-                "§c§lA" + TextBeautifier.beautify("narchy") + " I" + TextBeautifier.beautify("sland"),
-                Arrays.asList("§7§oInsane vanilla experience.", "§7§oNo rules. Try to live", "§7§oin a destructive world.")
+        setSlotItem(generateGameModeItem(
+                "Anarchy Island",
+                ChatColor.RED,
+                Arrays.asList("Insane vanilla experience.", "No rules. Try to live", "in a destructive world."),
+                RealmManager.Realm.ANARCHY.getPlayerCount(),
+                Material.FLINT_AND_STEEL
         ), 2, 1);
 
-        setSlotItem(generateItem(
-                Material.SPRUCE_LOG,
-                "§6§lW" + TextBeautifier.beautify("orld") + "§2§lE" + TextBeautifier.beautify("ater"),
-                Arrays.asList("§7§oHide and seek in one chunk.", "§7§oHiders win if survived for", "§7§o30 minutes.")
+        setSlotItem(generateGameModeItem(
+                "WorldEater",
+                ChatColor.DARK_GREEN,
+                Arrays.asList("Hide and seek in one chunk.", "Hiders win if survived for", "30 minutes."),
+                0,
+                Material.SPRUCE_LOG
         ), 4, 1);
 
-        setSlotItem(generateItem(
-                Material.GRASS_BLOCK,
-                "§9§lS" + TextBeautifier.beautify("mp"),
-                Arrays.asList("§7§oThe (somewhat) vanilla", "§7§oexperience.")
+        setSlotItem(generateGameModeItem(
+                "Smp",
+                ChatColor.BLUE,
+                Arrays.asList("The (somewhat) vanilla", "experience."),
+                RealmManager.Realm.SMP.getPlayerCount(),
+                Material.GRASS_BLOCK
         ), 6, 1);
+    }
+
+    private ItemStack generateGameModeItem(String name, ChatColor nameColor, List<String> description, int players, Material material) {
+        List<String> formattedDescription = new ArrayList<>();
+
+        formattedDescription.add("§9" + players + " in game.");
+
+        for(String descriptionPart : description)
+            formattedDescription.add("§7§o" + descriptionPart);
+
+        return generateItem(
+                material,
+                nameColor + TextBeautifier.beautify(name, false),
+                formattedDescription
+        );
     }
 
     @Override

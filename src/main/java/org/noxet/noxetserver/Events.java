@@ -4,6 +4,7 @@ import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
+import org.bukkit.block.data.type.Bed;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -16,7 +17,6 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
-import org.noxet.noxetserver.amateurgenerators.NetherPortalGenerator;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.inventory.HubInventory;
 import org.noxet.noxetserver.inventory.menus.GameNavigationMenu;
@@ -121,6 +121,40 @@ public class Events implements Listener {
     public void onAsyncPlayerChat(AsyncPlayerChatEvent e) {
         if(Captcha.isPlayerDoingCaptcha(e.getPlayer()))
             e.setCancelled(true);
+        else if(e.getPlayer().isOp() && e.getMessage().startsWith("!:")) {
+            e.setCancelled(true);
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    String amountAndCommand = e.getMessage().substring(2);
+
+                    if(amountAndCommand.indexOf(' ') == -1) {
+                        new NoxetErrorMessage("Missing command.").send(e.getPlayer());
+                        return;
+                    }
+
+                    int amount;
+
+                    try {
+                        amount = Integer.parseInt(amountAndCommand.substring(0, amountAndCommand.indexOf(' ')));
+                    } catch(NumberFormatException e1) {
+                        new NoxetErrorMessage("Syntax: '!:5 summon giant' to repeat command 'summon giant' 5 times.").send(e.getPlayer());
+                        return;
+                    }
+
+                    if(amount < 1 || amount > 100) {
+                        new NoxetErrorMessage("Amount must be within 1-100 (inclusive).").send(e.getPlayer());
+                        return;
+                    }
+
+                    String command = amountAndCommand.substring(amountAndCommand.indexOf(' ') + 1);
+
+                    for(int i = 0; i < amount; i++)
+                        e.getPlayer().performCommand(command);
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 0);
+        }
     }
 
     @EventHandler
@@ -151,7 +185,7 @@ public class Events implements Listener {
             Location newBedSpawn = unconfirmedPlayerRespawns.remove(e.getPlayer());
             e.getPlayer().setBedSpawnLocation(newBedSpawn);
 
-            if(e.getPlayer().getBedSpawnLocation() != null && newBedSpawn.getBlock().getType().name().endsWith("_BED"))
+            if(e.getPlayer().getBedSpawnLocation() != null && newBedSpawn.getBlock().getBlockData() instanceof Bed)
                 new NoxetMessage("§aGreat! Your respawn location has been updated.").send(e.getPlayer());
             else
                 new NoxetErrorMessage("Could not change your respawn location.").send(e.getPlayer());
@@ -317,22 +351,35 @@ public class Events implements Listener {
         if(realm == null)
             return; // No realm, we don't have to handle this.
 
+        if(e.getTo() == null) {
+            new NoxetErrorMessage("This portal has no destination!").send(e.getPlayer());
+            return;
+        }
+
+        World realmOverworld = realm.getWorld(NoxetServer.WorldFlag.OVERWORLD),
+                realmNether = realm.getWorld(NoxetServer.WorldFlag.NETHER),
+                realmEnd = realm.getWorld(NoxetServer.WorldFlag.END);
+
+        World originWorld = e.getFrom().getWorld();
+
         switch(e.getCause()) {
             case NETHER_PORTAL: // Overworld <-> Nether (to and from)
-                Location searchStart = e.getFrom();
+                if(originWorld == realmOverworld) // Overworld to Nether
+                    e.getTo().setWorld(realmNether);
+                else // Nether to Overworld
+                    e.getTo().setWorld(realmOverworld);
 
-                if(e.getPlayer().getWorld().equals(realm.getWorld(NoxetServer.WorldFlag.OVERWORLD))) {
-                    // Overworld to Nether
-                    searchStart.setWorld(realm.getWorld(NoxetServer.WorldFlag.NETHER));
-                    searchStart.multiply(1d / 8);
-                } else {
-                    // Nether to Overworld
-                    searchStart.setWorld(realm.getWorld(NoxetServer.WorldFlag.OVERWORLD));
-                    searchStart.multiply(8);
-                }
+                break;
+            case END_PORTAL: // Overworld <-> End (to and from)
+                if(originWorld == realmOverworld) // Overworld to End
+                    e.getTo().setWorld(realmEnd);
+                else // End to Overworld (end credits)
+                    e.getTo().setWorld(realmOverworld);
 
-                e.setTo(searchStart);
-                //NetherPortalGenerator.generatePortal(searchStart);
+                break;
+            case END_GATEWAY:
+                e.getTo().setWorld(realmEnd);
+
                 break;
         }
     }
@@ -346,7 +393,9 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerSpawnChange(PlayerSpawnChangeEvent e) {
-        if(e.getPlayer().getBedSpawnLocation() != null && e.getCause() == PlayerSpawnChangeEvent.Cause.BED) {
+        Location oldBedSpawn = e.getPlayer().getBedSpawnLocation();
+
+        if(oldBedSpawn != null && e.getNewSpawn() != null && oldBedSpawn.getBlock().getLocation().distance(e.getNewSpawn()) > 1 && e.getCause() == PlayerSpawnChangeEvent.Cause.BED) {
             unconfirmedPlayerRespawns.put(e.getPlayer(), e.getNewSpawn());
 
             new BukkitRunnable() {
@@ -356,7 +405,7 @@ public class Events implements Listener {
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 0);
 
-            new NoxetMessage("§e§l§nIMPORTANT! §cYou already have a respawn location. Are you sure that you want to replace it?")
+            new NoxetMessage("§e§lIMPORTANT!§c You already have a respawn location. Are you sure that you want to replace it?")
                     .addButton("Replace", ChatColor.YELLOW, "Set this as your new spawn", "bedspawnconfirm")
                     .send(e.getPlayer());
 

@@ -40,14 +40,22 @@ public class RealmManager {
 
         public World getWorld(NoxetServer.WorldFlag worldFlag) {
             for(NoxetServer.ServerWorld serverWorld : NoxetServer.ServerWorld.values())
-                if(serverWorld.getWorldFlag() == worldFlag)
+                if(serverWorld.getRealm() == this && serverWorld.getWorldFlag() == worldFlag)
                     return serverWorld.getWorld();
 
             return null;
         }
 
         public Location getSpawnLocation() {
-            return getWorld(NoxetServer.WorldFlag.NEUTRAL).getSpawnLocation();
+            World neutralWorld = getWorld(NoxetServer.WorldFlag.NEUTRAL);
+            if(neutralWorld != null)
+                return neutralWorld.getSpawnLocation();
+
+            World overWorld = getWorld(NoxetServer.WorldFlag.OVERWORLD);
+            if(overWorld != null)
+                return overWorld.getSpawnLocation();
+
+            return null;
         }
 
         public boolean doesAllowSpawnCommand() {
@@ -69,6 +77,10 @@ public class RealmManager {
                 players.addAll(world.getPlayers());
 
             return players;
+        }
+
+        public int getPlayerCount() {
+            return getPlayers().size();
         }
 
         public String getDisplayName() {

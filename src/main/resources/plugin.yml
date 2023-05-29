@@ -31,3 +31,16 @@ commands:
   tpa:
     description: Send/accept/deny/cancel a teleportation request to/from a player
     usage: /tpa <player|cancel|accept|deny> [player]
+  whereami:
+    description: Check what world and realm you are in
+    usage: /whereami
+  games:
+    description: Choose from games to play
+    usage: /games
+    aliases:
+      - play
+      - lets-go
+      - gamelist
+      - gamepicker
+      - gameselect
+      - choosegame

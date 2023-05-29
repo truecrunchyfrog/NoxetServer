@@ -118,16 +118,16 @@ public class Wild implements CommandExecutor {
                     this.cancel(); // Stop this timer.
                 }
             }.runTaskTimer(NoxetServer.getPlugin(), 20, 20);
-
-            recentlyTeleported.add(player);
-
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    recentlyTeleported.remove(player);
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20 * 60 * 2);
         }, 0);
+
+        recentlyTeleported.add(player);
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                recentlyTeleported.remove(player);
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * 60 * 2);
 
         return true;
     }
