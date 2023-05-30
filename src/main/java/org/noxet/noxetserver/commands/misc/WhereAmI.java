@@ -11,6 +11,7 @@ import org.noxet.noxetserver.messaging.NoxetMessage;
 
 public class WhereAmI implements CommandExecutor {
     @Override
+    @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
             new NoxetErrorMessage("Only players can check where they are.").send(commandSender);

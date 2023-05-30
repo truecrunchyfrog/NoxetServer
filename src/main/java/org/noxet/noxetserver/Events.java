@@ -23,7 +23,6 @@ import org.noxet.noxetserver.inventory.menus.GameNavigationMenu;
 import org.noxet.noxetserver.messaging.Motd;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
-import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
 import java.util.*;
 
