@@ -12,8 +12,7 @@ import org.noxet.noxetserver.messaging.TextBeautifier;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.playerstate.PlayerState.PlayerStateType;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class RealmManager {
 
@@ -70,8 +69,8 @@ public class RealmManager {
             return worlds;
         }
 
-        public List<Player> getPlayers() {
-            List<Player> players = new ArrayList<>();
+        public Set<Player> getPlayers() {
+            Set<Player> players = new HashSet<>();
 
             for(World world : getWorlds())
                 players.addAll(world.getPlayers());
@@ -88,7 +87,7 @@ public class RealmManager {
         }
     }
 
-    protected static final List<Player> migratingPlayers = new ArrayList<>();
+    protected static final Set<Player> migratingPlayers = new HashSet<>();
 
     /**
      * Gets the realm that the world belongs to.
@@ -132,7 +131,7 @@ public class RealmManager {
         Events.abortUnconfirmedPlayerRespawn(player);
 
         if(toRealm != null)
-            new NoxetMessage("Joining §e" + toRealm.getDisplayName() + "§7 ...").send(player);
+            new NoxetMessage("Entering §e" + toRealm.getDisplayName() + "§7 ...").send(player);
 
         if(fromRealm != null) { // Source location is a realm.
             PlayerState.saveState(player, fromRealm.getPlayerStateType()); // Save state in old location's realm.
@@ -152,12 +151,14 @@ public class RealmManager {
         }.runTaskLater(NoxetServer.getPlugin(), 60); // 3 seconds of migration margin.
 
         if(toRealm != null) { // Destination is a realm.
+            Events.setTemporaryInvulnerability(player);
+
             boolean teleportToSpawn = !PlayerState.hasState(player, toRealm.getPlayerStateType());
 
             PlayerState.restoreState(player, toRealm.getPlayerStateType()); // Restores player state (including initial reset), and teleports to last location (in a world belonging to the realm).
 
             if(teleportToSpawn)
-                player.teleport(toRealm.getSpawnLocation()); // Teleport to spawn (first join).
+                player.teleport(Objects.requireNonNull(toRealm.getSpawnLocation())); // Teleport to spawn (first join).
         } else {
             PlayerState.restoreState(player, PlayerStateType.GLOBAL); // Regular world. Load global state.
         }

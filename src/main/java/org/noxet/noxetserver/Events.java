@@ -23,6 +23,7 @@ import org.noxet.noxetserver.inventory.menus.GameNavigationMenu;
 import org.noxet.noxetserver.messaging.Motd;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
 import java.util.*;
 
@@ -55,6 +56,7 @@ public class Events implements Listener {
             Realm realm = getCurrentRealm(e.getPlayer());
 
             if(realm != null) {
+                setTemporaryInvulnerability(e.getPlayer());
                 new NoxetMessage("§eYou are in §6§l" + realm.getDisplayName() + "§e.").addButton("Leave", ChatColor.RED, "Go to lobby", "hub").send(e.getPlayer());
                 e.getPlayer().sendTitle("§e§l" + realm.getDisplayName(), "§6Type §e§l/hub §6to leave this realm.", 0, 120, 10);
             } else
@@ -89,10 +91,10 @@ public class Events implements Listener {
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        player.playSound(player.getLocation(), Sound.ENTITY_CHICKEN_DEATH, 1, 2 - 1.5f * ((float) finalI / totalPlays));
+                        player.playSound(player.getLocation(), Sound.ENTITY_CAMEL_DEATH, 1, 2 - 1.5f * ((float) finalI / totalPlays));
                         player.playSound(player.getLocation(), Sound.BLOCK_BELL_USE, 1 * ((float) finalI / totalPlays), 2 - 1.5f * ((float) finalI / totalPlays));
                     }
-                }.runTaskLater(NoxetServer.getPlugin(), i * 10);
+                }.runTaskLater(NoxetServer.getPlugin(), i * 5);
             }
         }, 2);
 
@@ -102,6 +104,8 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent e) {
+        setTemporaryInvulnerability(e.getPlayer());
+
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -192,7 +196,7 @@ public class Events implements Listener {
         }
     }
 
-    private static final List<Player> boostingCooldownedPlayers = new ArrayList<>();
+    private static final Set<Player> boostingCooldownedPlayers = new HashSet<>();
 
     @EventHandler
     public void onPlayerFly(PlayerToggleFlightEvent e) {
@@ -308,12 +312,42 @@ public class Events implements Listener {
         }
     }
 
+    private static final Set<Player> invulnerablePlayers = new HashSet<>();
+    
+    public static void setTemporaryInvulnerability(Player player) {
+        invulnerablePlayers.add(player);
+
+        int ticksInvulnerable = 120;
+
+        for(int i = ticksInvulnerable; i > 0; i -= 20) {
+            int finalI = i;
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§e§lINVULNERABLE §c" + (finalI / 20) + "s"));
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), ticksInvulnerable - i);
+        }
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§cYou are no longer invulnerable."));
+                invulnerablePlayers.remove(player);
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 120);
+    }
+
     @EventHandler
     public void onEntityDamage(EntityDamageEvent e) {
-        if(e.getEntity() instanceof Player && NoxetServer.isWorldSafeZone(e.getEntity().getWorld())) {
-            if(e.getCause() == EntityDamageEvent.DamageCause.VOID && e.getEntity().getLocation().getY() < e.getEntity().getWorld().getMinHeight())
-                goToSpawn((Player) e.getEntity());
-            e.setCancelled(true);
+        if(e.getEntity() instanceof Player) {
+            if(NoxetServer.isWorldSafeZone(e.getEntity().getWorld())) {
+                if(e.getCause() == EntityDamageEvent.DamageCause.VOID && e.getEntity().getLocation().getY() < e.getEntity().getWorld().getMinHeight())
+                    goToSpawn((Player) e.getEntity());
+                e.setCancelled(true);
+            } else if(invulnerablePlayers.contains((Player) e.getEntity())) {
+                e.setCancelled(true);
+            }
         }
     }
 

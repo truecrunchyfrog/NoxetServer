@@ -5,10 +5,12 @@ import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class PlayerDataManager {
     public enum Attribute {
-        HAS_DONE_CAPTCHA(false);
+        HAS_DONE_CAPTCHA(false),
+        TPA_BLOCKED_PLAYERS(new String[0]);
 
         private final Object defaultValue;
 

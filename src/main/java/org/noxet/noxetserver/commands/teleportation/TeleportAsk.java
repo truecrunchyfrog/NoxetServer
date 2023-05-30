@@ -6,7 +6,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.checkerframework.checker.units.qual.A;
+import org.noxet.noxetserver.Events;
 import org.noxet.noxetserver.NoxetServer;
+import org.noxet.noxetserver.PlayerDataManager;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
@@ -109,6 +112,7 @@ public class TeleportAsk implements TabExecutor {
             new NoxetMessage("§eAccepting request...").send(player);
             new NoxetMessage("§e" + player.getDisplayName() + " accepted your teleportation request.").send(requester);
 
+            Events.setTemporaryInvulnerability(player);
             requester.teleport(player);
 
             new NoxetMessage("§e" + requester.getDisplayName() + " has teleported to you.").send(player);
@@ -174,6 +178,102 @@ public class TeleportAsk implements TabExecutor {
             return true;
         }
 
+        if(strings[0].equalsIgnoreCase("list")) {
+            List<Player> incomingRequests = new ArrayList<>();
+
+            for(Map.Entry<Player, Player> request : requests.entrySet())
+                if(request.getValue() == player)
+                    incomingRequests.add(request.getKey());
+
+            new NoxetMessage("§6Pending incoming teleportation requests: " + incomingRequests.size()).send(player);
+
+            for(Player incoming : incomingRequests)
+                new NoxetMessage("§a§lINCOMING §6" + incoming.getDisplayName()).addButton("Accept", ChatColor.GREEN, "Accept this request", "tpa accept " + incoming.getName()).send(player);
+
+            Player outgoingRequest = requests.get(player);
+            if(outgoingRequest != null)
+                new NoxetMessage("§2§lOUTGOING §6" + outgoingRequest.getDisplayName()).addButton("Cancel", ChatColor.GRAY, "Cancel your teleportation request", "tpa cancel").send(player);
+
+            return true;
+        }
+
+        if(strings[0].equalsIgnoreCase("block")) {
+            List<String> blockedPlayers = getBlockedPlayers(player);
+
+            if(strings.length < 2) {
+                new NoxetErrorMessage("You must provide the name of a player to TPA block.").send(player);
+                return true;
+            }
+
+            String blockName = strings[1].toLowerCase();
+
+            if(blockName.length() < 1 || blockName.length() > 16) {
+                new NoxetErrorMessage("Invalid player name.").send(player);
+                return true;
+            }
+
+            if(blockName.equalsIgnoreCase(player.getName())) {
+                new NoxetErrorMessage("You can't block yourself...").send(player);
+                return true;
+            }
+
+            if(blockedPlayers.contains(blockName)) {
+                new NoxetErrorMessage("You have already blocked this player.").send(player);
+                return true;
+            }
+
+            Player playerToBlock = NoxetServer.getPlugin().getServer().getPlayerExact(blockName);
+
+            if(playerToBlock != null && requests.remove(playerToBlock, player))
+                new NoxetMessage("§aSilently denied teleport request.").send(player);
+
+            blockedPlayers.add(blockName);
+            new PlayerDataManager(player).set(PlayerDataManager.Attribute.TPA_BLOCKED_PLAYERS, blockedPlayers).save();
+
+            new NoxetMessage("§a" + strings[1] + " can no longer TPA to you.").addButton("Undo", ChatColor.YELLOW, "Unblock", "tpa unblock " + strings[1]).send(player);
+
+            return true;
+        }
+
+        if(strings[0].equalsIgnoreCase("unblock")) {
+            List<String> blockedPlayers = getBlockedPlayers(player);
+
+            if(strings.length < 2) {
+                new NoxetErrorMessage("You must provide the name of a player to TPA unblock.").send(player);
+                return true;
+            }
+
+            String blockName = strings[1].toLowerCase();
+
+            if(blockName.length() < 1 || blockName.length() > 16) {
+                new NoxetErrorMessage("Invalid player name.").send(player);
+                return true;
+            }
+
+            if(!blockedPlayers.contains(blockName)) {
+                new NoxetErrorMessage("You have not blocked this player.").send(player);
+                return true;
+            }
+
+            blockedPlayers.remove(blockName);
+            new PlayerDataManager(player).set(PlayerDataManager.Attribute.TPA_BLOCKED_PLAYERS, blockedPlayers).save();
+
+            new NoxetMessage("§a" + strings[1] + " can now TPA to you again.").send(player);
+
+            return true;
+        }
+
+        if(strings[0].equalsIgnoreCase("blocklist")) {
+            List<String> blockedPlayers = getBlockedPlayers(player);
+
+            new NoxetMessage("§eYou have blocked " + blockedPlayers.size() + " player(s).").send(player);
+
+            for(String blockedPlayer : blockedPlayers)
+                new NoxetMessage("§c§lBLOCKED §6" + blockedPlayer).addButton("Pardon", ChatColor.GREEN, "Unblock this player", "tpa unblock " + blockedPlayer).send(player);
+
+            return true;
+        }
+
         if(requests.containsKey(player)) {
             new NoxetErrorMessage("You have already made a teleportation request. Cancel it before you can make another one.").send(player);
             return true;
@@ -203,6 +303,11 @@ public class TeleportAsk implements TabExecutor {
             return true;
         }
 
+        if(getBlockedPlayers(targetPlayer).contains(player.getName().toLowerCase())) {
+            new NoxetErrorMessage("You cannot send TPA requests to this player.").send(player);
+            return true;
+        }
+
         requests.put(player, targetPlayer);
 
         new NoxetMessage("§eSent a teleportation request to " + targetPlayer.getDisplayName() + ".").send(player);
@@ -220,6 +325,11 @@ public class TeleportAsk implements TabExecutor {
                         ChatColor.RED,
                         "Deny this request",
                         "tpa deny " + player.getName())
+                .addButton(
+                        "Block",
+                        ChatColor.DARK_GRAY,
+                        "Don't let this player teleport ask you",
+                        "tpa block " + player.getName())
                 .send(targetPlayer);
 
         new BukkitRunnable() {
@@ -233,6 +343,10 @@ public class TeleportAsk implements TabExecutor {
         }.runTaskLater(NoxetServer.getPlugin(), 20 * 60);
 
         return true;
+    }
+
+    public static ArrayList<String> getBlockedPlayers(Player player) {
+        return (ArrayList) new PlayerDataManager(player).get(PlayerDataManager.Attribute.TPA_BLOCKED_PLAYERS);
     }
 
     public static void abortPlayerRelatedRequests(Player player) {
@@ -258,7 +372,7 @@ public class TeleportAsk implements TabExecutor {
         List<String> completions = new ArrayList<>();
 
         if(strings.length == 1) {
-            completions.addAll(Arrays.asList("cancel", "accept", "deny"));
+            completions.addAll(Arrays.asList("cancel", "accept", "deny", "list", "block", "unblock", "blocklist"));
 
             RealmManager.Realm realm = RealmManager.getCurrentRealm(player);
 

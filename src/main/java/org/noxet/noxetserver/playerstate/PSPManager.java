@@ -14,6 +14,7 @@ public class PSPManager {
             new PSPCollidable(),
             new PSPCompassTarget(),
             new PSPEnderChest(),
+            new PSPExhaustion(),
             new PSPExperienceLevel(),
             new PSPExperienceProgress(),
             new PSPFallDistance(),
