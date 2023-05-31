@@ -3,6 +3,7 @@ package org.noxet.noxetserver.inventory.menus;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.TextBeautifier;
@@ -61,7 +62,7 @@ public class GameNavigationMenu extends Menu {
     }
 
     @Override
-    protected void onSlotClick(Player player, int x, int y) {
+    protected void onSlotClick(Player player, int x, int y, ClickType clickType) {
         if(y == 1) {
             switch(x) {
                 case 2:

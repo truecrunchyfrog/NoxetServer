@@ -1,5 +1,6 @@
 package org.noxet.noxetserver.playerdata;
 
+import com.sun.imageio.plugins.common.ReaderUtil;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
@@ -9,8 +10,14 @@ import org.noxet.noxetserver.playerdata.types.PDTStringList;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public class PlayerDataManager {
+    private static final Map<UUID, String> configCache = new HashMap<>();
 
     public enum Attribute {
         HAS_DONE_CAPTCHA(new PDTBoolean()),
@@ -45,13 +52,26 @@ public class PlayerDataManager {
         return new File(getDirectory(), player.getUniqueId() + ".yml");
     }
 
+    private static void updateCache(UUID uuid, YamlConfiguration config) {
+        if(configCache.size() > 50)
+            configCache.clear();
+        configCache.put(uuid, config.saveToString());
+    }
+
     private static YamlConfiguration getConfig(Player player) {
+        if(configCache.containsKey(player.getUniqueId()))
+            return YamlConfiguration.loadConfiguration(new StringReader(configCache.get(player.getUniqueId())));
+
         File dataFile = getDataFile(player);
 
         if(!dataFile.exists())
             return new YamlConfiguration();
 
-        return YamlConfiguration.loadConfiguration(dataFile);
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(dataFile);
+
+        updateCache(player.getUniqueId(), config);
+
+        return config;
     }
 
     private static void saveData(Player player, YamlConfiguration config) {
@@ -76,6 +96,8 @@ public class PlayerDataManager {
 
     public PlayerDataManager set(Attribute attribute, Object value) {
         config.set(attribute.getKey(), value);
+        updateCache(player.getUniqueId(), config);
+
         return this;
     }
 

@@ -357,7 +357,13 @@ public class Events implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent e) {
-        if(e.getWhoClicked().getWorld() == NoxetServer.ServerWorld.HUB.getWorld())
+        if(e.getWhoClicked().getWorld() == NoxetServer.ServerWorld.HUB.getWorld() || invulnerablePlayers.contains((Player) e.getWhoClicked()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent e) {
+        if(invulnerablePlayers.contains(e.getPlayer()))
             e.setCancelled(true);
     }
 

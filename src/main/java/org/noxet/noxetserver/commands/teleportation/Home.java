@@ -8,6 +8,7 @@ import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.Events;
 import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.inventory.menus.HomeNavigationMenu;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
@@ -65,17 +66,29 @@ public class Home implements TabExecutor {
                     new NoxetErrorMessage("Sorry, you could not be teleported to your home. Please report this.").send(player);
                 break;
             case "set":
-                if(realmHomes.containsKey(homeName) && !(strings.length >= 3 && strings[2].equalsIgnoreCase("force"))) {
-                    new NoxetErrorMessage("You have already saved a home as '" + homeName + "'.").addButton("Overwrite", ChatColor.RED, "Overwrite your existing home by this name", "home set " + homeName + " force").send(player);
+                if(realmHomes.containsKey(homeName) && !(strings.length >= 3 && strings[2].equalsIgnoreCase("overwrite"))) {
+                    new NoxetErrorMessage("You have already saved a home as '" + homeName + "'.").addButton("Overwrite", ChatColor.RED, "Overwrite your existing home by this name", "home set " + homeName + " overwrite").send(player);
                     return true;
                 }
 
-                realmHomes.put(homeName, player.getLocation());
+                for(Map.Entry<String, Location> homeEntry : realmHomes.entrySet())
+                    if(homeEntry.getKey() != homeName && player.getWorld() == homeEntry.getValue().getWorld() && player.getLocation().distance(homeEntry.getValue()) < 50)
+                        new NoxetMessage("§5Note: Your home '" + homeEntry.getKey() + "' is quite near this location.");
+
+                boolean overwrote = realmHomes.put(homeName, player.getLocation()) != null;
+
+                if(realmHomes.size() > 50) {
+                    new NoxetErrorMessage("You have reached your home limit. Max 50 homes are allowed per player. Consider deleting other homes before making another one.").send(player);
+                    return true;
+                }
+
                 homes.put(realm.name(), realmHomes);
 
                 new PlayerDataManager(player).set(PlayerDataManager.Attribute.HOMES, homes).save();
 
                 new NoxetMessage("§aHome '" + homeName + "' has successfully been set. You can now use §7/home tp " + homeName + "§a to get here.").send(player);
+                if(overwrote)
+                    new NoxetMessage("§5Old home location by same name was overwritten.").send(player);
                 break;
             case "remove":
                 if(!realmHomes.containsKey(homeName)) {
@@ -129,6 +142,12 @@ public class Home implements TabExecutor {
                 homes.put(realm.name(), realmHomes);
 
                 break;
+            case "menu":
+                player.openInventory(new HomeNavigationMenu(player, realmHomes).getInventory());
+                break;
+            default:
+                new NoxetErrorMessage("Missing what home command to call.").send(player);
+                return false;
         }
 
         return true;
@@ -144,14 +163,15 @@ public class Home implements TabExecutor {
 
         List<String> completions = new ArrayList<>();
         RealmManager.Realm realm = RealmManager.getCurrentRealm(player);
+
         Map<String, Map<String, Location>> homes = getHomes(player);
 
-        Map<String, Location> realmHomes = homes.get(realm.name());
+        Map<String, Location> realmHomes = realm != null ? homes.getOrDefault(realm.name(), new HashMap<>()) : null;
 
         if(strings.length == 1) {
-            completions.addAll(Arrays.asList("tp", "set", "remove", "list", "rename"));
+            completions.addAll(Arrays.asList("tp", "set", "remove", "list", "rename", "menu"));
         } else if(strings.length == 2) {
-            switch(strings[1].toLowerCase()) {
+            switch(strings[0].toLowerCase()) {
                 case "tp":
                 case "remove":
                 case "rename":

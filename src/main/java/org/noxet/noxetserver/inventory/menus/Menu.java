@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
@@ -25,12 +26,17 @@ public abstract class Menu implements InventoryHolder, Listener {
 
         NoxetServer.getPlugin().getServer().getPluginManager().registerEvents(this, NoxetServer.getPlugin());
 
-        updateInventory();
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                updateInventory();
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 0);
     }
 
     abstract protected void updateInventory();
 
-    abstract protected void onSlotClick(Player player, int x, int y);
+    abstract protected void onSlotClick(Player player, int x, int y, ClickType clickType);
 
     protected void setSlotItem(ItemStack itemStack, int x, int y) {
         assert x >= 0 && x < 9 && y >= 0 && y < inventory.getSize() / 9;
@@ -48,10 +54,11 @@ public abstract class Menu implements InventoryHolder, Listener {
             Player player = (Player) e.getWhoClicked();
             int slot = e.getSlot();
 
-            onSlotClick(player, slot % 9, slot / 9);
+            onSlotClick(player, slot % 9, slot / 9, e.getClick());
+        } else if(!e.getInventory().equals(inventory))
+            return;
 
-            e.setCancelled(true);
-        }
+        e.setCancelled(true);
     }
 
     @EventHandler
