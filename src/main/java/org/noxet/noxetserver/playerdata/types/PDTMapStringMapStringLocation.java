@@ -21,11 +21,13 @@ public class PDTMapStringMapStringLocation implements PlayerDataType<Map<String,
 
         MemorySection memorySection = (MemorySection) config.get(key);
 
-        if(memorySection == null)
-            return null;
-
-        for(Map.Entry<String, Object> topEntries : memorySection.getValues(false).entrySet())
-            result.put(topEntries.getKey(), (Map<String, Location>) topEntries.getValue());
+        if(memorySection != null)
+            for(Map.Entry<String, Object> topEntries : memorySection.getValues(false).entrySet()) {
+                Map<String, Location> stringLocationMap = new HashMap<>();
+                for(Map.Entry<String, Object> bottomEntries : ((MemorySection) topEntries.getValue()).getValues(false).entrySet())
+                    stringLocationMap.put(bottomEntries.getKey(), (Location) bottomEntries.getValue());
+                result.put(topEntries.getKey(), stringLocationMap);
+            }
 
         return result;
     }

@@ -99,7 +99,7 @@ public class Home implements TabExecutor {
                 }
 
                 for(Map.Entry<String, Location> eachHome : realmHomes.entrySet())
-                    new NoxetMessage("§9§lHOME §6" + eachHome.getKey()).addButton("Go!", ChatColor.BLUE, "Teleport to '" + eachHome.getKey() + "'", "home tp " + eachHome.getKey()).send(player);
+                    new NoxetMessage("§a§lHOME §6" + eachHome.getKey()).addButton("Go", ChatColor.GREEN, "Teleport to '" + eachHome.getKey() + "'", "home tp " + eachHome.getKey()).send(player);
                 break;
             case "rename":
                 if(!realmHomes.containsKey(homeName)) {

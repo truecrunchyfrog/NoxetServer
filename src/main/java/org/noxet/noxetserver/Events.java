@@ -316,6 +316,9 @@ public class Events implements Listener {
     private static final Set<Player> invulnerablePlayers = new HashSet<>();
     
     public static void setTemporaryInvulnerability(Player player) {
+        if(invulnerablePlayers.contains(player))
+            return;
+
         invulnerablePlayers.add(player);
 
         int ticksInvulnerable = 120;
