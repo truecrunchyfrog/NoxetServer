@@ -3,10 +3,10 @@ package org.noxet.noxetserver.commands.teleportation;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.Events;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
@@ -58,9 +58,10 @@ public class Home implements TabExecutor {
                     return true;
                 }
 
-                if(player.teleport(homeLocation))
+                if(player.teleport(homeLocation)) {
+                    Events.setTemporaryInvulnerability(player);
                     new NoxetMessage("§aWelcome home!").send(player);
-                else
+                } else
                     new NoxetErrorMessage("Sorry, you could not be teleported to your home. Please report this.").send(player);
                 break;
             case "set":

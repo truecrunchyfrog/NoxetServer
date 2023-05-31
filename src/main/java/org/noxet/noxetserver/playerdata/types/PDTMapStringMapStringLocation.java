@@ -20,7 +20,9 @@ public class PDTMapStringMapStringLocation implements PlayerDataType<Map<String,
         Map<String, Map<String, Location>> result = new HashMap<>();
 
         MemorySection memorySection = (MemorySection) config.get(key);
-        assert memorySection != null;
+
+        if(memorySection == null)
+            return null;
 
         for(Map.Entry<String, Object> topEntries : memorySection.getValues(false).entrySet())
             result.put(topEntries.getKey(), (Map<String, Location>) topEntries.getValue());
