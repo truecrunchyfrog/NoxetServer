@@ -21,7 +21,7 @@ public class Spawn implements CommandExecutor {
 
         Player player = (Player) commandSender;
         RealmManager.Realm realm = getCurrentRealm(player);
-        if(realm == null || realm.doesAllowSpawnCommand()) {
+        if(realm == null || realm.doesAllowTeleportationMethods()) {
             goToSpawn(player);
         } else {
             new NoxetErrorMessage("You cannot use this command here.").send(player);

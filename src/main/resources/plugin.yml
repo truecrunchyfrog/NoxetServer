@@ -45,3 +45,6 @@ commands:
     usage: /home <tp|set|remove|list|rename> [home name] [(for rename) new home name]
     aliases:
       - hm
+  chickenleg:
+    description: chicken leg.
+    usage: /chickenleg

@@ -38,6 +38,11 @@ public class TeleportAsk implements TabExecutor {
             return true;
         }
 
+        if(!realm.doesAllowTeleportationMethods()) {
+            new NoxetErrorMessage("This realm does not allow TPA.").send(player);
+            return true;
+        }
+
         if(strings.length == 0) {
             new NoxetErrorMessage("Missing argument for player to send the request to (or cancel/accept/deny).").send(player);
             return true;

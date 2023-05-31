@@ -1,6 +1,5 @@
 package org.noxet.noxetserver.playerdata;
 
-import com.sun.imageio.plugins.common.ReaderUtil;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
@@ -10,7 +9,6 @@ import org.noxet.noxetserver.playerdata.types.PDTStringList;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Reader;
 import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map;

@@ -25,12 +25,12 @@ public class RealmManager {
 
         private final String displayName;
         private final PlayerStateType playerStateType;
-        private final boolean allowSpawnCommand;
+        private final boolean allowTeleportationMethods;
 
-        Realm(String displayName, PlayerStateType playerStateType, boolean allowSpawnCommand) {
+        Realm(String displayName, PlayerStateType playerStateType, boolean allowTeleportationMethods) {
             this.displayName = displayName;
             this.playerStateType = playerStateType;
-            this.allowSpawnCommand = allowSpawnCommand;
+            this.allowTeleportationMethods = allowTeleportationMethods;
         }
 
         public PlayerStateType getPlayerStateType() {
@@ -57,8 +57,8 @@ public class RealmManager {
             return null;
         }
 
-        public boolean doesAllowSpawnCommand() {
-            return allowSpawnCommand;
+        public boolean doesAllowTeleportationMethods() {
+            return allowTeleportationMethods;
         }
 
         public List<World> getWorlds() {

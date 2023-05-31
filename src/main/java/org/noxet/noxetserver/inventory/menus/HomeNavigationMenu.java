@@ -1,14 +1,11 @@
 package org.noxet.noxetserver.inventory.menus;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.noxet.noxetserver.inventory.ItemGenerator;
-import org.noxet.noxetserver.messaging.NoxetErrorMessage;
-import org.noxet.noxetserver.messaging.NoxetMessage;
 
 import java.text.DecimalFormat;
 import java.util.Arrays;
@@ -19,20 +16,20 @@ public class HomeNavigationMenu extends Menu {
     private final Player player;
     private final Map<String, Location> homes;
     private static final Material[] bannerTypes = {
-            Material.BLACK_WOOL,
-            Material.BLUE_WOOL,
-            Material.BROWN_WOOL,
-            Material.CYAN_WOOL,
-            Material.GRAY_WOOL,
-            Material.GREEN_WOOL,
-            Material.LIME_WOOL,
-            Material.MAGENTA_WOOL,
-            Material.ORANGE_WOOL,
-            Material.PINK_WOOL,
-            Material.PURPLE_WOOL,
-            Material.RED_WOOL,
-            Material.WHITE_WOOL,
-            Material.YELLOW_WOOL
+            Material.BLACK_BANNER,
+            Material.BLUE_BANNER,
+            Material.BROWN_BANNER,
+            Material.CYAN_BANNER,
+            Material.GRAY_BANNER,
+            Material.GREEN_BANNER,
+            Material.LIME_BANNER,
+            Material.MAGENTA_BANNER,
+            Material.ORANGE_BANNER,
+            Material.PINK_BANNER,
+            Material.PURPLE_BANNER,
+            Material.RED_BANNER,
+            Material.WHITE_BANNER,
+            Material.YELLOW_BANNER
     };
 
     public HomeNavigationMenu(Player player, Map<String, Location> homes) {
@@ -79,7 +76,7 @@ public class HomeNavigationMenu extends Menu {
                             "§8Z §7" + ((int) homeLocation.getZ()),
                             "§f- - -",
                             "§3Click to teleport.",
-                            "§cClick any number on keyboard to remove."
+                            "§cPress any number on keyboard to remove."
                             )
             ), x, y);
 

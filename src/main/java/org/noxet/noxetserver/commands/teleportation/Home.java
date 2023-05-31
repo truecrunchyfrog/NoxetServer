@@ -28,17 +28,22 @@ public class Home implements TabExecutor {
 
         Player player = (Player) commandSender;
 
-        Map<String, Map<String, Location>> homes = getHomes(player);
-
-        if(strings.length == 0) {
-            new NoxetErrorMessage("Missing argument! You have to choose what to do.").send(player);
-            return true;
-        }
-
         RealmManager.Realm realm = RealmManager.getCurrentRealm(player);
         if(realm == null) {
             new NoxetErrorMessage("You must be in a realm to do this.").send(player);
             return true;
+        }
+
+        if(!realm.doesAllowTeleportationMethods()) {
+            new NoxetErrorMessage("This realm does not allow you to save homes. You can, however, sleep in beds to save your respawn point. You have to manually transport yourself.").send(player);
+            return true;
+        }
+
+        Map<String, Map<String, Location>> homes = getHomes(player);
+
+        if(strings.length == 0) {
+            new NoxetErrorMessage("Missing argument! You have to choose what to do.").send(player);
+            return false;
         }
 
         Map<String, Location> realmHomes = homes.getOrDefault(realm.name(), new HashMap<>());

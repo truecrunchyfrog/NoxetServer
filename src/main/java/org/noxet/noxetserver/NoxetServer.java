@@ -5,6 +5,7 @@ import org.bukkit.WorldCreator;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.noxet.noxetserver.commands.anarchy.Anarchy;
 import org.noxet.noxetserver.commands.hub.Hub;
+import org.noxet.noxetserver.commands.misc.ChickenLeg;
 import org.noxet.noxetserver.commands.misc.GameSelector;
 import org.noxet.noxetserver.commands.misc.WhereAmI;
 import org.noxet.noxetserver.commands.smp.SMP;
@@ -22,7 +23,7 @@ public final class NoxetServer extends JavaPlugin {
     private static NoxetServer plugin;
 
     public enum WorldFlag {
-        NEUTRAL, OVERWORLD, NETHER, END;
+        NEUTRAL, OVERWORLD, NETHER, END
     }
 
     public enum ServerWorld {
@@ -112,6 +113,8 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("games")).setExecutor(new GameSelector());
 
         Objects.requireNonNull(getCommand("home")).setExecutor(new Home());
+
+        Objects.requireNonNull(getCommand("chickenleg")).setExecutor(new ChickenLeg());
 
         logInfo("Noxet plugin is ready!");
     }
