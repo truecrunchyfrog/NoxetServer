@@ -8,6 +8,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.noxet.noxetserver.messaging.ClearChat;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.messaging.TextBeautifier;
+import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.playerstate.PlayerState;
 
 import java.util.ArrayList;

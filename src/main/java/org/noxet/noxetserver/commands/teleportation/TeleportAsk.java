@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.Events;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.PlayerDataManager;
+import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;

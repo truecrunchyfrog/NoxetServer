@@ -1,28 +1,34 @@
-package org.noxet.noxetserver;
+package org.noxet.noxetserver.playerdata;
 
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.NoxetServer;
+import org.noxet.noxetserver.playerdata.types.PDTBoolean;
+import org.noxet.noxetserver.playerdata.types.PDTMapStringMapStringLocation;
+import org.noxet.noxetserver.playerdata.types.PDTStringList;
 
 import java.io.File;
 import java.io.IOException;
 
 public class PlayerDataManager {
+
     public enum Attribute {
-        HAS_DONE_CAPTCHA(false),
-        TPA_BLOCKED_PLAYERS(new String[0]);
+        HAS_DONE_CAPTCHA(new PDTBoolean()),
+        TPA_BLOCKED_PLAYERS(new PDTStringList()),
+        HOMES(new PDTMapStringMapStringLocation());
 
-        private final Object defaultValue;
+        private final PlayerDataType<?> type;
 
-        Attribute(Object defaultValue) {
-            this.defaultValue = defaultValue;
+        Attribute(PlayerDataType<?> type) {
+            this.type = type;
         }
 
         public String getKey() {
             return this.name().toLowerCase();
         }
 
-        public Object getDefaultValue() {
-            return defaultValue;
+        public PlayerDataType<?> getType() {
+            return type;
         }
     }
 
@@ -65,7 +71,7 @@ public class PlayerDataManager {
     }
 
     public Object get(Attribute attribute) {
-        return config.get(attribute.getKey(), attribute.getDefaultValue());
+        return attribute.getType().getValue(config, attribute.getKey());
     }
 
     public PlayerDataManager set(Attribute attribute, Object value) {

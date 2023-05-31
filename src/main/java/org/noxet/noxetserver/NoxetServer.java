@@ -10,6 +10,7 @@ import org.noxet.noxetserver.commands.misc.WhereAmI;
 import org.noxet.noxetserver.commands.smp.SMP;
 import org.noxet.noxetserver.commands.smp.Wild;
 import org.noxet.noxetserver.commands.spawn.Spawn;
+import org.noxet.noxetserver.commands.teleportation.Home;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.messaging.Motd;
 
@@ -109,6 +110,8 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("whereami")).setExecutor(new WhereAmI());
 
         Objects.requireNonNull(getCommand("games")).setExecutor(new GameSelector());
+
+        Objects.requireNonNull(getCommand("home")).setExecutor(new Home());
 
         logInfo("Noxet plugin is ready!");
     }

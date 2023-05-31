@@ -11,6 +11,7 @@ public class PSPManager {
             new PSPAllowFlight(),
             new PSPArrowsInBody(),
             new PSPBedSpawnLocation(),
+            new PSPCanPickupItems(),
             new PSPCollidable(),
             new PSPCompassTarget(),
             new PSPEnderChest(),
