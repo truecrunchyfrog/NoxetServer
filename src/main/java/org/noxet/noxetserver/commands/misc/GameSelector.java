@@ -4,7 +4,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.inventory.menus.GameNavigationMenu;
+import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 
 public class GameSelector implements CommandExecutor {
@@ -16,7 +16,7 @@ public class GameSelector implements CommandExecutor {
             return true;
         }
 
-        ((Player) commandSender).openInventory(new GameNavigationMenu().getInventory());
+        new GameNavigationMenu().openInventory((Player) commandSender);
 
         return true;
     }

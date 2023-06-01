@@ -1,7 +1,7 @@
 package org.noxet.noxetserver.messaging;
 
 public class TextBeautifier {
-    private static final String beautifulAlphabetCharacters = "ᴀʙᴄᴅᴇꜰɢʜiᴊᴋʟᴍɴᴏᴘꞯʀꜱᴛᴜᴠᴡxʏᴢ";
+    private static final String beautifulAlphabetCharacters = "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘꞯʀꜱᴛᴜᴠᴡxʏᴢ";
 
     public static String beautify(String uglyText) {
         return beautify(uglyText, true);

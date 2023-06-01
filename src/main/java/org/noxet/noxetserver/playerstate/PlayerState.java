@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
-import org.noxet.noxetserver.inventory.HubInventory;
+import org.noxet.noxetserver.menus.HubInventory;
 
 import java.io.File;
 import java.io.IOException;

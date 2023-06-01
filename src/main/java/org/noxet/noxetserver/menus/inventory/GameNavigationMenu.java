@@ -1,4 +1,4 @@
-package org.noxet.noxetserver.inventory.menus;
+package org.noxet.noxetserver.menus.inventory;
 
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Material;
@@ -12,9 +12,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.noxet.noxetserver.inventory.ItemGenerator.generateItem;
+import static org.noxet.noxetserver.menus.ItemGenerator.generateItem;
 
-public class GameNavigationMenu extends Menu {
+public class GameNavigationMenu extends InventoryMenu {
     public GameNavigationMenu() {
         super(3, TextBeautifier.beautify("Noxet - Choose a game"), false);
     }

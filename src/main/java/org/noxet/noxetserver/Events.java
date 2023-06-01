@@ -19,8 +19,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
-import org.noxet.noxetserver.inventory.HubInventory;
-import org.noxet.noxetserver.inventory.menus.GameNavigationMenu;
+import org.noxet.noxetserver.menus.HubInventory;
+import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
 import org.noxet.noxetserver.messaging.Motd;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
@@ -194,6 +194,14 @@ public class Events implements Listener {
                 new NoxetMessage("§aGreat! Your respawn location has been updated.").send(e.getPlayer());
             else
                 new NoxetErrorMessage("Could not change your respawn location.").send(e.getPlayer());
+        } else if(e.getMessage().equals("/anarchyconsent")) {
+            PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
+            if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.HAS_UNDERSTOOD_ANARCHY)) {
+                playerDataManager.set(PlayerDataManager.Attribute.HAS_UNDERSTOOD_ANARCHY, true).save();
+                e.getPlayer().closeInventory();
+                new NoxetMessage("§aThank you for understanding. We will not prompt you that again.").send(e.getPlayer());
+                e.setCancelled(true);
+            }
         }
     }
 
@@ -302,7 +310,7 @@ public class Events implements Listener {
     public void onPlayerInteract(PlayerInteractEvent e) {
         if(e.getItem() != null && (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK)) {
             if(e.getItem().equals(HubInventory.getGameNavigator())) {
-                e.getPlayer().openInventory(new GameNavigationMenu().getInventory());
+                new GameNavigationMenu().openInventory(e.getPlayer());
             } else {
                 return;
             }
@@ -378,7 +386,7 @@ public class Events implements Listener {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    player.openInventory(new GameNavigationMenu().getInventory());
+                    new GameNavigationMenu().openInventory(player);
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 5);
         }
@@ -439,7 +447,7 @@ public class Events implements Listener {
     public void onPlayerSpawnChange(PlayerSpawnChangeEvent e) {
         Location oldBedSpawn = e.getPlayer().getBedSpawnLocation();
 
-        if(oldBedSpawn != null && e.getNewSpawn() != null && oldBedSpawn.getBlock().getLocation().distance(e.getNewSpawn()) > 1 && e.getCause() == PlayerSpawnChangeEvent.Cause.BED) {
+        if(oldBedSpawn != null && e.getNewSpawn() != null && oldBedSpawn.getBlock().getLocation().distance(e.getNewSpawn()) > 2 && e.getCause() == PlayerSpawnChangeEvent.Cause.BED) {
             unconfirmedPlayerRespawns.put(e.getPlayer(), e.getNewSpawn());
 
             new BukkitRunnable() {

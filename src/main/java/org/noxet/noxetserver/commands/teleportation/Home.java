@@ -8,7 +8,7 @@ import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.Events;
 import org.noxet.noxetserver.RealmManager;
-import org.noxet.noxetserver.inventory.menus.HomeNavigationMenu;
+import org.noxet.noxetserver.menus.inventory.HomeNavigationMenu;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
@@ -148,7 +148,7 @@ public class Home implements TabExecutor {
 
                 break;
             case "menu":
-                player.openInventory(new HomeNavigationMenu(player, realmHomes).getInventory());
+                new HomeNavigationMenu(player, realmHomes).openInventory(player);
                 break;
             default:
                 new NoxetErrorMessage("Missing what home command to call.").send(player);
@@ -194,7 +194,7 @@ public class Home implements TabExecutor {
     }
 
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    private boolean isHomeNameOk(String name) {
+    public static boolean isHomeNameOk(String name) {
         return name.length() >= 1 && name.length() <= 20;
     }
 

@@ -1,5 +1,11 @@
 package org.noxet.noxetserver;
 
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -7,12 +13,15 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
+import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.messaging.TextBeautifier;
+import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.playerstate.PlayerState.PlayerStateType;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 public class RealmManager {
 
@@ -20,17 +29,29 @@ public class RealmManager {
      * Contains all registered realms and their properties.
      */
     public enum Realm {
-        SMP("SMP", PlayerStateType.SMP, true),
-        ANARCHY("Anarchy Island", PlayerStateType.ANARCHY, false);
+        SMP("SMP", PlayerStateType.SMP, true, null),
+        ANARCHY("Anarchy Island", PlayerStateType.ANARCHY, false, player -> {
+            if(!(boolean) new PlayerDataManager(player).get(PlayerDataManager.Attribute.HAS_UNDERSTOOD_ANARCHY)) {
+                new BookMenu(Collections.singletonList(
+                        new ComponentBuilder(
+                                "§8Cheats are allowed in the §cAnarchy Island§8 realm and §lONLY§8 there!\n" +
+                                        "Using cheats outside of this realm will get you banned.\n" +
+                                        "§cMalicious cheats (that produce lag, spam, etc.) are not allowed.\n\n")
+                                .append(new ComponentBuilder("§2§lThanks, I'll remember this.").event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/anarchyconsent")).event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Close this warning"))).create()).create()
+                )).openMenu(player);
+            }
+        });
 
         private final String displayName;
         private final PlayerStateType playerStateType;
         private final boolean allowTeleportationMethods;
+        private final Consumer<Player> onMigrateTo;
 
-        Realm(String displayName, PlayerStateType playerStateType, boolean allowTeleportationMethods) {
+        Realm(String displayName, PlayerStateType playerStateType, boolean allowTeleportationMethods, Consumer<Player> onMigrateTo) {
             this.displayName = displayName;
             this.playerStateType = playerStateType;
             this.allowTeleportationMethods = allowTeleportationMethods;
+            this.onMigrateTo = onMigrateTo;
         }
 
         public PlayerStateType getPlayerStateType() {
@@ -76,6 +97,11 @@ public class RealmManager {
                 players.addAll(world.getPlayers());
 
             return players;
+        }
+
+        public void onMigration(Player player) {
+            if(onMigrateTo != null)
+                onMigrateTo.accept(player);
         }
 
         public int getPlayerCount() {
@@ -159,6 +185,8 @@ public class RealmManager {
 
             if(teleportToSpawn)
                 player.teleport(Objects.requireNonNull(toRealm.getSpawnLocation())); // Teleport to spawn (first join).
+
+            toRealm.onMigration(player);
         } else {
             PlayerState.restoreState(player, PlayerStateType.GLOBAL); // Regular world. Load global state.
         }
@@ -195,7 +223,7 @@ public class RealmManager {
 
         Realm realm = getCurrentRealm(player);
 
-        new NoxetMessage("You have been sent to " + (realm != null ? "§f§l" + realm.getDisplayName() + "§7 " : "") + "spawn!").send(player);
+        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§7You have been sent to " + (realm != null ? "§f§l" + realm.getDisplayName() + "§7 " : "") + "spawn!"));
     }
 
     /**

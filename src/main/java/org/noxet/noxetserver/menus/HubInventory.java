@@ -1,4 +1,4 @@
-package org.noxet.noxetserver.inventory;
+package org.noxet.noxetserver.menus;
 
 import org.bukkit.Material;
 import org.bukkit.entity.Player;

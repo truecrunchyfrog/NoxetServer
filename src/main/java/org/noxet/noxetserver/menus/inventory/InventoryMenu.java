@@ -1,4 +1,4 @@
-package org.noxet.noxetserver.inventory.menus;
+package org.noxet.noxetserver.menus.inventory;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.HumanEntity;
@@ -16,11 +16,11 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
 
 @SuppressWarnings("ALL")
-public abstract class Menu implements InventoryHolder, Listener {
+public abstract class InventoryMenu implements InventoryHolder, Listener {
     private final Inventory inventory;
     private final boolean forceOpen;
 
-    public Menu(int rows, String title, boolean forceOpen) {
+    public InventoryMenu(int rows, String title, boolean forceOpen) {
         inventory = Bukkit.createInventory(this, rows * 9, title);
         this.forceOpen = forceOpen;
 
@@ -41,6 +41,10 @@ public abstract class Menu implements InventoryHolder, Listener {
     protected void setSlotItem(ItemStack itemStack, int x, int y) {
         assert x >= 0 && x < 9 && y >= 0 && y < inventory.getSize() / 9;
         inventory.setItem(y * 9 + x, itemStack);
+    }
+
+    public void openInventory(Player player) {
+        player.openInventory(inventory);
     }
 
     @Override

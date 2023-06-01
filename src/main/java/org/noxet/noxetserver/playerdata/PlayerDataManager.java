@@ -20,7 +20,8 @@ public class PlayerDataManager {
     public enum Attribute {
         HAS_DONE_CAPTCHA(new PDTBoolean()),
         TPA_BLOCKED_PLAYERS(new PDTStringList()),
-        HOMES(new PDTMapStringMapStringLocation());
+        HOMES(new PDTMapStringMapStringLocation()),
+        HAS_UNDERSTOOD_ANARCHY(new PDTBoolean());
 
         private final PlayerDataType<?> type;
 

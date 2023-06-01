@@ -1,6 +1,7 @@
 package org.noxet.noxetserver.commands.teleportation;
 
 import net.md_5.bungee.api.ChatColor;
+import org.bukkit.Particle;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -118,6 +119,7 @@ public class TeleportAsk implements TabExecutor {
 
             Events.setTemporaryInvulnerability(player);
             requester.teleport(player);
+            requester.getWorld().spawnParticle(Particle.DRAGON_BREATH, requester.getLocation(), 56);
 
             new NoxetMessage("§e" + requester.getDisplayName() + " has teleported to you.").send(player);
             new NoxetMessage("§eYou have been teleported.").send(requester);
