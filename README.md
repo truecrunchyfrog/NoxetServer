@@ -1,2 +1,2 @@
 # NoxetServer
-Plugin for the Minecraft server Noxet.
+Plugin for the Minecraft server Noxet.org.
