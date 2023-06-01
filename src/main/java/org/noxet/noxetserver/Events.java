@@ -44,7 +44,7 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) {
-        new NoxetMessage("§3§lWELCOME TO §b§lNOXET.ORG§3§l!").send(e.getPlayer());
+        new NoxetMessage("§3§lWELCOME TO §b§lNOXET.ORG NETWORK§3§l!").send(e.getPlayer());
         new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§7 joined Noxet.org.").broadcast();
         e.setJoinMessage(null);
 
