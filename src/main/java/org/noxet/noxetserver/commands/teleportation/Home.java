@@ -12,6 +12,7 @@ import org.noxet.noxetserver.menus.inventory.HomeNavigationMenu;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
+import org.noxet.noxetserver.util.TeleportUtil;
 
 import java.util.*;
 
@@ -64,9 +65,38 @@ public class Home implements TabExecutor {
                     return true;
                 }
 
+                if(!TeleportUtil.isLocationTeleportSafe(homeLocation)) {
+                    if(strings.length < 3) {
+                        new NoxetMessage(
+                                "§c§lWARNING: §eThis home may not be safe to teleport to."
+                        ).addButton(
+                                "Teleport safely nearby",
+                                ChatColor.GREEN,
+                                "Let us find a safe location for you to teleport nearby your home",
+                                "home tp " + homeName + " safe"
+                        ).addButton(
+                                "Teleport anyway",
+                                ChatColor.RED,
+                                "Do this at your own risk",
+                                "home tp " + homeName + " force"
+                        ).send(player);
+
+                        return true;
+                    } else if(strings[2].equalsIgnoreCase("force")) {
+                        new NoxetMessage("§aForcing teleport to home...").send(player);
+                    } else if(strings[2].equalsIgnoreCase("safe")) {
+                        new NoxetMessage("§aFinding a safe location nearby...").send(player);
+                        homeLocation = TeleportUtil.getSafeTeleportLocation(homeLocation);
+                        if(homeLocation == null) {
+                            new NoxetErrorMessage("We could not find a safe location nearby that home.").send(player);
+                            return true;
+                        }
+                    }
+                }
+
                 if(player.teleport(homeLocation)) {
                     Events.setTemporaryInvulnerability(player);
-                    new NoxetMessage("§aWelcome home!").send(player);
+                    new NoxetMessage("§3Welcome home!").send(player);
                 } else
                     new NoxetErrorMessage("Sorry, you could not be teleported to your home. Please report this.").send(player);
                 break;
@@ -146,6 +176,9 @@ public class Home implements TabExecutor {
                 realmHomes.remove(homeName);
                 homes.put(realm.name(), realmHomes);
 
+                new PlayerDataManager(player).set(PlayerDataManager.Attribute.HOMES, homes).save();
+
+                new NoxetMessage("§aHome '" + homeName + "' has successfully been renamed to '" + newName + "'.").send(player);
                 break;
             case "menu":
                 new HomeNavigationMenu(player, realmHomes).openInventory(player);

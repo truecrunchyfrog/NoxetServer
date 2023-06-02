@@ -6,6 +6,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.noxet.noxetserver.commands.anarchy.Anarchy;
 import org.noxet.noxetserver.commands.hub.Hub;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
+import org.noxet.noxetserver.commands.misc.DoAs;
 import org.noxet.noxetserver.commands.misc.GameSelector;
 import org.noxet.noxetserver.commands.misc.WhereAmI;
 import org.noxet.noxetserver.commands.smp.SMP;
@@ -115,6 +116,8 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("home")).setExecutor(new Home());
 
         Objects.requireNonNull(getCommand("chickenleg")).setExecutor(new ChickenLeg());
+
+        Objects.requireNonNull(getCommand("doas")).setExecutor(new DoAs());
 
         logInfo("Noxet plugin is ready!");
     }

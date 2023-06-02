@@ -13,6 +13,7 @@ import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.util.TeleportUtil;
 
 import java.util.*;
 
@@ -79,9 +80,8 @@ public class TeleportAsk implements TabExecutor {
                     new NoxetMessage("§eAccepting all incoming requests...").send(player);
 
                     for(Map.Entry<Player, Player> request : requests.entrySet())
-                        if(request.getValue() == player) {
+                        if(request.getValue() == player)
                             player.performCommand("tpa accept " + request.getKey().getName());
-                        }
 
                     return true;
                 }
@@ -117,14 +117,19 @@ public class TeleportAsk implements TabExecutor {
             new NoxetMessage("§eAccepting request...").send(player);
             new NoxetMessage("§e" + player.getDisplayName() + " accepted your teleportation request.").send(requester);
 
+            if(!TeleportUtil.isLocationTeleportSafe(player.getLocation())) {
+                new NoxetErrorMessage("We blocked this teleportation because it appears to be unsafe. " + player.getDisplayName() + ", please move to a solid block and accept from there.").send(Arrays.asList(player, requester));
+                return true;
+            }
+
+            requests.remove(requester);
+
             Events.setTemporaryInvulnerability(player);
             requester.teleport(player);
             requester.getWorld().spawnParticle(Particle.DRAGON_BREATH, requester.getLocation(), 56);
 
             new NoxetMessage("§e" + requester.getDisplayName() + " has teleported to you.").send(player);
             new NoxetMessage("§eYou have been teleported.").send(requester);
-
-            requests.remove(requester);
 
             return true;
         }

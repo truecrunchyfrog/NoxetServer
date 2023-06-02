@@ -311,15 +311,15 @@ public class Events implements Listener {
         if(e.getItem() != null && (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK)) {
             if(e.getItem().equals(HubInventory.getGameNavigator())) {
                 new GameNavigationMenu().openInventory(e.getPlayer());
-            } else {
+            } else
                 return;
-            }
 
             e.setCancelled(true);
         } else if(NoxetServer.isWorldPreserved(e.getPlayer().getWorld()) && !(e.getAction() == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null && e.getClickedBlock().getType() == Material.ENDER_CHEST)) {
             e.setCancelled(true);
         } else if(e.getAction() == Action.LEFT_CLICK_AIR && ChickenLeg.isPlayerChickenLeg(e.getPlayer()))
             ChickenLeg.summonChickenLeg(e.getPlayer());
+
     }
 
     private static final Set<Player> invulnerablePlayers = new HashSet<>();

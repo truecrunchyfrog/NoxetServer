@@ -48,3 +48,6 @@ commands:
   chickenleg:
     description: chicken leg.
     usage: /chickenleg
+  doas:
+    description: Command impersonation command
+    usage: /doas <player> <command> [args...]

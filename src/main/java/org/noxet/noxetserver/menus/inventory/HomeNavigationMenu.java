@@ -22,22 +22,6 @@ import java.util.*;
 public class HomeNavigationMenu extends InventoryMenu {
     private final Player player;
     private final Map<String, Location> homes;
-    private static final Material[] bannerTypes = {
-            Material.BLACK_BANNER,
-            Material.BLUE_BANNER,
-            Material.BROWN_BANNER,
-            Material.CYAN_BANNER,
-            Material.GRAY_BANNER,
-            Material.GREEN_BANNER,
-            Material.LIME_BANNER,
-            Material.MAGENTA_BANNER,
-            Material.ORANGE_BANNER,
-            Material.PINK_BANNER,
-            Material.PURPLE_BANNER,
-            Material.RED_BANNER,
-            Material.WHITE_BANNER,
-            Material.YELLOW_BANNER
-    };
 
     public HomeNavigationMenu(Player player, Map<String, Location> homes) {
         super(homes.size() / 9 + 1, "Homes", false);
@@ -113,6 +97,7 @@ public class HomeNavigationMenu extends InventoryMenu {
                         }, () -> player.performCommand("home menu")).openInventory(player);
                         break;
                     case RIGHT:
+                        stop();
                         new ChatPromptMenu(
                                 "new name for home '" + home.getKey() + "'",
                                 player,
@@ -124,11 +109,12 @@ public class HomeNavigationMenu extends InventoryMenu {
                                         return;
                                     }
 
-                                    promptResponse.getResponder().performCommand("home rename " + home.getKey() + " " + promptResponse.getMessage());
+                                    player.performCommand("home rename " + home.getKey() + " " + newName);
                                 }
                         );
                         break;
                     default:
+                        stop();
                         player.performCommand("home tp " + home.getKey());
                 }
 

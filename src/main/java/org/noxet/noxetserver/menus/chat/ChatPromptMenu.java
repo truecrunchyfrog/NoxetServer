@@ -7,11 +7,11 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Consumer;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 
-import java.util.HashSet;
 import java.util.Set;
 
 public class ChatPromptMenu implements Listener {
@@ -36,6 +36,7 @@ public class ChatPromptMenu implements Listener {
     private final String message;
     private final Set<Player> promptedPlayers;
     private final Consumer<PromptResponse> callback;
+    private final BukkitTask timeout;
 
     public ChatPromptMenu(String message, Set<Player> promptedPlayers, Consumer<PromptResponse> callback) {
         this.message = message;
@@ -46,6 +47,16 @@ public class ChatPromptMenu implements Listener {
 
         for(Player player : promptedPlayers)
             promptPlayer(player);
+
+        timeout = new BukkitRunnable() {
+            @Override
+            public void run() {
+                stop();
+                for(Player player : promptedPlayers)
+                    if(player.isOnline())
+                        dispatchPlayerMessage(player, "");
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * 60);
     }
 
     public ChatPromptMenu(String message, Player promptedPlayer, Consumer<PromptResponse> callback) {
@@ -79,5 +90,6 @@ public class ChatPromptMenu implements Listener {
 
     public void stop() {
         HandlerList.unregisterAll(this);
+        timeout.cancel();
     }
 }
