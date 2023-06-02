@@ -15,6 +15,7 @@ import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.util.TeleportUtil;
 
 import java.text.DecimalFormat;
 import java.util.*;
@@ -41,21 +42,21 @@ public class Wild implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
-            new NoxetErrorMessage("Only players can go to the wild.").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Only players can go to the wild.").send(commandSender);
             return true;
         }
 
         Player player = (Player) commandSender;
 
         if(recentlyTeleported.contains(player)) {
-            new NoxetErrorMessage("You recently got a wilderness teleport. You must wait 2 minutes between requests.").send(player);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You recently got a wilderness teleport. You must wait 2 minutes between requests.").send(player);
             return true;
         }
 
         RealmManager.Realm realm = getCurrentRealm(player);
 
-        if(realm != RealmManager.Realm.SMP) {
-            new NoxetErrorMessage("Wilderness teleportation is not supported here.").send(player);
+        if(realm == null || !realm.doesAllowTeleportationMethods()) {
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Wilderness teleportation is not supported here.").send(player);
             return true;
         }
 
@@ -63,15 +64,15 @@ public class Wild implements CommandExecutor {
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(NoxetServer.getPlugin(), () -> {
             Location teleportTo = new Location(
-                    NoxetServer.ServerWorld.SMP_WORLD.getWorld(),
+                    realm.getWorld(NoxetServer.WorldFlag.OVERWORLD),
                     0, 0, 0
             );
 
-            int attempts = 0, maxAttempts = 300;
+            int attemptsLeft = 300;
 
             do {
-                if(attempts >= maxAttempts) {
-                    new NoxetErrorMessage("Uh oh. We searched far and wide, but we could not find a suiting place for you.").send(player);
+                if(attemptsLeft-- == 0) {
+                    new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Uh oh. We searched far and wide, but we could not find a suiting place for you.").send(player);
                     break;
                 }
 
@@ -79,10 +80,9 @@ public class Wild implements CommandExecutor {
                 teleportTo.setZ(getWildXZValue());
 
                 teleportTo.setY(Objects.requireNonNull(teleportTo.getWorld()).getHighestBlockYAt(teleportTo));
-
-                attempts++;
             } while(
-                    wildBiomesExceptions.contains(teleportTo.getWorld().getBiome(teleportTo)) // Look for new location until it is not listed in the blacklist.
+                    wildBiomesExceptions.contains(teleportTo.getWorld().getBiome(teleportTo)) || // Look for new location until it is not listed in the blacklist.
+                    !TeleportUtil.isLocationTeleportSafe(teleportTo)
             );
 
             player.teleport(teleportTo);

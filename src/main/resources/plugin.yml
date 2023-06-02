@@ -57,3 +57,12 @@ commands:
   unmute:
     description: Unmute a player
     usage: /unmute <player>
+  msg:
+    description: Talk privately to a player
+    usage: /msg <player> [message]
+    aliases:
+      - message
+      - talk
+      - tell
+      - whisper
+      - dm

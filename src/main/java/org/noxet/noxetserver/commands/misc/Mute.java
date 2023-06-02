@@ -7,7 +7,7 @@ import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
-import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.messaging.NoxetSuccessMessage;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 
 import java.util.Collections;
@@ -22,26 +22,26 @@ public class Mute implements TabExecutor {
         }
 
         if(strings.length == 0) {
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing argument: player to mute.").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing player to mute.").send(commandSender);
             return false;
         }
 
         Player playerToMute = NoxetServer.getPlugin().getServer().getPlayer(strings[0]);
 
         if(playerToMute == null) {
-            new NoxetErrorMessage("That is not a player.").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "That is not an online player.").send(commandSender);
             return true;
         }
 
         PlayerDataManager playerDataManager = new PlayerDataManager(playerToMute);
 
         if((boolean) playerDataManager.get(PlayerDataManager.Attribute.MUTED)) {
-            new NoxetErrorMessage("That player is already muted.").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "That player is already muted.").send(commandSender);
             return true;
         }
 
         playerDataManager.set(PlayerDataManager.Attribute.MUTED, true).save();
-        new NoxetMessage(
+        new NoxetSuccessMessage(
                 playerToMute.getName() + " has been muted and can no longer chat.")
                 .addButton("Unmute", ChatColor.RED, "Undo the mute", "unmute " + playerToMute.getName()).send(commandSender);
 

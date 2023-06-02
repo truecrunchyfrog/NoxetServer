@@ -14,7 +14,7 @@ public class WhereAmI implements CommandExecutor {
     @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
-            new NoxetErrorMessage("Only players can check where they are.").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Only players can check where they are.").send(commandSender);
             return true;
         }
 

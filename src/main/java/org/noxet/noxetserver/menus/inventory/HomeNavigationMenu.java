@@ -105,7 +105,7 @@ public class HomeNavigationMenu extends InventoryMenu {
                                     String newName = promptResponse.getMessage();
 
                                     if(!Home.isHomeNameOk(newName)) {
-                                        new NoxetErrorMessage("Bad name for home. Too long/short.").send(player);
+                                        new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Bad name for home. Too long/short.").send(player);
                                         return;
                                     }
 

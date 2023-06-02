@@ -20,7 +20,7 @@ public class TeleportUtil {
             currentSide = 0, // 0-3: what side of the rect to search at now.
             sideIndex = 0; // Where on the side?
 
-        int attemptsLeft = 500;
+        int attemptsLeft = (int) Math.pow(safeTeleportSearchRadius, 2);
 
         while(!isLocationTeleportSafe(searchLocation)) {
             if(attemptsLeft-- == 0)

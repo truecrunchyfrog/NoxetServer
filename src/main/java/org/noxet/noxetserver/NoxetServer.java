@@ -119,6 +119,8 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("mute")).setExecutor(new Mute());
         Objects.requireNonNull(getCommand("unmute")).setExecutor(new Unmute());
 
+        Objects.requireNonNull(getCommand("msg")).setExecutor(new MsgConversation());
+
         logInfo("Noxet plugin is ready!");
     }
 

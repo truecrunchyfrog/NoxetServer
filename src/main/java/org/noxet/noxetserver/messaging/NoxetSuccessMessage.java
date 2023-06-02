@@ -14,6 +14,6 @@ public class NoxetSuccessMessage extends NoxetMessage {
 
     @Override
     public String getMessagePrefix() {
-        return super.getMessagePrefix() + "§2§lSUCCESS: ";
+        return super.getMessagePrefix() + "§2Success: ";
     }
 }

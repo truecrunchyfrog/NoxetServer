@@ -21,7 +21,7 @@ public class ChickenLeg implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
-            new NoxetErrorMessage("chicken leg only for player!!!").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "chicken leg only for player!!!").send(commandSender);
             return true;
         }
 

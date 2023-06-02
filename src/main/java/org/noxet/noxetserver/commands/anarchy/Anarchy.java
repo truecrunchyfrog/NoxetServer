@@ -14,7 +14,7 @@ public class Anarchy implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
-            new NoxetErrorMessage("Only players can be sent to the Anarchy server.").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Only players can be sent to the Anarchy server.").send(commandSender);
             return true;
         }
 

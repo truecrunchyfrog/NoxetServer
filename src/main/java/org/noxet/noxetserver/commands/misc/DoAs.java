@@ -9,6 +9,7 @@ import org.bukkit.help.HelpTopic;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.messaging.NoxetSuccessMessage;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,19 +20,19 @@ public class DoAs implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!commandSender.isOp()) {
-            new NoxetErrorMessage("You must be an operator to impersonate players.").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.PERMISSION, "You must be an operator to impersonate players.").send(commandSender);
             return true;
         }
 
         if(strings.length == 0) {
-            new NoxetErrorMessage("Missing argument: player to run command as.").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Provide a player to run command as.").send(commandSender);
             return true;
         }
 
         Player doAsPlayer = NoxetServer.getPlugin().getServer().getPlayer(strings[0]);
 
         if(doAsPlayer == null) {
-            new NoxetErrorMessage("That is not a valid player.").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "That is not a valid player.").send(commandSender);
             return true;
         }
 
@@ -41,7 +42,7 @@ public class DoAs implements TabExecutor {
         Command commandToRun = NoxetServer.getPlugin().getServer().getPluginCommand(commandArgs.get(0));
 
         if(command.equals(commandToRun)) {
-            new NoxetErrorMessage("Recursive doas not allowed!").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Recursive doas not allowed!").send(commandSender);
             return true;
         }
 
@@ -53,7 +54,7 @@ public class DoAs implements TabExecutor {
 
         new NoxetMessage("Performing command as \"" + doAsPlayer.getName() + "\": §o/" + commandWithArgs).send(commandSender);
         doAsPlayer.performCommand(commandWithArgs.toString());
-        new NoxetMessage("§aCommand finished.").send(commandSender);
+        new NoxetSuccessMessage("Command was performed on " + doAsPlayer.getName() + ".").send(commandSender);
 
         return true;
     }

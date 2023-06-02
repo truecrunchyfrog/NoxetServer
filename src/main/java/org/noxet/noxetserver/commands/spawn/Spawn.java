@@ -15,7 +15,7 @@ public class Spawn implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
-            new NoxetErrorMessage("Only players can be sent to the spawn.").send(commandSender);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Only players can be sent to the spawn.").send(commandSender);
             return true;
         }
 
@@ -24,7 +24,7 @@ public class Spawn implements CommandExecutor {
         if(realm == null || realm.doesAllowTeleportationMethods()) {
             goToSpawn(player);
         } else {
-            new NoxetErrorMessage("You cannot use this command here.").send(player);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You cannot use /spawn in this realm.").send(player);
         }
 
         return true;

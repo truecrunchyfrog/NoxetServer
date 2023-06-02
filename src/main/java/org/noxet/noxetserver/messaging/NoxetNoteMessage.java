@@ -14,6 +14,6 @@ public class NoxetNoteMessage extends NoxetMessage {
 
     @Override
     public String getMessagePrefix() {
-        return super.getMessagePrefix() + "§5§lNOTE: ";
+        return super.getMessagePrefix() + "§5Note: ";
     }
 }

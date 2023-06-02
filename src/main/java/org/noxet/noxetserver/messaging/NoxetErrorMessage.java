@@ -1,7 +1,6 @@
 package org.noxet.noxetserver.messaging;
 
 import net.md_5.bungee.api.ChatColor;
-import org.noxet.noxetserver.messaging.NoxetMessage;
 
 public class NoxetErrorMessage extends NoxetMessage {
     public enum ErrorType {
@@ -34,6 +33,6 @@ public class NoxetErrorMessage extends NoxetMessage {
 
     @Override
     public String getMessagePrefix() {
-        return super.getMessagePrefix() + "§4§lError" + (errorType.getTypeString() != null ? " (§f" + errorType.getTypeString() + "§4§l)" : "") + ": ";
+        return super.getMessagePrefix() + "§4Error" + (errorType.getTypeString() != null ? " (§7" + errorType.getTypeString() + "§4)" : "") + ": ";
     }
 }

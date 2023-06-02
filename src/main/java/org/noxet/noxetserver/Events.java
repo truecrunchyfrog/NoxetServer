@@ -79,7 +79,9 @@ public class Events implements Listener {
         new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§7 joined Noxet.org.").broadcast();
         e.setJoinMessage(null);
 
-        if(!((boolean) new PlayerDataManager(e.getPlayer()).get(PlayerDataManager.Attribute.HAS_DONE_CAPTCHA))) {
+        PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
+
+        if(!((boolean) playerDataManager.get(PlayerDataManager.Attribute.HAS_DONE_CAPTCHA))) {
             new Captcha(e.getPlayer()).init();
             return;
         }
@@ -168,7 +170,7 @@ public class Events implements Listener {
                     String amountAndCommand = e.getMessage().substring(2);
 
                     if(amountAndCommand.indexOf(' ') == -1) {
-                        new NoxetErrorMessage("Missing command.").send(e.getPlayer());
+                        new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing command.").send(e.getPlayer());
                         return;
                     }
 
@@ -177,12 +179,12 @@ public class Events implements Listener {
                     try {
                         amount = Integer.parseInt(amountAndCommand.substring(0, amountAndCommand.indexOf(' ')));
                     } catch(NumberFormatException e1) {
-                        new NoxetErrorMessage("Syntax: '!:5 summon giant' to repeat command 'summon giant' 5 times.").send(e.getPlayer());
+                        new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Syntax: '!:5 summon giant' to repeat command 'summon giant' 5 times.").send(e.getPlayer());
                         return;
                     }
 
                     if(amount < 1 || amount > 100) {
-                        new NoxetErrorMessage("Amount must be within 1-100 (inclusive).").send(e.getPlayer());
+                        new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Amount must be within 1-100 (inclusive).").send(e.getPlayer());
                         return;
                     }
 
@@ -218,7 +220,7 @@ public class Events implements Listener {
             }
 
             if((boolean) playerDataManager.get(PlayerDataManager.Attribute.MUTED)) {
-                new NoxetErrorMessage("You are muted, and cannot chat at the moment!").send(e.getPlayer());
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You are muted, and cannot chat at the moment!").send(e.getPlayer());
                 return;
             }
 
@@ -250,7 +252,7 @@ public class Events implements Listener {
             e.setCancelled(true);
 
             if(!unconfirmedPlayerRespawns.containsKey(e.getPlayer())) {
-                new NoxetErrorMessage("You cannot do this now.").send(e.getPlayer());
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You cannot do this now.").send(e.getPlayer());
                 return;
             }
 
@@ -260,7 +262,7 @@ public class Events implements Listener {
             if(e.getPlayer().getBedSpawnLocation() != null && newBedSpawn.getBlock().getBlockData() instanceof Bed)
                 new NoxetMessage("§aYour respawn location has been updated.").send(e.getPlayer());
             else
-                new NoxetErrorMessage("Could not change your respawn location.").send(e.getPlayer());
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Could not change your respawn location.").send(e.getPlayer());
         } else if(TemporaryCommand.UNDERSTAND_ANARCHY.isMessageThisCommand(e)) {
             PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
             if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.HAS_UNDERSTOOD_ANARCHY)) {

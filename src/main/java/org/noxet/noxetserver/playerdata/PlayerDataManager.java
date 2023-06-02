@@ -20,6 +20,9 @@ public class PlayerDataManager {
     public enum Attribute {
         HAS_DONE_CAPTCHA(new PDTBoolean()),
         TPA_BLOCKED_PLAYERS(new PDTStringList()),
+        MSG_BLOCKED_PLAYERS(new PDTStringList()),
+        MSG_TALKED_WITH(new PDTStringList()),
+        MSG_DISABLED(new PDTBoolean()),
         HOMES(new PDTMapStringMapStringLocation()),
         HAS_UNDERSTOOD_ANARCHY(new PDTBoolean()),
         SEEN_CHAT_NOTICE(new PDTBoolean()),
@@ -49,8 +52,8 @@ public class PlayerDataManager {
         return playerDataDir;
     }
 
-    private static File getDataFile(Player player) {
-        return new File(getDirectory(), player.getUniqueId() + ".yml");
+    private static File getDataFile(UUID uuid) {
+        return new File(getDirectory(), uuid + ".yml");
     }
 
     private static void updateCache(UUID uuid, YamlConfiguration config) {
@@ -59,36 +62,40 @@ public class PlayerDataManager {
         configCache.put(uuid, config.saveToString());
     }
 
-    private static YamlConfiguration getConfig(Player player) {
-        if(configCache.containsKey(player.getUniqueId()))
-            return YamlConfiguration.loadConfiguration(new StringReader(configCache.get(player.getUniqueId())));
+    private static YamlConfiguration getConfig(UUID uuid) {
+        if(configCache.containsKey(uuid))
+            return YamlConfiguration.loadConfiguration(new StringReader(configCache.get(uuid)));
 
-        File dataFile = getDataFile(player);
+        File dataFile = getDataFile(uuid);
 
         if(!dataFile.exists())
             return new YamlConfiguration();
 
         YamlConfiguration config = YamlConfiguration.loadConfiguration(dataFile);
 
-        updateCache(player.getUniqueId(), config);
+        updateCache(uuid, config);
 
         return config;
     }
 
-    private static void saveData(Player player, YamlConfiguration config) {
+    private static void saveData(UUID uuid, YamlConfiguration config) {
         try {
-            config.save(getDataFile(player));
+            config.save(getDataFile(uuid));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private final Player player;
+    private final UUID uuid;
     private final YamlConfiguration config;
 
+    public PlayerDataManager(UUID uuid) {
+        this.uuid = uuid;
+        config = getConfig(uuid);
+    }
+
     public PlayerDataManager(Player player) {
-        this.player = player;
-        config = getConfig(player);
+        this(player.getUniqueId());
     }
 
     public Object get(Attribute attribute) {
@@ -97,12 +104,12 @@ public class PlayerDataManager {
 
     public PlayerDataManager set(Attribute attribute, Object value) {
         config.set(attribute.getKey(), value);
-        updateCache(player.getUniqueId(), config);
+        updateCache(uuid, config);
 
         return this;
     }
 
     public void save() {
-        saveData(player, config);
+        saveData(uuid, config);
     }
 }
