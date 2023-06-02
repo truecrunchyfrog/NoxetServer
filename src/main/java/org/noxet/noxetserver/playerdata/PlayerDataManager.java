@@ -21,7 +21,9 @@ public class PlayerDataManager {
         HAS_DONE_CAPTCHA(new PDTBoolean()),
         TPA_BLOCKED_PLAYERS(new PDTStringList()),
         HOMES(new PDTMapStringMapStringLocation()),
-        HAS_UNDERSTOOD_ANARCHY(new PDTBoolean());
+        HAS_UNDERSTOOD_ANARCHY(new PDTBoolean()),
+        SEEN_CHAT_NOTICE(new PDTBoolean()),
+        MUTED(new PDTBoolean());
 
         private final PlayerDataType<?> type;
 

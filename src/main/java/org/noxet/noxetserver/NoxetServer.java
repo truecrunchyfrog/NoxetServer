@@ -5,10 +5,7 @@ import org.bukkit.WorldCreator;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.noxet.noxetserver.commands.anarchy.Anarchy;
 import org.noxet.noxetserver.commands.hub.Hub;
-import org.noxet.noxetserver.commands.misc.ChickenLeg;
-import org.noxet.noxetserver.commands.misc.DoAs;
-import org.noxet.noxetserver.commands.misc.GameSelector;
-import org.noxet.noxetserver.commands.misc.WhereAmI;
+import org.noxet.noxetserver.commands.misc.*;
 import org.noxet.noxetserver.commands.smp.SMP;
 import org.noxet.noxetserver.commands.smp.Wild;
 import org.noxet.noxetserver.commands.spawn.Spawn;
@@ -118,6 +115,9 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("chickenleg")).setExecutor(new ChickenLeg());
 
         Objects.requireNonNull(getCommand("doas")).setExecutor(new DoAs());
+
+        Objects.requireNonNull(getCommand("mute")).setExecutor(new Mute());
+        Objects.requireNonNull(getCommand("unmute")).setExecutor(new Unmute());
 
         logInfo("Noxet plugin is ready!");
     }

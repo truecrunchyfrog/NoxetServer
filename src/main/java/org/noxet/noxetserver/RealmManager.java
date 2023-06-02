@@ -37,7 +37,7 @@ public class RealmManager {
                                 "§8Cheats are allowed in the §cAnarchy Island§8 realm and §lONLY§8 there!\n" +
                                         "Using cheats outside of this realm will get you banned.\n" +
                                         "§cMalicious cheats (that produce lag, spam, etc.) are not allowed.\n\n")
-                                .append(new ComponentBuilder("§2§lThanks, I'll remember this.").event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/anarchyconsent")).event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Close this warning"))).create()).create()
+                                .append(new ComponentBuilder("§2§l■ Thanks, I'll remember this.").event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, Events.TemporaryCommand.UNDERSTAND_ANARCHY.getSlashCommand())).event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Close this warning"))).create()).create()
                 )).openMenu(player);
             }
         });

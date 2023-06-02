@@ -2,11 +2,16 @@ package org.noxet.noxetserver;
 
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.*;
 import org.bukkit.block.data.type.Bed;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
@@ -20,10 +25,12 @@ import org.bukkit.util.Vector;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.menus.HubInventory;
+import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
 import org.noxet.noxetserver.messaging.Motd;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.messaging.TextBeautifier;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 
 import java.util.*;
@@ -31,6 +38,30 @@ import java.util.*;
 import static org.noxet.noxetserver.RealmManager.*;
 
 public class Events implements Listener {
+    public enum TemporaryCommand {
+        READ_BEFORE_CHAT("read-before-chat"),
+        UNDERSTAND_CHAT("understand-chat"),
+        CONFIRM_BED_SPAWN("confirm-bed-spawn"),
+        UNDERSTAND_ANARCHY("understand-anarchy");
+
+        private String command;
+        TemporaryCommand(String command) {
+            this.command = command;
+        }
+
+        public boolean isMessageThisCommand(PlayerCommandPreprocessEvent e) {
+            return e.getMessage().equalsIgnoreCase(getSlashCommand());
+        }
+
+        public String getRawCommand() {
+            return command;
+        }
+
+        public String getSlashCommand() {
+            return "/" + command;
+        }
+    }
+
     @EventHandler
     public void onPlayerTeleport(PlayerTeleportEvent e) {
         if(e.getTo() != null && e.getFrom().getWorld() != e.getTo().getWorld()) { // Teleporting to another world.
@@ -122,13 +153,15 @@ public class Events implements Listener {
         e.setMotd(Motd.generateMotd());
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGH)
     public void onAsyncPlayerChat(AsyncPlayerChatEvent e) {
-        if(Captcha.isPlayerDoingCaptcha(e.getPlayer()))
-            e.setCancelled(true);
-        else if(e.getPlayer().isOp() && e.getMessage().startsWith("!:")) {
-            e.setCancelled(true);
+        boolean shouldSend = !e.isCancelled();
+        e.setCancelled(true);
 
+        if(Captcha.isPlayerDoingCaptcha(e.getPlayer()))
+            return;
+
+        if(e.getPlayer().isOp() && e.getMessage().startsWith("!:")) {
             new BukkitRunnable() {
                 @Override
                 public void run() {
@@ -159,6 +192,40 @@ public class Events implements Listener {
                         e.getPlayer().performCommand(command);
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 0);
+            return;
+        }
+
+
+        if(shouldSend) {
+            NoxetMessage message = new NoxetMessage(
+                    "§7" + e.getPlayer().getDisplayName() + "§8→ §f" + e.getMessage());
+            message.skipPrefix();
+            Realm realm = getCurrentRealm(e.getPlayer());
+
+            PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
+
+            if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE)) {
+                new NoxetMessage(
+                        "§eHello, " + e.getPlayer().getName() + "!\n" +
+                            "Please read a message from us before you can chat.\n"
+                ).addButton(
+                        "Read",
+                        ChatColor.GREEN,
+                        "Read a message from us to start talking",
+                        TemporaryCommand.READ_BEFORE_CHAT.getRawCommand()
+                ).send(e.getPlayer());
+                return;
+            }
+
+            if((boolean) playerDataManager.get(PlayerDataManager.Attribute.MUTED)) {
+                new NoxetErrorMessage("You are muted, and cannot chat at the moment!").send(e.getPlayer());
+                return;
+            }
+
+            if(realm != null)
+                message.send(realm);
+            else
+                message.send(NoxetServer.ServerWorld.HUB.getWorld());
         }
     }
 
@@ -179,7 +246,7 @@ public class Events implements Listener {
                 return;
 
             Objects.requireNonNull(Captcha.getPlayerCaptcha(e.getPlayer())).chooseAnswer(answer);
-        } else if(e.getMessage().equals("/bedspawnconfirm")) {
+        } else if(TemporaryCommand.CONFIRM_BED_SPAWN.isMessageThisCommand(e)) {
             e.setCancelled(true);
 
             if(!unconfirmedPlayerRespawns.containsKey(e.getPlayer())) {
@@ -191,15 +258,38 @@ public class Events implements Listener {
             e.getPlayer().setBedSpawnLocation(newBedSpawn);
 
             if(e.getPlayer().getBedSpawnLocation() != null && newBedSpawn.getBlock().getBlockData() instanceof Bed)
-                new NoxetMessage("§aGreat! Your respawn location has been updated.").send(e.getPlayer());
+                new NoxetMessage("§aYour respawn location has been updated.").send(e.getPlayer());
             else
                 new NoxetErrorMessage("Could not change your respawn location.").send(e.getPlayer());
-        } else if(e.getMessage().equals("/anarchyconsent")) {
+        } else if(TemporaryCommand.UNDERSTAND_ANARCHY.isMessageThisCommand(e)) {
             PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
             if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.HAS_UNDERSTOOD_ANARCHY)) {
                 playerDataManager.set(PlayerDataManager.Attribute.HAS_UNDERSTOOD_ANARCHY, true).save();
                 e.getPlayer().closeInventory();
                 new NoxetMessage("§aThank you for understanding. We will not prompt you that again.").send(e.getPlayer());
+                e.setCancelled(true);
+            }
+        } else if(TemporaryCommand.READ_BEFORE_CHAT.isMessageThisCommand(e)) {
+            PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
+            if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE)) {
+                new BookMenu(Collections.singletonList(
+                        new ComponentBuilder(
+                                "§8Welcome to the §b" + TextBeautifier.beautify("noxet") + "§8 chat.\n" +
+                                    "Each realm has its own chat channel.\n" +
+                                    "You can still §l/msg§8 players outside of your realm.\n" +
+                                    "Make sure that you follow our rules!\n\n")
+                                .append(new ComponentBuilder("§2§l■ I have read and understood this.").event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, TemporaryCommand.UNDERSTAND_CHAT.getSlashCommand())).event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Close this warning"))).create()).create()
+                )).openMenu(e.getPlayer());
+
+                e.setCancelled(true);
+            }
+        } else if(TemporaryCommand.UNDERSTAND_CHAT.isMessageThisCommand(e)) {
+            PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
+            if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE)) {
+                playerDataManager.set(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE, true).save();
+                new NoxetMessage("§aYou can now chat!").send(e.getPlayer());
+                e.getPlayer().closeInventory();
+
                 e.setCancelled(true);
             }
         }
@@ -458,7 +548,7 @@ public class Events implements Listener {
             }.runTaskLater(NoxetServer.getPlugin(), 0);
 
             new NoxetMessage("§e§lIMPORTANT!§c You already have a respawn location. Are you sure that you want to replace it?")
-                    .addButton("Replace", ChatColor.YELLOW, "Set this as your new spawn", "bedspawnconfirm")
+                    .addButton("Replace", ChatColor.YELLOW, "Set this as your new spawn", TemporaryCommand.CONFIRM_BED_SPAWN.getRawCommand())
                     .send(e.getPlayer());
 
             new BukkitRunnable() {

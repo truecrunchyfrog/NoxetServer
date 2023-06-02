@@ -17,6 +17,7 @@ import java.util.List;
 
 public class NoxetMessage {
     private final List<TextComponent> textComponents = new ArrayList<>();
+    private boolean skipPrefix = false;
 
     /**
      * Constructs a message.
@@ -38,7 +39,7 @@ public class NoxetMessage {
     }
 
     private TextComponent getBakedMessage() {
-        TextComponent mainComponent = new TextComponent(getMessagePrefix());
+        TextComponent mainComponent = new TextComponent(!skipPrefix ? getMessagePrefix() : "");
 
         for(TextComponent textComponent : textComponents)
             mainComponent.addExtra(textComponent); // Add every component.
@@ -89,6 +90,10 @@ public class NoxetMessage {
         textComponents.add(textComponent);
 
         return this;
+    }
+
+    public void skipPrefix() {
+        skipPrefix = true;
     }
 
     public void send(Player player) {

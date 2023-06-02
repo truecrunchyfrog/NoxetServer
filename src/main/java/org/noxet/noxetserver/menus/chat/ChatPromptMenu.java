@@ -3,6 +3,7 @@ package org.noxet.noxetserver.menus.chat;
 import com.google.common.collect.Sets;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
@@ -64,8 +65,11 @@ public class ChatPromptMenu implements Listener {
     }
 
     public void promptPlayer(Player player) {
-        new NoxetMessage("§8- - - - - -").send(player);
-        new NoxetMessage("§3Please type §7" + message + "§3 and press enter:").send(player);
+        StringBuilder blocks = new StringBuilder();
+        for(int i = 0; i < 40; i++)
+            blocks.append("■");
+        new NoxetMessage("§8" + blocks).send(player);
+        new NoxetMessage("§3Enter §b" + message + "§3:").send(player);
     }
 
     public void dispatchPlayerMessage(Player player, String value) {
@@ -75,7 +79,7 @@ public class ChatPromptMenu implements Listener {
         callback.accept(new PromptResponse(player, value));
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOW)
     public void onAsyncPlayerChat(AsyncPlayerChatEvent e) {
         if(promptedPlayers.contains(e.getPlayer())) {
             new BukkitRunnable() {
