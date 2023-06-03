@@ -41,6 +41,7 @@ public class PSPManager {
             new PSPPotionEffects(),
             new PSPRemainingAir(),
             new PSPSaturation(),
+            new PSPScoreboard(),
             new PSPStatistics(),
             new PSPSwimming(),
             new PSPTicksLived(),

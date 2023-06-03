@@ -19,6 +19,7 @@ public class ChickenLeg implements CommandExecutor {
     private static final Set<Player> chickenLegPlayers = new HashSet<>();
 
     @Override
+    @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
             new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "chicken leg only for player!!!").send(commandSender);

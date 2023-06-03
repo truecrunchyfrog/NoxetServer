@@ -24,6 +24,8 @@ public final class NoxetServer extends JavaPlugin {
         NEUTRAL, OVERWORLD, NETHER, END
     }
 
+    public static boolean shouldAllowWorldPreservation = true;
+
     public enum ServerWorld {
         HUB("hub", null, true, true, WorldFlag.NEUTRAL),
         SMP_SPAWN("smp_spawn", RealmManager.Realm.SMP, true, true, WorldFlag.NEUTRAL),
@@ -71,7 +73,7 @@ public final class NoxetServer extends JavaPlugin {
         }
 
         public boolean isPreserved() {
-            return preservedWorld;
+            return preservedWorld && shouldAllowWorldPreservation;
         }
 
         public boolean isSafeZone() {
@@ -120,6 +122,8 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("unmute")).setExecutor(new Unmute());
 
         Objects.requireNonNull(getCommand("msg")).setExecutor(new MsgConversation());
+
+        Objects.requireNonNull(getCommand("togglepreserve")).setExecutor(new TogglePreserve());
 
         logInfo("Noxet plugin is ready!");
     }

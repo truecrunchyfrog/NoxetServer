@@ -1,24 +1,31 @@
 package org.noxet.noxetserver.commands.misc;
 
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.messaging.NoxetErrorMessage;
-import org.noxet.noxetserver.messaging.NoxetMessage;
-import org.noxet.noxetserver.messaging.NoxetNoteMessage;
+import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MsgConversation implements TabExecutor {
-    private static final Map<Player, Player> playerConversations = new HashMap<>();
-    private static final Map<Player, Player> pendingConversationConfirmations = new HashMap<>(); // Key: player asking to message. Value: player to accept message.
+public class MsgConversation implements TabExecutor, Listener {
+    public MsgConversation() {
+        NoxetServer.getPlugin().getServer().getPluginManager().registerEvents(this, NoxetServer.getPlugin());
+    }
+
+    private static final Map<Player, Player> playerConversationChannels = new HashMap<>();
 
     @Override
+    @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
             new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Only players can hold conversations with other players.").send(commandSender);
@@ -28,7 +35,20 @@ public class MsgConversation implements TabExecutor {
         Player player = (Player) commandSender;
 
         if(strings.length == 0) {
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing player to message.").send(player);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing argument (player to message or toggle/block).").send(player);
+            return true;
+        }
+
+
+        PlayerDataManager playerDataManager = new PlayerDataManager(player);
+
+        if(strings[0].equalsIgnoreCase("toggle")) {
+            boolean isMsgDisabled = (boolean) playerDataManager.get(PlayerDataManager.Attribute.MSG_DISABLED);
+
+            playerDataManager.set(PlayerDataManager.Attribute.MSG_DISABLED, !isMsgDisabled).save();
+
+            new NoxetSuccessMessage("Noxet direct messaging was " + (!isMsgDisabled ? "enabled (you can now /msg players)" : "disabled (you can no longer /msg players)") + ".").send(player);
+
             return true;
         }
 
@@ -49,9 +69,7 @@ public class MsgConversation implements TabExecutor {
             return true;
         }
 
-        PlayerDataManager targetPlayerDataManager = new PlayerDataManager(playerToMessage);
-
-        String messageToSend;
+        String messageToSend = null;
 
         if(strings.length >= 2) {
             StringBuilder concatMessageArgs = new StringBuilder();
@@ -60,12 +78,21 @@ public class MsgConversation implements TabExecutor {
             messageToSend = concatMessageArgs.toString();
         }
 
-        //noinspection unchecked
-        if(((List<String>) targetPlayerDataManager.get(PlayerDataManager.Attribute.MSG_TALKED_WITH)).contains(player.getUniqueId().toString())) {
-            new NoxetNoteMessage("You have not spoken to this player before. Therefore you can only send one message before they accept your conversation request.").send(player);
+        PlayerDataManager targetPlayerDataManager = new PlayerDataManager(playerToMessage);
 
-            if(pendingConversationConfirmations.containsKey(player)) {
-                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You have already sent an unconfirmed message. Please wait for " + pendingConversationConfirmations.get(player).getName() + " to accept your message - or cancel it - before you can open a new conversation request.").send(player);
+        //noinspection unchecked
+        List<String> playerTalkedWithList = (List<String>) playerDataManager.get(PlayerDataManager.Attribute.MSG_TALKED_WITH);
+
+        //noinspection unchecked
+        if(!((List<String>) targetPlayerDataManager.get(PlayerDataManager.Attribute.MSG_TALKED_WITH)).contains(player.getUniqueId().toString())) {
+            // Target player does not have this player in their conversation list.
+
+            if(playerTalkedWithList.contains(playerToMessage.getUniqueId().toString())) {
+                // This player has the other player in their conversation list.
+                // This means that this player has already taken contact with the target player, and should not be
+                // allowed to contact again until they receive a reply from target.
+
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Please wait for them to reply to your first message before you can send another message.").send(player);
                 return true;
             }
 
@@ -76,31 +103,103 @@ public class MsgConversation implements TabExecutor {
 
             // Create a new message request:
 
-            pendingConversationConfirmations.put(player, playerToMessage);
-
-            new NoxetMessage("§3" + player.getDisplayName() + "§e has sent you a message: §7" + messageToSend + "\n")
+            getConversationMessage(player, MessageDirectionType.INCOMING, messageToSend)
                     .addButton(
-                            "Accept conversation"
+                            "Greet",
+                            ChatColor.GREEN,
+                            "Send a greeting reply and allow them to talk to you",
+                            "msg " + player.getName() + " Greetings!"
                     )
                     .send(playerToMessage);
 
-            // TODO fix conversation invitation buttons (allow, deny); timeout and also delete pending when either leave
+            new NoxetNoteMessage(player.getName() + " just messaged you for the first time.\n" +
+                    "You need to reply first before they can send another message.\n" +
+                    "If you don't want to talk to them, simply ignore their message and they cannot message you again.").send(playerToMessage);
+
+            getConversationMessage(playerToMessage, MessageDirectionType.OUTGOING, messageToSend).send(player);
+
+            new NoxetNoteMessage(playerToMessage.getName() + " needs to reply before you can continue the conversation with them.").send(player);
+            return true;
         }
 
-        // todo more logic here
+        if(!playerTalkedWithList.contains(playerToMessage.getUniqueId().toString())) {
+            // This counts as a reply. Target player has been accepted and conversation created.
+
+            playerTalkedWithList.add(playerToMessage.getUniqueId().toString());
+
+            playerDataManager.set(PlayerDataManager.Attribute.MSG_TALKED_WITH, playerTalkedWithList).save();
+
+            new NoxetSuccessMessage(player.getName() + " accepted the conversation with you. You can now message them.").send(playerToMessage);
+            new NoxetSuccessMessage(playerToMessage.getName() + " can now message you.").send(player);
+        }
+
+        if(messageToSend != null) {
+            // Send message:
+            getConversationMessage(playerToMessage, MessageDirectionType.OUTGOING, messageToSend).send(player);
+            getConversationMessage(player, MessageDirectionType.INCOMING, messageToSend).send(playerToMessage);
+        } else {
+            // Toggle conversation mode:
+            if(playerConversationChannels.remove(player, playerToMessage)) {
+                new NoxetMessage("§cYou exited conversation mode with §f" + playerToMessage + "§c.").send(player);
+                return true;
+            }
+
+            playerConversationChannels.put(player, playerToMessage);
+            new NoxetMessage("§3Entered conversation mode. Messages you send will be messaged to §d" + playerToMessage.getName() + "§3 instead of sending to players in your game.")
+                    .addButton(
+                            "Exit",
+                            ChatColor.RED,
+                            "Exit conversation mode",
+                            "msg " + playerToMessage.getName())
+                    .send(player);
+        }
 
         return true;
     }
 
+    public static void clearActiveConversationModes(Player player) {
+        for(Map.Entry<Player, Player> conversationEntry : playerConversationChannels.entrySet()) {
+            if(player.equals(conversationEntry.getValue()))
+                new NoxetMessage("§eYou exit conversation mode because " + player.getName() + " left.").send(conversationEntry.getKey());
+            else if(!player.equals(conversationEntry.getKey()))
+                continue;
+
+            playerConversationChannels.remove(conversationEntry.getKey());
+        }
+    }
+
     @Override
+    @SuppressWarnings("NullableProblems")
     public List<String> onTabComplete(CommandSender commandSender, Command command, String s, String[] strings) {
         return null;
     }
 
     @SuppressWarnings("unchecked")
     private static boolean mayPlayerChatWithPlayer(Player askingPlayer, Player targetPlayer) {
-        PlayerDataManager playerDataManager = new PlayerDataManager(targetPlayer);
-        return !(boolean) playerDataManager.get(PlayerDataManager.Attribute.MSG_DISABLED) &&
-                !((List<String>) playerDataManager.get(PlayerDataManager.Attribute.MSG_BLOCKED_PLAYERS)).contains(askingPlayer.getUniqueId().toString());
+        PlayerDataManager askingPDM = new PlayerDataManager(askingPlayer),
+                targetPDM = new PlayerDataManager(targetPlayer);
+        return !(boolean) targetPDM.get(PlayerDataManager.Attribute.MSG_DISABLED) &&
+                !(boolean) askingPDM.get(PlayerDataManager.Attribute.MSG_DISABLED) &&
+                !((List<String>) targetPDM.get(PlayerDataManager.Attribute.MSG_BLOCKED_PLAYERS)).contains(askingPlayer.getUniqueId().toString()) &&
+                !((List<String>) askingPDM.get(PlayerDataManager.Attribute.MSG_BLOCKED_PLAYERS)).contains(targetPlayer.getUniqueId().toString());
+    }
+
+    private enum MessageDirectionType {
+        INCOMING, OUTGOING
+    }
+
+    private static NoxetMessage getConversationMessage(Player oppositePlayer, MessageDirectionType direction, String message) {
+        return new NoxetMessage().add(
+                (direction.equals(MessageDirectionType.OUTGOING) ? ("§3→✉ " + TextBeautifier.beautify("to") + "  ") : "§7✉→ " + TextBeautifier.beautify("from")) + " §d" + oppositePlayer.getName() + "§5◇ §f" + message,
+                (direction.equals(MessageDirectionType.OUTGOING) ? "You sent this" : oppositePlayer.getName() + " sent this (use /r <message> to reply)")
+        );
+    }
+
+    @EventHandler
+    public void onAsyncPlayerChat(AsyncPlayerChatEvent e) {
+        if(playerConversationChannels.containsKey(e.getPlayer())) {
+            e.getPlayer().performCommand("msg " + playerConversationChannels.get(e.getPlayer()).getName() + " " + e.getMessage());
+            e.setCancelled(true);
+        }
     }
 }

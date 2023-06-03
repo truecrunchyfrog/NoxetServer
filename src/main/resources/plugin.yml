@@ -59,10 +59,13 @@ commands:
     usage: /unmute <player>
   msg:
     description: Talk privately to a player
-    usage: /msg <player> [message]
+    usage: /msg <player|toggle> [message]
     aliases:
       - message
       - talk
       - tell
       - whisper
       - dm
+  togglepreserve:
+    description: Toggles a preserved world
+    usage: /togglepreserve

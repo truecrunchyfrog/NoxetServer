@@ -23,6 +23,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
+import org.noxet.noxetserver.commands.misc.MsgConversation;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.menus.HubInventory;
 import org.noxet.noxetserver.menus.book.BookMenu;
@@ -44,7 +45,7 @@ public class Events implements Listener {
         CONFIRM_BED_SPAWN("confirm-bed-spawn"),
         UNDERSTAND_ANARCHY("understand-anarchy");
 
-        private String command;
+        private final String command;
         TemporaryCommand(String command) {
             this.command = command;
         }
@@ -62,7 +63,7 @@ public class Events implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerTeleport(PlayerTeleportEvent e) {
         if(e.getTo() != null && e.getFrom().getWorld() != e.getTo().getWorld()) { // Teleporting to another world.
             RealmManager.Realm toRealm = getRealmFromWorld(e.getTo().getWorld());
@@ -104,6 +105,7 @@ public class Events implements Listener {
         Captcha.stopPlayerCaptcha(e.getPlayer());
         TeleportAsk.abortPlayerRelatedRequests(e.getPlayer());
         abortUnconfirmedPlayerRespawn(e.getPlayer());
+        MsgConversation.clearActiveConversationModes(e.getPlayer());
 
         new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§7 left Noxet.org.").broadcast();
         e.setQuitMessage(null);
@@ -111,6 +113,11 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent e) {
+        Realm realm = getCurrentRealm(e.getEntity());
+
+        if(realm == null)
+            return;
+
         Player player = e.getEntity();
 
         migratingPlayers.add(player);
