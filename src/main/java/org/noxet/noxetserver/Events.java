@@ -28,10 +28,7 @@ import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.menus.HubInventory;
 import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
-import org.noxet.noxetserver.messaging.Motd;
-import org.noxet.noxetserver.messaging.NoxetErrorMessage;
-import org.noxet.noxetserver.messaging.NoxetMessage;
-import org.noxet.noxetserver.messaging.TextBeautifier;
+import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 
 import java.util.*;
@@ -86,6 +83,9 @@ public class Events implements Listener {
             new Captcha(e.getPlayer()).init();
             return;
         }
+
+        if(!e.getPlayer().getUniqueId().equals(UsernameStorageManager.getUUIDFromUsernameOrUUID(e.getPlayer().getName())))
+            UsernameStorageManager.assignUUIDToUsername(e.getPlayer().getName(), e.getPlayer().getUniqueId()); // Correct username if changed (either entirely or just by different casing).
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(NoxetServer.getPlugin(), () -> {
             Realm realm = getCurrentRealm(e.getPlayer());
@@ -556,15 +556,27 @@ public class Events implements Listener {
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 0);
 
-            new NoxetMessage("§e§lIMPORTANT!§c You already have a respawn location. Are you sure that you want to replace it?")
-                    .addButton("Replace", ChatColor.YELLOW, "Set this as your new spawn", TemporaryCommand.CONFIRM_BED_SPAWN.getRawCommand())
+            new NoxetWarningMessage("You already have a respawn location. Replace it?")
+                    .addButton("Replace", ChatColor.RED, "Set this as your new spawn", TemporaryCommand.CONFIRM_BED_SPAWN.getRawCommand())
                     .send(e.getPlayer());
+
+            Realm realm = getCurrentRealm(e.getPlayer());
+
+            if(realm != null && realm.doesAllowTeleportationMethods())
+                new NoxetNoteMessage("In " + realm.getDisplayName() + ", you can save locations which you can teleport to, simply with the /home command.")
+                        .addButton(
+                                "Add home here",
+                                ChatColor.GREEN,
+                                "Add a home to easily get here",
+                                "home set ?"
+                        )
+                        .send(e.getPlayer());
 
             new BukkitRunnable() {
                 @Override
                 public void run() {
                     if(unconfirmedPlayerRespawns.remove(e.getPlayer()) != null)
-                        new NoxetMessage("§c§lWARNING! §cYour spawn was NOT changed.");
+                        new NoxetWarningMessage("Your spawn was NOT changed.").send(e.getPlayer());
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 20 * 60);
 

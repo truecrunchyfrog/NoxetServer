@@ -11,6 +11,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.Events;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.UsernameStorageManager;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.messaging.NoxetNoteMessage;
@@ -212,78 +213,82 @@ public class TeleportAsk implements TabExecutor {
         }
 
         if(strings[0].equalsIgnoreCase("block")) {
+            if(strings.length < 2) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing argument: player to TPA block.").send(player);
+                return true;
+            }
+
+            String uuidOrUsername = strings[1];
+
+            UUID uuidToBlock = UsernameStorageManager.getUUIDFromUsernameOrUUID(uuidOrUsername);
+
+            if(uuidToBlock == null) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "A player by the name '" + uuidOrUsername + "' has never played on Noxet.org.").send(player);
+                return true;
+            }
+
+            if(player.getUniqueId().equals(uuidToBlock)) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You cannot block yourself.").send(player);
+                return true;
+            }
+
             List<String> blockedPlayers = getBlockedPlayers(player);
 
-            if(strings.length < 2) {
-                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing player to TPA block.").send(player);
-                return true;
-            }
-
-            Player blockPlayer = NoxetServer.getPlugin().getServer().getPlayer(strings[1]);
-
-            if(blockPlayer == null) {
-                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Invalid player. They must be online.").send(player);
-                return true;
-            }
-
-            if(player.equals(blockPlayer)) {
-                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You can't block yourself!").send(player);
-                return true;
-            }
-
-            if(blockedPlayers.contains(blockPlayer.getUniqueId().toString())) {
+            if(blockedPlayers.contains(uuidToBlock.toString())) {
                 new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You have already blocked this player.").send(player);
                 return true;
             }
 
-            if(requests.remove(blockPlayer, player))
+            Player playerToBlock = NoxetServer.getPlugin().getServer().getPlayer(uuidToBlock);
+            if(playerToBlock != null && requests.remove(playerToBlock, player))
                 new NoxetNoteMessage("Silently denied teleport request.").send(player);
 
-            blockedPlayers.add(blockPlayer.getUniqueId().toString());
+            blockedPlayers.add(uuidToBlock.toString());
             new PlayerDataManager(player).set(PlayerDataManager.Attribute.TPA_BLOCKED_PLAYERS, blockedPlayers).save();
 
-            new NoxetSuccessMessage(blockPlayer.getName() + " can no longer TPA to you.").addButton("Undo", ChatColor.YELLOW, "Unblock", "tpa unblock " + blockPlayer.getName()).send(player);
+            new NoxetSuccessMessage(UsernameStorageManager.getCasedUsernameFromUUID(uuidToBlock) + " can no longer TPA to you.")
+                    .addButton(
+                            "Undo",
+                            ChatColor.YELLOW,
+                            "Unblock",
+                            "tpa unblock " + uuidToBlock.toString())
+                    .send(player);
 
             return true;
         }
 
         if(strings[0].equalsIgnoreCase("unblock")) {
-            List<String> blockedPlayers = getBlockedPlayers(player);
-
             if(strings.length < 2) {
                 new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "You must provide the name of a player to TPA unblock.").send(player);
                 return true;
             }
 
-            String blockName = strings[1];
+            String uuidOrUsername = strings[1];
 
-            for(String blockedPlayerUUID : blockedPlayers) {
-                OfflinePlayer blockedPlayer = NoxetServer.getPlugin().getServer().getOfflinePlayer(UUID.fromString(blockedPlayerUUID));
-                if(
-                        blockName.equals(blockedPlayerUUID) || // Command argument matched as UUID
-                        blockedPlayer.getName().equalsIgnoreCase(blockName)) { // Command argument matched as username
-                    blockedPlayers.remove(blockedPlayerUUID);
-                    new PlayerDataManager(player).set(PlayerDataManager.Attribute.TPA_BLOCKED_PLAYERS, blockedPlayers).save();
+            UUID uuidToUnblock = UsernameStorageManager.getUUIDFromUsernameOrUUID(uuidOrUsername);
 
-                    new NoxetSuccessMessage(blockedPlayer.getName() + " can now TPA to you again.").send(player);
+            List<String> blockedPlayers = getBlockedPlayers(player);
 
-                    return true;
-                }
+            if(!blockedPlayers.remove(uuidToUnblock.toString())) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You have not blocked this player.").send(player);
+                return true;
             }
 
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You have not blocked this player.").send(player);
+            new PlayerDataManager(player).set(PlayerDataManager.Attribute.TPA_BLOCKED_PLAYERS, blockedPlayers).save();
+            new NoxetSuccessMessage(UsernameStorageManager.getCasedUsernameFromUUID(uuidToUnblock) + " can now TPA to you again.").send(player);
+
             return true;
         }
 
-        if(strings[0].equalsIgnoreCase("blocklist")) {
+        if(strings[0].equalsIgnoreCase("block-list")) {
             List<String> blockedPlayers = getBlockedPlayers(player);
 
-            new NoxetMessage("§eYou have blocked " + blockedPlayers.size() + " player(s).").send(player);
+            new NoxetMessage("§eTPA blocked players: " + blockedPlayers.size()).send(player);
 
-            for(String blockedPlayerUUID : blockedPlayers) {
-                OfflinePlayer blockedPlayer = NoxetServer.getPlugin().getServer().getOfflinePlayer(UUID.fromString(blockedPlayerUUID));
-                new NoxetMessage("§c§lBLOCKED §6" + (blockedPlayer.getName() != null ? blockedPlayer.getName() : blockedPlayerUUID)).addButton("Pardon", ChatColor.GREEN, "Unblock this player", "tpa unblock " + blockedPlayerUUID).send(player);
-            }
+            for(String blockedPlayerUUID : blockedPlayers)
+                new NoxetMessage("§c§lBLOCKED §6" + UsernameStorageManager.getCasedUsernameFromUUID(UUID.fromString(blockedPlayerUUID)))
+                        .addButton("Pardon", ChatColor.GREEN, "Unblock this player", "tpa unblock " + blockedPlayerUUID)
+                        .send(player);
 
             return true;
         }
@@ -359,8 +364,8 @@ public class TeleportAsk implements TabExecutor {
         return true;
     }
 
-    public static ArrayList<String> getBlockedPlayers(Player player) {
-        return (ArrayList) new PlayerDataManager(player).get(PlayerDataManager.Attribute.TPA_BLOCKED_PLAYERS);
+    public static List<String> getBlockedPlayers(Player player) {
+        return (List<String>) new PlayerDataManager(player).get(PlayerDataManager.Attribute.TPA_BLOCKED_PLAYERS);
     }
 
     public static void abortPlayerRelatedRequests(Player player) {
@@ -386,7 +391,7 @@ public class TeleportAsk implements TabExecutor {
         List<String> completions = new ArrayList<>();
 
         if(strings.length == 1) {
-            completions.addAll(Arrays.asList("cancel", "accept", "deny", "list", "block", "unblock", "blocklist"));
+            completions.addAll(Arrays.asList("cancel", "accept", "deny", "list", "block", "unblock", "block-list"));
 
             RealmManager.Realm realm = RealmManager.getCurrentRealm(player);
 

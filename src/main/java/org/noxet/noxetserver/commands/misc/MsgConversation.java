@@ -8,14 +8,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
+import org.noxet.noxetserver.UsernameStorageManager;
 import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class MsgConversation implements TabExecutor, Listener {
     public MsgConversation() {
@@ -47,7 +45,94 @@ public class MsgConversation implements TabExecutor, Listener {
 
             playerDataManager.set(PlayerDataManager.Attribute.MSG_DISABLED, !isMsgDisabled).save();
 
-            new NoxetSuccessMessage("Noxet direct messaging was " + (!isMsgDisabled ? "enabled (you can now /msg players)" : "disabled (you can no longer /msg players)") + ".").send(player);
+            new NoxetSuccessMessage("Noxet direct messaging was " + (isMsgDisabled ? "enabled (you can now /msg players)" : "disabled (you can no longer /msg players)") + ".").send(player);
+
+            return true;
+        }
+
+        if(strings[0].equalsIgnoreCase("block")) {
+            if(strings.length < 2) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing argument: player to block.").send(player);
+                return true;
+            }
+
+            String uuidOrUsername = strings[1];
+
+            UUID uuidToBlock = UsernameStorageManager.getUUIDFromUsernameOrUUID(uuidOrUsername);
+
+            if(uuidToBlock == null) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "A player by the name '" + uuidOrUsername + "' has never played on Noxet.org.").send(player);
+                return true;
+            }
+
+            if(uuidToBlock.equals(player.getUniqueId())) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You cannot block yourself.").send(player);
+                return true;
+            }
+
+            @SuppressWarnings("unchecked")
+            List<String> blockedUUIDs = (List<String>) playerDataManager.get(PlayerDataManager.Attribute.MSG_BLOCKED_PLAYERS);
+
+            if(blockedUUIDs.contains(uuidToBlock.toString())) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You have already blocked this player from messaging you.").send(player);
+                return true;
+            }
+
+            if(blockedUUIDs.size() >= 500) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You cannot block more than 500 players. How did we get here?").send(player);
+                return true;
+            }
+
+            blockedUUIDs.add(uuidToBlock.toString());
+
+            playerDataManager.set(PlayerDataManager.Attribute.MSG_BLOCKED_PLAYERS, blockedUUIDs).save();
+
+            new NoxetSuccessMessage("Blocked player " + UsernameStorageManager.getCasedUsernameFromUUID(uuidToBlock) + ". They can no longer message you.").send(player);
+
+            return true;
+        }
+
+        if(strings[0].equalsIgnoreCase("unblock")) {
+            if(strings.length < 2) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing argument: player to unblock.").send(player);
+                return true;
+            }
+
+            String uuidOrUsername = strings[1];
+
+            UUID uuidToUnblock = UsernameStorageManager.getUUIDFromUsernameOrUUID(uuidOrUsername);
+
+            if(uuidToUnblock == null) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "A player by the name '" + uuidOrUsername + "' has never played on Noxet.org.").send(player);
+                return true;
+            }
+
+            @SuppressWarnings("unchecked")
+            List<String> blockedUUIDs = (List<String>) playerDataManager.get(PlayerDataManager.Attribute.MSG_BLOCKED_PLAYERS);
+
+            if(!blockedUUIDs.remove(uuidToUnblock.toString())) {
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You have not blocked this player.").send(player);
+                return true;
+            }
+
+            playerDataManager.set(PlayerDataManager.Attribute.MSG_BLOCKED_PLAYERS, blockedUUIDs).save();
+
+            new NoxetSuccessMessage("Unblocked player " + UsernameStorageManager.getCasedUsernameFromUUID(uuidToUnblock) + ". They can message you again.").send(player);
+
+            return true;
+        }
+
+        if(strings[0].equalsIgnoreCase("block-list")) {
+            @SuppressWarnings("unchecked")
+            List<String> blockedUUIDs = (List<String>) playerDataManager.get(PlayerDataManager.Attribute.MSG_BLOCKED_PLAYERS);
+
+            new NoxetMessage("§eBlocked players: " + blockedUUIDs.size()).send(player);
+
+            for(String blockedUUID : blockedUUIDs) {
+                String realUsername = UsernameStorageManager.getCasedUsernameFromUUID(UUID.fromString(blockedUUID));
+                String useIdentifier = realUsername != null ? realUsername : blockedUUID;
+                new NoxetMessage("§c§lBLOCKED§e " + useIdentifier).addButton("Pardon", ChatColor.GREEN, "Unblock this player", "msg unblock " + useIdentifier).send(player);
+            }
 
             return true;
         }
@@ -81,10 +166,10 @@ public class MsgConversation implements TabExecutor, Listener {
         PlayerDataManager targetPlayerDataManager = new PlayerDataManager(playerToMessage);
 
         //noinspection unchecked
-        List<String> playerTalkedWithList = (List<String>) playerDataManager.get(PlayerDataManager.Attribute.MSG_TALKED_WITH);
+        List<String> playerTalkedWithList = (List<String>) playerDataManager.get(PlayerDataManager.Attribute.MSG_SPOKEN_TO);
 
         //noinspection unchecked
-        if(!((List<String>) targetPlayerDataManager.get(PlayerDataManager.Attribute.MSG_TALKED_WITH)).contains(player.getUniqueId().toString())) {
+        if(!((List<String>) targetPlayerDataManager.get(PlayerDataManager.Attribute.MSG_SPOKEN_TO)).contains(player.getUniqueId().toString())) {
             // Target player does not have this player in their conversation list.
 
             if(playerTalkedWithList.contains(playerToMessage.getUniqueId().toString())) {
@@ -127,7 +212,7 @@ public class MsgConversation implements TabExecutor, Listener {
 
             playerTalkedWithList.add(playerToMessage.getUniqueId().toString());
 
-            playerDataManager.set(PlayerDataManager.Attribute.MSG_TALKED_WITH, playerTalkedWithList).save();
+            playerDataManager.set(PlayerDataManager.Attribute.MSG_SPOKEN_TO, playerTalkedWithList).save();
 
             new NoxetSuccessMessage(player.getName() + " accepted the conversation with you. You can now message them.").send(playerToMessage);
             new NoxetSuccessMessage(playerToMessage.getName() + " can now message you.").send(player);
@@ -171,7 +256,39 @@ public class MsgConversation implements TabExecutor, Listener {
     @Override
     @SuppressWarnings("NullableProblems")
     public List<String> onTabComplete(CommandSender commandSender, Command command, String s, String[] strings) {
-        return null;
+        if(!(commandSender instanceof Player))
+            return null;
+
+        List<String> completions = new ArrayList<>();
+
+        if(strings.length == 1) {
+            if(strings[0].isEmpty())
+                new NoxetMessage("§5Enter a player to message, or an action from the shown menu.").send(commandSender);
+
+            Player playerToRecommend = NoxetServer.getPlugin().getServer().getPlayer(strings[0]);
+
+            if(playerToRecommend != null)
+                completions.add(playerToRecommend.getName());
+
+            completions.addAll(Arrays.asList("toggle", "block", "unblock", "block-list"));
+        } else if(strings.length == 2) {
+            switch(strings[0].toLowerCase()) {
+                case "toggle":
+                case "block":
+                case "block-list":
+                    break;
+                case "unblock":
+                    @SuppressWarnings("unchecked")
+                    List<String> blockedPlayers = (List<String>) new PlayerDataManager((Player) commandSender).get(PlayerDataManager.Attribute.MSG_BLOCKED_PLAYERS);
+                    for(String blockedUUID : blockedPlayers)
+                        completions.add(UsernameStorageManager.getCasedUsernameFromUUID(UUID.fromString(blockedUUID)));
+                    break;
+                default:
+                    new NoxetMessage("§5Enter a message to send to §f" + strings[0] + "§5:").send(commandSender);
+            }
+        }
+
+        return completions;
     }
 
     @SuppressWarnings("unchecked")

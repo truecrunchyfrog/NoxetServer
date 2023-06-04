@@ -8,6 +8,7 @@ import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.Events;
 import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.menus.chat.ChatPromptMenu;
 import org.noxet.noxetserver.menus.inventory.HomeNavigationMenu;
 import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
@@ -16,7 +17,7 @@ import org.noxet.noxetserver.util.TeleportUtil;
 import java.util.*;
 
 public class Home implements TabExecutor {
-    private static final String defaultHomeName = "my-home";
+    public static final String defaultHomeName = "main";
 
     @Override
     @SuppressWarnings("ALL")
@@ -60,7 +61,7 @@ public class Home implements TabExecutor {
                 Location homeLocation = realmHomes.get(homeName);
 
                 if(homeLocation == null) {
-                    new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You do not have a home saved by this name.").addButton("List homes", ChatColor.YELLOW, "See your saved homes", "home list").send(player);
+                    new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You do not have a home saved by the name '" + homeName + "'.").addButton("List homes", ChatColor.YELLOW, "See your saved homes", "home list").send(player);
                     return true;
                 }
 
@@ -100,6 +101,11 @@ public class Home implements TabExecutor {
                     new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Sorry, you could not be teleported to your home. Please report this.").send(player);
                 break;
             case "set":
+                if(homeName.equals("?")) {
+                    new ChatPromptMenu("home name", player, promptResponse -> player.performCommand("home set " + promptResponse.getMessage()));
+                    return true;
+                }
+
                 if(realmHomes.containsKey(homeName) && !(strings.length >= 3 && strings[2].equalsIgnoreCase("overwrite"))) {
                     new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You have already saved a home as '" + homeName + "'.").addButton("Overwrite", ChatColor.RED, "Overwrite your existing home by this name", "home set " + homeName + " overwrite").send(player);
                     return true;

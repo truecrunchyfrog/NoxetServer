@@ -30,7 +30,7 @@ commands:
       - touch-grass
   tpa:
     description: Send/accept/deny/cancel a teleportation request to/from a player
-    usage: /tpa <player|cancel|accept|deny> [player|*]
+    usage: /tpa <player|cancel|accept|deny|block|unblock|block-list> [player|*]
   whereami:
     description: Check what world and realm you are in
     usage: /whereami
