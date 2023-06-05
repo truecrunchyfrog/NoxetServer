@@ -284,7 +284,8 @@ public class MsgConversation implements TabExecutor, Listener {
                         completions.add(UsernameStorageManager.getCasedUsernameFromUUID(UUID.fromString(blockedUUID)));
                     break;
                 default:
-                    new NoxetMessage("§5Enter a message to send to §f" + strings[0] + "§5:").send(commandSender);
+                    if(strings[1].isEmpty())
+                        new NoxetMessage("§5Enter a message to send to §f" + strings[0] + "§5:").send(commandSender);
             }
         }
 

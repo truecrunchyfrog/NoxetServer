@@ -62,6 +62,10 @@ public class PlayerDataManager {
         configCache.put(uuid, config.saveToString());
     }
 
+    public static void clearCacheForUUID(UUID uuid) {
+        configCache.remove(uuid);
+    }
+
     private static YamlConfiguration getConfig(UUID uuid) {
         if(configCache.containsKey(uuid))
             return YamlConfiguration.loadConfiguration(new StringReader(configCache.get(uuid)));

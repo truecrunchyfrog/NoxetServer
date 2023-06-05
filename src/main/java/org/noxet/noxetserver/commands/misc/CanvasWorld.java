@@ -1,4 +1,4 @@
-package org.noxet.noxetserver.commands.anarchy;
+package org.noxet.noxetserver.commands.misc;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -9,16 +9,21 @@ import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 
 import static org.noxet.noxetserver.RealmManager.migrateToRealm;
 
-@SuppressWarnings("ALL")
-public class Anarchy implements CommandExecutor {
+public class CanvasWorld implements CommandExecutor {
     @Override
+    @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
-        if(!(commandSender instanceof Player)) {
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Only players can be sent to the Anarchy server.").send(commandSender);
+        if(!commandSender.isOp()) {
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.PERMISSION, "Only operators can do this.").send(commandSender);
             return true;
         }
 
-        migrateToRealm((Player) commandSender, RealmManager.Realm.ANARCHY);
+        if(!(commandSender instanceof Player)) {
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Only players can do this.").send(commandSender);
+            return true;
+        }
+
+        migrateToRealm((Player) commandSender, RealmManager.Realm.CANVAS);
 
         return true;
     }

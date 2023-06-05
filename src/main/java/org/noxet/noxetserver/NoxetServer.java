@@ -34,7 +34,9 @@ public final class NoxetServer extends JavaPlugin {
         SMP_END("smp_end", RealmManager.Realm.SMP, false, false, WorldFlag.END),
         ANARCHY_WORLD("anarchy", RealmManager.Realm.ANARCHY, false, false, WorldFlag.OVERWORLD),
         ANARCHY_NETHER("anarchy_nether", RealmManager.Realm.ANARCHY, false, false, WorldFlag.NETHER),
-        ANARCHY_END("anarchy_end", RealmManager.Realm.ANARCHY, false, false, WorldFlag.END);
+        ANARCHY_END("anarchy_end", RealmManager.Realm.ANARCHY, false, false, WorldFlag.END),
+
+        CANVAS_WORLD("canvas", RealmManager.Realm.CANVAS, false, false, WorldFlag.NEUTRAL);
 
         private final String worldName;
         private final RealmManager.Realm realm;
@@ -123,9 +125,13 @@ public final class NoxetServer extends JavaPlugin {
 
         Objects.requireNonNull(getCommand("msg")).setExecutor(new MsgConversation());
 
-        Objects.requireNonNull(getCommand("togglepreserve")).setExecutor(new TogglePreserve());
+        Objects.requireNonNull(getCommand("toggle-preserve")).setExecutor(new TogglePreserve());
 
-        logInfo("Noxet plugin is ready!");
+        Objects.requireNonNull(getCommand("canvas-world")).setExecutor(new CanvasWorld());
+
+        Objects.requireNonNull(getCommand("loop")).setExecutor(new Loop());
+
+        logInfo("Noxet plugin is ready.");
     }
 
     @Override

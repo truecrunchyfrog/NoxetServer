@@ -66,6 +66,12 @@ commands:
       - tell
       - whisper
       - dm
-  togglepreserve:
+  toggle-preserve:
     description: Toggles a preserved world
-    usage: /togglepreserve
+    usage: /toggle-preserve
+  canvas-world:
+    description: Go to creative world
+    usage: /creative-world
+  loop:
+    description: Repeat a command an amount of times
+    usage: /loop <amount> <command> [args...]

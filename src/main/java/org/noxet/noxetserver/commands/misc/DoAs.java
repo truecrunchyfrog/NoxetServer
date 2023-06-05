@@ -18,6 +18,7 @@ import java.util.List;
 
 public class DoAs implements TabExecutor {
     @Override
+    @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!commandSender.isOp()) {
             new NoxetErrorMessage(NoxetErrorMessage.ErrorType.PERMISSION, "You must be an operator to impersonate players.").send(commandSender);
@@ -60,6 +61,7 @@ public class DoAs implements TabExecutor {
     }
 
     @Override
+    @SuppressWarnings("NullableProblems")
     public List<String> onTabComplete(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!commandSender.isOp())
             return null;

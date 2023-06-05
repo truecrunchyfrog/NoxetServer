@@ -24,9 +24,10 @@ public class PlayerState {
      * The different player state types. Every player can save one state in each state type.
      */
     public enum PlayerStateType {
-        GLOBAL,
+        GLOBAL, // Outside realms
         SMP,
-        ANARCHY
+        ANARCHY,
+        CANVAS
     }
 
     /**

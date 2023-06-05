@@ -112,30 +112,33 @@ public class Captcha {
         bukkitTasks.add(new BukkitRunnable() {
             @Override
             public void run() {
-                new NoxetMessage("§e§nBefore we let you in to the server, we must confirm that you are human.").send(player);
+                new ClearChat().send(player);
+                new NoxetMessage("§eBefore we let you in to the server, we must confirm that you are human.").send(player);
             }
         }.runTaskLater(NoxetServer.getPlugin(), 20));
 
         bukkitTasks.add(new BukkitRunnable() {
             @Override
             public void run() {
+                new ClearChat().send(player);
                 new NoxetMessage("§bYou will hear a few sounds. For each sound, answer what you heard.").send(player);
             }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * (1 + 7)));
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * (1 + 8)));
 
         bukkitTasks.add(new BukkitRunnable() {
             @Override
             public void run() {
+                new ClearChat().send(player);
                 new NoxetMessage("§9§oUnable to hear sounds? Enable Minecraft Subtitles in the sound options.").send(player);
             }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * (1 + 7 + 5)));
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * (1 + 8 + 5)));
 
         bukkitTasks.add(new BukkitRunnable() {
             @Override
             public void run() {
                 nextQuestion(0);
             }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * (1 + 7 + 5 + 5)));
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * (1 + 8 + 5 + 5)));
     }
 
     private void nextQuestion(int index) {
@@ -198,7 +201,15 @@ public class Captcha {
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1, 0.5f);
 
             if(lastQuestion < totalQuestions - 1) {
-                player.sendTitle("§2§lCORRECT", "§fPrepare for a new sound.", 0, 80, 0);
+                for(int i = 60; i > 0; i -= 20) {
+                    int finalI = i;
+                    bukkitTasks.add(new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            player.sendTitle("§2§lCORRECT", "§a" + (lastQuestion != totalQuestions - 2 ? "Another" : "Last") + " sound in §f" + finalI / 20 + "§as...", 0, 40, 0);
+                        }
+                    }.runTaskLater(NoxetServer.getPlugin(), 60 - i));
+                }
 
                 bukkitTasks.add(new BukkitRunnable() {
                     @Override
@@ -220,7 +231,7 @@ public class Captcha {
     public void finish() {
         stop();
 
-        new NoxetMessage("§a§nYou answered correctly and will now continue to the Noxet.org server.").send(player);
+        new NoxetMessage("§aYou answered correctly and will now continue to the server.").send(player);
 
         player.sendTitle("§a§lDone", "§eYou seem human enough.", 0, 60, 0);
 

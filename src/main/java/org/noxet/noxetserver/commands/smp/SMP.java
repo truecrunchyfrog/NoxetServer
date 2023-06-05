@@ -18,8 +18,7 @@ public class SMP implements CommandExecutor {
             return true;
         }
 
-        Player player = (Player) commandSender;
-        migrateToRealm(player, RealmManager.Realm.SMP);
+        migrateToRealm((Player) commandSender, RealmManager.Realm.SMP);
 
         return true;
     }

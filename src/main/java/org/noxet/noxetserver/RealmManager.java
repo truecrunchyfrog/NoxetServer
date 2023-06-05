@@ -40,7 +40,8 @@ public class RealmManager {
                                 .append(new ComponentBuilder("§2§l■ Thanks, I'll remember this.").event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, Events.TemporaryCommand.UNDERSTAND_ANARCHY.getSlashCommand())).event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Close this warning"))).create()).create()
                 )).openMenu(player);
             }
-        });
+        }),
+        CANVAS("Canvas", PlayerStateType.CANVAS, true, null);
 
         private final String displayName;
         private final PlayerStateType playerStateType;
@@ -179,11 +180,9 @@ public class RealmManager {
         if(toRealm != null) { // Destination is a realm.
             Events.setTemporaryInvulnerability(player);
 
-            boolean teleportToSpawn = !PlayerState.hasState(player, toRealm.getPlayerStateType());
-
             PlayerState.restoreState(player, toRealm.getPlayerStateType()); // Restores player state (including initial reset), and teleports to last location (in a world belonging to the realm).
 
-            if(teleportToSpawn)
+            if(!PlayerState.hasState(player, toRealm.getPlayerStateType()))
                 player.teleport(Objects.requireNonNull(toRealm.getSpawnLocation())); // Teleport to spawn (first join).
 
             toRealm.onMigration(player);

@@ -9,6 +9,8 @@ import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.*;
 import org.bukkit.block.data.type.Bed;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -60,9 +62,15 @@ public class Events implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler
     public void onPlayerTeleport(PlayerTeleportEvent e) {
-        if(e.getTo() != null && e.getFrom().getWorld() != e.getTo().getWorld()) { // Teleporting to another world.
+        if(e.getTo() != null && e.getFrom().getWorld() != e.getTo().getWorld() && e.getTo().getWorld() != null) { // Teleporting to another world.
+            if(e.getTo().getWorld().getName().equalsIgnoreCase("world")) {
+                goToHub(e.getPlayer());
+                e.setCancelled(true);
+                return;
+            }
+
             RealmManager.Realm toRealm = getRealmFromWorld(e.getTo().getWorld());
 
             migrateToRealm(e.getPlayer(), toRealm); // Migrator will send the player to spawn or last location in realm.
@@ -74,7 +82,7 @@ public class Events implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) {
         new NoxetMessage("§3§lWELCOME TO §b§lNOXET.ORG NETWORK§3§l!").send(e.getPlayer());
-        new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§7 joined Noxet.org.").broadcast();
+        new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§d joined the Noxet.org Network.").broadcast();
         e.setJoinMessage(null);
 
         PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
@@ -106,6 +114,7 @@ public class Events implements Listener {
         TeleportAsk.abortPlayerRelatedRequests(e.getPlayer());
         abortUnconfirmedPlayerRespawn(e.getPlayer());
         MsgConversation.clearActiveConversationModes(e.getPlayer());
+        PlayerDataManager.clearCacheForUUID(e.getPlayer().getUniqueId());
 
         new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§7 left Noxet.org.").broadcast();
         e.setQuitMessage(null);
@@ -114,6 +123,9 @@ public class Events implements Listener {
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent e) {
         Realm realm = getCurrentRealm(e.getEntity());
+
+        String deathMessage = e.getDeathMessage();
+        e.setDeathMessage(null);
 
         if(realm == null)
             return;
@@ -139,8 +151,7 @@ public class Events implements Listener {
             }
         }, 2);
 
-        new NoxetMessage("§c" + e.getDeathMessage() + ".").send(getCurrentRealm(player));
-        e.setDeathMessage(null);
+        new NoxetMessage("§c" + deathMessage + ".").send(getCurrentRealm(player));
     }
 
     @EventHandler
@@ -158,6 +169,11 @@ public class Events implements Listener {
     }
 
     @EventHandler
+    public void onPlayerAdvancementDone(PlayerAdvancementDoneEvent e) {
+        e.getPlayer().getWorld().setGameRule(GameRule.ANNOUNCE_ADVANCEMENTS, false);
+    }
+
+    @EventHandler
     public void onServerListPing(ServerListPingEvent e) {
         e.setMotd(Motd.generateMotd());
     }
@@ -170,47 +186,7 @@ public class Events implements Listener {
         if(Captcha.isPlayerDoingCaptcha(e.getPlayer()))
             return;
 
-        if(e.getPlayer().isOp() && e.getMessage().startsWith("!:")) {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    String amountAndCommand = e.getMessage().substring(2);
-
-                    if(amountAndCommand.indexOf(' ') == -1) {
-                        new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing command.").send(e.getPlayer());
-                        return;
-                    }
-
-                    int amount;
-
-                    try {
-                        amount = Integer.parseInt(amountAndCommand.substring(0, amountAndCommand.indexOf(' ')));
-                    } catch(NumberFormatException e1) {
-                        new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Syntax: '!:5 summon giant' to repeat command 'summon giant' 5 times.").send(e.getPlayer());
-                        return;
-                    }
-
-                    if(amount < 1 || amount > 100) {
-                        new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Amount must be within 1-100 (inclusive).").send(e.getPlayer());
-                        return;
-                    }
-
-                    String command = amountAndCommand.substring(amountAndCommand.indexOf(' ') + 1);
-
-                    for(int i = 0; i < amount; i++)
-                        e.getPlayer().performCommand(command);
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 0);
-            return;
-        }
-
-
         if(shouldSend) {
-            NoxetMessage message = new NoxetMessage(
-                    "§7" + e.getPlayer().getDisplayName() + "§8→ §f" + e.getMessage());
-            message.skipPrefix();
-            Realm realm = getCurrentRealm(e.getPlayer());
-
             PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
 
             if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE)) {
@@ -230,6 +206,14 @@ public class Events implements Listener {
                 new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You are muted, and cannot chat at the moment!").send(e.getPlayer());
                 return;
             }
+
+            Realm realm = getCurrentRealm(e.getPlayer());
+
+            String channelName = realm != null ? realm.getDisplayName() : (NoxetServer.ServerWorld.HUB.getWorld().equals(e.getPlayer().getWorld()) ? "HUB" : null);
+
+            NoxetMessage message = new NoxetMessage(
+                    (channelName != null ? "§7" + TextBeautifier.beautify(channelName) + "§8⏵ " : "") + "§3" + e.getPlayer().getDisplayName() + "§8→ §f" + e.getMessage());
+            message.skipPrefix();
 
             if(realm != null)
                 message.send(realm);
@@ -283,9 +267,9 @@ public class Events implements Listener {
             if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE)) {
                 new BookMenu(Collections.singletonList(
                         new ComponentBuilder(
-                                "§8Welcome to the §b" + TextBeautifier.beautify("noxet") + "§8 chat.\n" +
+                                "§8Welcome to the §3" + TextBeautifier.beautify("noxet") + "§8 chat.\n" +
                                     "Each realm has its own chat channel.\n" +
-                                    "You can still §l/msg§8 players outside of your realm.\n" +
+                                    "You can still §0/msg§8 players outside of your realm.\n" +
                                     "Make sure that you follow our rules!\n\n")
                                 .append(new ComponentBuilder("§2§l■ I have read and understood this.").event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, TemporaryCommand.UNDERSTAND_CHAT.getSlashCommand())).event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Close this warning"))).create()).create()
                 )).openMenu(e.getPlayer());
@@ -304,23 +288,23 @@ public class Events implements Listener {
         }
     }
 
-    private static final Set<Player> boostingCooldownedPlayers = new HashSet<>();
-
     @EventHandler
-    public void onPlayerFly(PlayerToggleFlightEvent e) {
+    public void onPlayerToggleFlight(PlayerToggleFlightEvent e) {
         if(e.isFlying() && e.getPlayer().getWorld() == NoxetServer.ServerWorld.HUB.getWorld() && e.getPlayer().getGameMode() == GameMode.SURVIVAL) {
-            if(!boostingCooldownedPlayers.contains(e.getPlayer()) && e.getPlayer().getLocation().getY() < e.getPlayer().getWorld().getSpawnLocation().getY() + 40) {
-                boostingCooldownedPlayers.add(e.getPlayer());
+            if(Math.abs(e.getPlayer().getVelocity().getY()) < 0.334 && e.getPlayer().getLocation().getY() < e.getPlayer().getWorld().getSpawnLocation().getY() + 40) {
+                e.getPlayer().playSound(e.getPlayer().getLocation(), Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1, (float) (Math.random() * 1.5 + 0.5));
+                e.getPlayer().setVelocity(new Vector(0, 1, 0).add(e.getPlayer().getLocation().getDirection().multiply(4)));
+
+                Entity projectile = e.getPlayer().getWorld().spawnEntity(e.getPlayer().getLocation().add(0, 1, 0), EntityType.ARROW);
+                projectile.setVelocity(e.getPlayer().getVelocity().multiply(1.5));
+                projectile.setGlowing(true);
 
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        boostingCooldownedPlayers.remove(e.getPlayer());
+                        projectile.remove();
                     }
                 }.runTaskLater(NoxetServer.getPlugin(), 40);
-
-                e.getPlayer().playSound(e.getPlayer().getLocation(), Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1, 0.5f);
-                e.getPlayer().setVelocity(new Vector(0, 1, 0).add(e.getPlayer().getLocation().getDirection().multiply(2)));
             }
 
             e.setCancelled(true);
@@ -452,14 +436,12 @@ public class Events implements Listener {
 
     @EventHandler
     public void onEntityDamage(EntityDamageEvent e) {
-        if(e.getEntity() instanceof Player) {
-            if(NoxetServer.isWorldSafeZone(e.getEntity().getWorld())) {
-                if(e.getCause() == EntityDamageEvent.DamageCause.VOID && e.getEntity().getLocation().getY() < e.getEntity().getWorld().getMinHeight())
-                    goToSpawn((Player) e.getEntity());
-                e.setCancelled(true);
-            } else if(invulnerablePlayers.contains((Player) e.getEntity())) {
-                e.setCancelled(true);
-            }
+        if(NoxetServer.isWorldSafeZone(e.getEntity().getWorld())) {
+            if(e.getEntity() instanceof Player && e.getCause() == EntityDamageEvent.DamageCause.VOID && e.getEntity().getLocation().getY() < e.getEntity().getWorld().getMinHeight())
+                goToSpawn((Player) e.getEntity());
+            e.setCancelled(true);
+        } else if(e.getEntity() instanceof Player && invulnerablePlayers.contains((Player) e.getEntity())) {
+            e.setCancelled(true);
         }
     }
 
@@ -578,7 +560,7 @@ public class Events implements Listener {
                     if(unconfirmedPlayerRespawns.remove(e.getPlayer()) != null)
                         new NoxetWarningMessage("Your spawn was NOT changed.").send(e.getPlayer());
                 }
-            }.runTaskLater(NoxetServer.getPlugin(), 20 * 60);
+            }.runTaskLater(NoxetServer.getPlugin(), 20 * 30);
 
             e.setCancelled(true);
         }

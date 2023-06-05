@@ -35,7 +35,7 @@ public class NoxetMessage {
     }
 
     public String getMessagePrefix() {
-        return "§bɴo§3§lx§bᴇᴛ §8§l| ";
+        return "§b" + TextBeautifier.beautify("no") + "§3§lx§b" + TextBeautifier.beautify("et") + " §8§l| ";
     }
 
     private TextComponent getBakedMessage() {

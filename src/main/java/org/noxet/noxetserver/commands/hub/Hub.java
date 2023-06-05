@@ -17,8 +17,7 @@ public class Hub implements CommandExecutor {
             return true;
         }
 
-        Player player = (Player) commandSender;
-        goToHub(player);
+        goToHub((Player) commandSender);
 
         return true;
     }
