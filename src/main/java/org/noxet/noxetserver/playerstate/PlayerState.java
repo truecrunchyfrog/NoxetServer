@@ -148,15 +148,6 @@ public class PlayerState {
     }
 
     /**
-     * Works the same as saveState, but it detects the state type automatically.
-     * @param player The player whose state should be saved to disk
-     */
-    public static void saveStateAuto(Player player) {
-        RealmManager.Realm realm = getCurrentRealm(player);
-        saveState(player, realm != null ? realm.getPlayerStateType() : PlayerStateType.GLOBAL);
-    }
-
-    /**
      * Reset a player's state to "factory" settings.
      * @param player The player to reset
      */
