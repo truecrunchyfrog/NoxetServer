@@ -7,7 +7,6 @@ import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
-import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.messaging.NoxetSuccessMessage;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 

@@ -1,7 +1,6 @@
 package org.noxet.noxetserver.commands.teleportation;
 
 import net.md_5.bungee.api.ChatColor;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.Particle;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;

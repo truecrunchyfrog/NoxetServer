@@ -7,7 +7,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.menus.HubInventory;
 
 import java.io.File;
@@ -15,8 +14,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
-import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
 
 public class PlayerState {
 
