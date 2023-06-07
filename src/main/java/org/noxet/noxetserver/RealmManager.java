@@ -1,10 +1,8 @@
 package org.noxet.noxetserver;
 
-import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -29,30 +27,70 @@ public class RealmManager {
      * Contains all registered realms and their properties.
      */
     public enum Realm {
-        SMP("SMP", PlayerStateType.SMP, true, null),
+        SMP("SMP", PlayerStateType.SMP, true, null, null),
         ANARCHY("Anarchy Island", PlayerStateType.ANARCHY, false, player -> {
-            if(!(boolean) new PlayerDataManager(player).get(PlayerDataManager.Attribute.HAS_UNDERSTOOD_ANARCHY)) {
-                new BookMenu(Collections.singletonList(
+            if(!hasPlayerUnderstoodAnarchy(player)) {
+                Realm realmBefore = getCurrentRealm(player); // We know this is Realm.ANARCHY, but it is not yet defined in this scope.
+
+                BookMenu bookMenu = new BookMenu(Collections.singletonList(
                         new ComponentBuilder(
                                 "§8Cheats are allowed in the §cAnarchy Island§8 realm and §lONLY§8 there!\n" +
                                         "Using cheats outside of this realm will get you banned.\n" +
                                         "§cMalicious cheats (that produce lag, spam, etc.) are not allowed.\n\n")
                                 .append(new ComponentBuilder("§2§l■ Thanks, I'll remember this.").event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, Events.TemporaryCommand.UNDERSTAND_ANARCHY.getSlashCommand())).event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Close this warning"))).create()).create()
-                )).openMenu(player);
+                ));
+
+                Events.setTemporaryInvulnerability(player, 25);
+
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        if(
+                                player.isOnline() &&
+                                realmBefore.equals(getCurrentRealm(player)) &&
+                                !hasPlayerUnderstoodAnarchy(player)
+                        )
+                            bookMenu.openMenu(player);
+                        else
+                            this.cancel();
+                    }
+                }.runTaskTimer(NoxetServer.getPlugin(), 20, 20);
+
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        if(
+                            player.isOnline() &&
+                            realmBefore.equals(getCurrentRealm(player)) &&
+                            !hasPlayerUnderstoodAnarchy(player)
+                        )
+                            player.kickPlayer("§cYou did not confirm.");
+                    }
+                }.runTaskLater(NoxetServer.getPlugin(), 20 * 25);
             }
+        }, player -> {
+            Events.setPlayerRecentlyKickedToRemoveCheats(player.getUniqueId());
+            player.kickPlayer(
+                    "§a☺ This is just a helping friendly reminder. You are §nnot§a banned.\n\n" +
+                    "§7⚠ §lEXITING ANARCHISTIC REGION §7⚠\n" +
+                    "§c" + TextBeautifier.beautify("You were disconnected because you left Anarchy Island.") + "\n" +
+                    TextBeautifier.beautify("Cheats are not allowed where you are heading.") + "\n" +
+                    "§e" + TextBeautifier.beautify("Close any advantage-granting modifications before rejoining our server, to avoid a ban.")
+            );
         }),
-        CANVAS("Canvas", PlayerStateType.CANVAS, true, null);
+        CANVAS("Canvas", PlayerStateType.CANVAS, true, null, null);
 
         private final String displayName;
         private final PlayerStateType playerStateType;
         private final boolean allowTeleportationMethods;
-        private final Consumer<Player> onMigrateTo;
+        private final Consumer<Player> onMigrateToCallback, onMigrateFromCallback;
 
-        Realm(String displayName, PlayerStateType playerStateType, boolean allowTeleportationMethods, Consumer<Player> onMigrateTo) {
+        Realm(String displayName, PlayerStateType playerStateType, boolean allowTeleportationMethods, Consumer<Player> onMigrateToCallback, Consumer<Player> onMigrateFromCallback) {
             this.displayName = displayName;
             this.playerStateType = playerStateType;
             this.allowTeleportationMethods = allowTeleportationMethods;
-            this.onMigrateTo = onMigrateTo;
+            this.onMigrateToCallback = onMigrateToCallback;
+            this.onMigrateFromCallback = onMigrateFromCallback;
         }
 
         public PlayerStateType getPlayerStateType() {
@@ -68,6 +106,10 @@ public class RealmManager {
         }
 
         public Location getSpawnLocation() {
+            Location tailoredLocation = new RealmDataManager().getSpawnLocation(this);
+            if(tailoredLocation != null)
+                return tailoredLocation;
+
             World neutralWorld = getWorld(NoxetServer.WorldFlag.NEUTRAL);
             if(neutralWorld != null)
                 return neutralWorld.getSpawnLocation();
@@ -100,9 +142,11 @@ public class RealmManager {
             return players;
         }
 
-        public void onMigration(Player player) {
-            if(onMigrateTo != null)
-                onMigrateTo.accept(player);
+        public void onMigration(Player player, boolean to) {
+            if(to && onMigrateToCallback != null)
+                onMigrateToCallback.accept(player);
+            else if(!to && onMigrateFromCallback != null)
+                onMigrateFromCallback.accept(player);
         }
 
         public int getPlayerCount() {
@@ -162,6 +206,7 @@ public class RealmManager {
 
         if(fromRealm != null) { // Source location is a realm.
             PlayerState.saveState(player, fromRealm.getPlayerStateType()); // Save state in old location's realm.
+            fromRealm.onMigration(player, false);
         } else {
             PlayerState.saveState(player, PlayerStateType.GLOBAL); // In non-realm world. Using global state.
         }
@@ -182,15 +227,17 @@ public class RealmManager {
 
             PlayerState.restoreState(player, toRealm.getPlayerStateType()); // Restores player state (including initial reset), and teleports to last location (in a world belonging to the realm).
 
-            if(!PlayerState.hasState(player, toRealm.getPlayerStateType()))
-                player.teleport(Objects.requireNonNull(toRealm.getSpawnLocation())); // Teleport to spawn (first join).
+            if(!PlayerState.hasState(player, toRealm.getPlayerStateType()) && toRealm.getSpawnLocation() != null)
+                player.teleport(toRealm.getSpawnLocation()); // Teleport to spawn (first join).
 
-            toRealm.onMigration(player);
+            toRealm.onMigration(player, true);
         } else {
             PlayerState.restoreState(player, PlayerStateType.GLOBAL); // Regular world. Load global state.
         }
 
         migratingPlayers.remove(player);
+
+        Events.updatePlayerListName(player);
 
         // Say hello/goodbye to new/old realms:
 
@@ -201,10 +248,17 @@ public class RealmManager {
             new NoxetMessage("§f" + player.getDisplayName() + "§7 joined §f" + toRealm.getDisplayName() + "§7.").send(toRealm);
     }
 
+    public static Location getMainSpawn() {
+        Location preferred = new RealmDataManager().getSpawnLocation(null);
+        return preferred != null ? preferred : NoxetServer.ServerWorld.HUB.getWorld().getSpawnLocation();
+    }
+
     public static Location getSpawnLocation(Player player) {
         Realm realm = getCurrentRealm(player);
 
-        return realm != null ? realm.getSpawnLocation() : player.getWorld().getSpawnLocation();
+        return realm != null ?
+                realm.getSpawnLocation() :
+                getMainSpawn();
     }
 
     public static Location getRespawnLocation(Player player) {
@@ -222,7 +276,7 @@ public class RealmManager {
 
         Realm realm = getCurrentRealm(player);
 
-        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§7You have been sent to " + (realm != null ? "§f§l" + realm.getDisplayName() + "§7 " : "") + "spawn!"));
+        new NoxetMessage("§7You have been sent to " + (realm != null ? "§f§l" + realm.getDisplayName() + "§7 " : "") + "spawn!").toActionBar().send(player);
     }
 
     /**
@@ -230,7 +284,7 @@ public class RealmManager {
      * @param player The player to send to hub
      */
     public static void goToHub(Player player) {
-        player.teleport(NoxetServer.ServerWorld.HUB.getWorld().getSpawnLocation());
+        player.teleport(getMainSpawn());
 
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE, 1, 0.5f);
         player.sendTitle("§b§l" + TextBeautifier.beautify("no") + "§3§l" + TextBeautifier.beautify("x") + "§b§l" + TextBeautifier.beautify("et"), "§eWelcome to the Noxet.org Network.", 0, 60, 5);
@@ -238,5 +292,9 @@ public class RealmManager {
         player.spawnParticle(Particle.EXPLOSION_HUGE, player.getLocation().add(player.getLocation().getDirection().multiply(2)).add(0, 1, 0), 10);
 
         PlayerState.prepareHubState(player);
+    }
+
+    public static boolean hasPlayerUnderstoodAnarchy(Player player) {
+        return (boolean) new PlayerDataManager(player).get(PlayerDataManager.Attribute.HAS_UNDERSTOOD_ANARCHY);
     }
 }

@@ -2,7 +2,6 @@ package org.noxet.noxetserver.playerstate.properties;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.playerstate.PlayerStateProperty;
 
 public class PSPLocation implements PlayerStateProperty<Location> {
@@ -13,7 +12,7 @@ public class PSPLocation implements PlayerStateProperty<Location> {
 
     @Override
     public Location getDefaultSerializedProperty() {
-        return NoxetServer.ServerWorld.HUB.getWorld().getSpawnLocation();
+        return null;
     }
 
     @Override
@@ -23,6 +22,7 @@ public class PSPLocation implements PlayerStateProperty<Location> {
 
     @Override
     public void restoreProperty(Player player, Location location) {
-        player.teleport(location);
+        if(location != null)
+            player.teleport(location);
     }
 }

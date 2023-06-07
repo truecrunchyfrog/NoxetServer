@@ -58,7 +58,7 @@ public class MsgConversation implements TabExecutor, Listener {
 
             String uuidOrUsername = strings[1];
 
-            UUID uuidToBlock = UsernameStorageManager.getUUIDFromUsernameOrUUID(uuidOrUsername);
+            UUID uuidToBlock = new UsernameStorageManager().getUUIDFromUsernameOrUUID(uuidOrUsername);
 
             if(uuidToBlock == null) {
                 new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "A player by the name '" + uuidOrUsername + "' has never played on Noxet.org.").send(player);
@@ -100,7 +100,7 @@ public class MsgConversation implements TabExecutor, Listener {
 
             String uuidOrUsername = strings[1];
 
-            UUID uuidToUnblock = UsernameStorageManager.getUUIDFromUsernameOrUUID(uuidOrUsername);
+            UUID uuidToUnblock = new UsernameStorageManager().getUUIDFromUsernameOrUUID(uuidOrUsername);
 
             if(uuidToUnblock == null) {
                 new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "A player by the name '" + uuidOrUsername + "' has never played on Noxet.org.").send(player);

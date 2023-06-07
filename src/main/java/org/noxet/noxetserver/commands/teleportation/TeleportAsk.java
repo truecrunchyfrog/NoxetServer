@@ -193,7 +193,7 @@ public class TeleportAsk implements TabExecutor {
         }
 
         if(strings[0].equalsIgnoreCase("list")) {
-            List<Player> incomingRequests = new ArrayList<>();
+            Set<Player> incomingRequests = new HashSet<>();
 
             for(Map.Entry<Player, Player> request : requests.entrySet())
                 if(request.getValue() == player)
@@ -219,7 +219,7 @@ public class TeleportAsk implements TabExecutor {
 
             String uuidOrUsername = strings[1];
 
-            UUID uuidToBlock = UsernameStorageManager.getUUIDFromUsernameOrUUID(uuidOrUsername);
+            UUID uuidToBlock = new UsernameStorageManager().getUUIDFromUsernameOrUUID(uuidOrUsername);
 
             if(uuidToBlock == null) {
                 new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "A player by the name '" + uuidOrUsername + "' has never played on Noxet.org.").send(player);
@@ -264,7 +264,7 @@ public class TeleportAsk implements TabExecutor {
 
             String uuidOrUsername = strings[1];
 
-            UUID uuidToUnblock = UsernameStorageManager.getUUIDFromUsernameOrUUID(uuidOrUsername);
+            UUID uuidToUnblock = new UsernameStorageManager().getUUIDFromUsernameOrUUID(uuidOrUsername);
 
             List<String> blockedPlayers = getBlockedPlayers(player);
 

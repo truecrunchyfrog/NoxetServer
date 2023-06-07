@@ -4,6 +4,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.playerdata.types.PDTBoolean;
+import org.noxet.noxetserver.playerdata.types.PDTInteger;
 import org.noxet.noxetserver.playerdata.types.PDTMapStringMapStringLocation;
 import org.noxet.noxetserver.playerdata.types.PDTStringList;
 
@@ -26,7 +27,9 @@ public class PlayerDataManager {
         HOMES(new PDTMapStringMapStringLocation()),
         HAS_UNDERSTOOD_ANARCHY(new PDTBoolean()),
         SEEN_CHAT_NOTICE(new PDTBoolean()),
-        MUTED(new PDTBoolean());
+        MUTED(new PDTBoolean()),
+        TIMES_JOINED(new PDTInteger()),
+        SECONDS_PLAYED(new PDTInteger());
 
         private final PlayerDataType<?> type;
 

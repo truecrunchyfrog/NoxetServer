@@ -1,11 +1,9 @@
 package org.noxet.noxetserver;
 
 import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.*;
 import org.bukkit.block.data.type.Bed;
@@ -79,32 +77,82 @@ public class Events implements Listener {
         }
     }
 
+    private static final Map<Player, Long> playersTimePlayed = new HashMap<>();
+
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) {
-        new NoxetMessage("§3§lWELCOME TO §b§lNOXET.ORG NETWORK§3§l!").send(e.getPlayer());
-        new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§d joined the Noxet.org Network.").broadcast();
-        e.setJoinMessage(null);
+        new NoxetMessage("§3■ " + TextBeautifier.beautify("Absorb the Echoes: ", false) + "§b§l" + TextBeautifier.beautify("noxet.org") + "§3!").send(e.getPlayer());
+
+        playersTimePlayed.put(e.getPlayer(), System.currentTimeMillis());
 
         PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
+
+        int timesJoined = (int) playerDataManager.get(PlayerDataManager.Attribute.TIMES_JOINED) + 1,
+            secondsPlayed = (int) playerDataManager.get(PlayerDataManager.Attribute.SECONDS_PLAYED);
+
+        int minutesPlayed = secondsPlayed / 60,
+            hoursPlayed = minutesPlayed / 60;
+
+        if(secondsPlayed != 0)
+            new NoxetMessage("You have played for: §f" + hoursPlayed + "h " + minutesPlayed + "m").send(e.getPlayer());
+
+        String fancyJoinAmount = String.valueOf(timesJoined);
+
+        if((timesJoined % 100) < 11 || (timesJoined % 100) > 13)
+            switch(timesJoined % 10) {
+                case 1:
+                    fancyJoinAmount += "st";
+                    break;
+                case 2:
+                    fancyJoinAmount += "nd";
+                    break;
+                case 3:
+                    fancyJoinAmount += "rd";
+                    break;
+                default:
+                    fancyJoinAmount += "th";
+            }
+        else
+            fancyJoinAmount += "th";
+
+        new NoxetMessage("§d" + e.getPlayer().getDisplayName() + "§5 hopped on §dNoxet.org§5 for the §3§n" + TextBeautifier.beautify(fancyJoinAmount) + "§5 time.").broadcast();
+        e.setJoinMessage(null);
+
+        playerDataManager.set(
+                PlayerDataManager.Attribute.TIMES_JOINED,
+                (int) playerDataManager.get(PlayerDataManager.Attribute.TIMES_JOINED) + 1
+        );
+
+        playerDataManager.save();
 
         if(!((boolean) playerDataManager.get(PlayerDataManager.Attribute.HAS_DONE_CAPTCHA))) {
             new Captcha(e.getPlayer()).init();
             return;
         }
 
-        if(!e.getPlayer().getUniqueId().equals(UsernameStorageManager.getUUIDFromUsernameOrUUID(e.getPlayer().getName())))
-            UsernameStorageManager.assignUUIDToUsername(e.getPlayer().getName(), e.getPlayer().getUniqueId()); // Correct username if changed (either entirely or just by different casing).
+        if(!e.getPlayer().getUniqueId().equals(new UsernameStorageManager().getUUIDFromUsernameOrUUID(e.getPlayer().getName())))
+            new UsernameStorageManager().assignUUIDToUsername(e.getPlayer().getName(), e.getPlayer().getUniqueId()); // Correct username if changed (either entirely or just by different casing).
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(NoxetServer.getPlugin(), () -> {
             Realm realm = getCurrentRealm(e.getPlayer());
 
             if(realm != null) {
                 setTemporaryInvulnerability(e.getPlayer());
-                new NoxetMessage("§eYou are in §6§l" + realm.getDisplayName() + "§e.").addButton("Leave", ChatColor.RED, "Go to lobby", "hub").send(e.getPlayer());
-                e.getPlayer().sendTitle("§e§l" + realm.getDisplayName(), "§6Type §e§l/hub §6to leave this realm.", 0, 120, 10);
+                new NoxetMessage("§eYou are in §l" + TextBeautifier.beautify(realm.getDisplayName(), false) + "§e.").addButton("Leave", ChatColor.RED, "Go to lobby", "hub").send(e.getPlayer());
+                e.getPlayer().sendTitle("§e§l" + TextBeautifier.beautify(realm.getDisplayName(), false), "§6Type §e§l/hub §6to leave this realm.", 0, 120, 10);
             } else
                 goToHub(e.getPlayer()); // Make sure player is at spawn.
         }, 10);
+
+        updatePlayerListName(e.getPlayer());
+    }
+
+    public static void updatePlayerListName(Player player) {
+        Realm realm = getCurrentRealm(player);
+
+        String playerListPrefix = (realm != null ? "§e" + TextBeautifier.beautify(realm.getDisplayName()) + "§r " : "") + "§7";
+
+        player.setPlayerListName(playerListPrefix + player.getDisplayName());
     }
 
     @EventHandler
@@ -115,6 +163,19 @@ public class Events implements Listener {
         abortUnconfirmedPlayerRespawn(e.getPlayer());
         MsgConversation.clearActiveConversationModes(e.getPlayer());
         PlayerDataManager.clearCacheForUUID(e.getPlayer().getUniqueId());
+
+        Long timePlayed = playersTimePlayed.remove(e.getPlayer());
+
+        if(timePlayed != null) {
+            PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
+
+            playerDataManager.set(
+                    PlayerDataManager.Attribute.SECONDS_PLAYED,
+                    (int) playerDataManager.get(PlayerDataManager.Attribute.SECONDS_PLAYED) + (System.currentTimeMillis() - timePlayed) / 1000
+            );
+
+            playerDataManager.save();
+        }
 
         new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§7 left Noxet.org.").broadcast();
         e.setQuitMessage(null);
@@ -342,6 +403,12 @@ public class Events implements Listener {
     }
 
     @EventHandler
+    public void onEntityInteract(EntityInteractEvent e) {
+        if(NoxetServer.isWorldPreserved(e.getBlock().getWorld()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
     public void onBlockFade(BlockFadeEvent e) {
         if(NoxetServer.isWorldPreserved(e.getBlock().getWorld()))
             e.setCancelled(true);
@@ -394,33 +461,43 @@ public class Events implements Listener {
         if(e.getItem() != null && (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK)) {
             if(e.getItem().equals(HubInventory.getGameNavigator())) {
                 new GameNavigationMenu().openInventory(e.getPlayer());
-            } else
-                return;
+                e.setCancelled(true);
+            }
+        }
 
+        if(NoxetServer.isWorldPreserved(e.getPlayer().getWorld()) && !(e.getAction() == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null && e.getClickedBlock().getType() == Material.ENDER_CHEST)) {
             e.setCancelled(true);
-        } else if(NoxetServer.isWorldPreserved(e.getPlayer().getWorld()) && !(e.getAction() == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null && e.getClickedBlock().getType() == Material.ENDER_CHEST)) {
-            e.setCancelled(true);
-        } else if(e.getAction() == Action.LEFT_CLICK_AIR && ChickenLeg.isPlayerChickenLeg(e.getPlayer()))
+            return;
+        }
+
+        if(e.getAction() == Action.LEFT_CLICK_AIR && ChickenLeg.isPlayerChickenLeg(e.getPlayer()))
             ChickenLeg.summonChickenLeg(e.getPlayer());
+    }
 
+
+
+    @EventHandler
+    public void onEntityChangeBlock(EntityChangeBlockEvent e) {
+        if(NoxetServer.isWorldPreserved(e.getBlock().getWorld()))
+            e.setCancelled(true);
     }
 
     private static final Set<Player> invulnerablePlayers = new HashSet<>();
     
-    public static void setTemporaryInvulnerability(Player player) {
-        if(invulnerablePlayers.contains(player))
+    public static void setTemporaryInvulnerability(Player player, int secondsInvulnerable) {
+        if(invulnerablePlayers.contains(player) || NoxetServer.isWorldSafeZone(player.getWorld()))
             return;
 
         invulnerablePlayers.add(player);
 
-        int ticksInvulnerable = 120;
+        int ticksInvulnerable = 20 * secondsInvulnerable;
 
         for(int i = ticksInvulnerable; i > 0; i -= 20) {
             int finalI = i;
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§e§lINVULNERABLE §c" + (finalI / 20) + "s"));
+                    new NoxetMessage("§e§lINVULNERABLE §c" + (finalI / 20) + "s").toActionBar().send(player);
                 }
             }.runTaskLater(NoxetServer.getPlugin(), ticksInvulnerable - i);
         }
@@ -428,17 +505,36 @@ public class Events implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§cYou are no longer invulnerable."));
+                new NoxetMessage("§cYou are no longer invulnerable.").toActionBar().send(player);
                 invulnerablePlayers.remove(player);
             }
-        }.runTaskLater(NoxetServer.getPlugin(), 120);
+        }.runTaskLater(NoxetServer.getPlugin(), ticksInvulnerable);
     }
+
+    public static void setTemporaryInvulnerability(Player player) {
+        setTemporaryInvulnerability(player, 6);
+    }
+
+    private final Set<Player> recentlyVoidSpawnedPlayers = new HashSet<>();
 
     @EventHandler
     public void onEntityDamage(EntityDamageEvent e) {
         if(NoxetServer.isWorldSafeZone(e.getEntity().getWorld())) {
-            if(e.getEntity() instanceof Player && e.getCause() == EntityDamageEvent.DamageCause.VOID && e.getEntity().getLocation().getY() < e.getEntity().getWorld().getMinHeight())
+            if(
+                    e.getEntity() instanceof Player &&
+                    e.getCause() == EntityDamageEvent.DamageCause.VOID &&
+                    e.getEntity().getLocation().getY() < e.getEntity().getWorld().getMinHeight() &&
+                    !recentlyVoidSpawnedPlayers.contains((Player) e.getEntity())
+            ) {
+                recentlyVoidSpawnedPlayers.add((Player) e.getEntity());
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        recentlyVoidSpawnedPlayers.remove((Player) e.getEntity());
+                    }
+                }.runTaskLater(NoxetServer.getPlugin(), 120);
                 goToSpawn((Player) e.getEntity());
+            }
             e.setCancelled(true);
         } else if(e.getEntity() instanceof Player && invulnerablePlayers.contains((Player) e.getEntity())) {
             e.setCancelled(true);
@@ -534,7 +630,7 @@ public class Events implements Listener {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    e.getPlayer().spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§cYour spawn location was §lNOT§c changed! Read chat."));
+                    new NoxetMessage("§cYour spawn location was §lNOT§c changed! Read chat.").toActionBar().send(e.getPlayer());
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 0);
 
@@ -557,12 +653,30 @@ public class Events implements Listener {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    if(unconfirmedPlayerRespawns.remove(e.getPlayer()) != null)
-                        new NoxetWarningMessage("Your spawn was NOT changed.").send(e.getPlayer());
+                    unconfirmedPlayerRespawns.remove(e.getPlayer());
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 20 * 30);
 
             e.setCancelled(true);
         }
+    }
+
+    private static final Set<UUID> recentlyKickedToRemoveCheats = new HashSet<>();
+
+    public static void setPlayerRecentlyKickedToRemoveCheats(UUID uuid) {
+        recentlyKickedToRemoveCheats.add(uuid);
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                recentlyKickedToRemoveCheats.remove(uuid);
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * 10);
+    }
+
+    @EventHandler
+    public void onAsyncPayerPreLogin(AsyncPlayerPreLoginEvent e) {
+        if(recentlyKickedToRemoveCheats.contains(e.getUniqueId()))
+            e.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, "§cThat was a little fast, wasn't it? Wait a few seconds.");
     }
 }

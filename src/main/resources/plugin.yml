@@ -75,3 +75,9 @@ commands:
   loop:
     description: Repeat a command an amount of times
     usage: /loop <amount> <command> [args...]
+  set-realm-spawn:
+    description: Set the realm spawn to your location
+    usage: /set-realm-spawn
+  reset-realm-spawn:
+    description: Reset the realm's spawn location
+    usage: /reset-realm-spawn

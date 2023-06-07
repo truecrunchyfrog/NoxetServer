@@ -1,6 +1,7 @@
 package org.noxet.noxetserver.messaging;
 
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -18,6 +19,7 @@ import java.util.List;
 public class NoxetMessage {
     private final List<TextComponent> textComponents = new ArrayList<>();
     private boolean skipPrefix = false;
+    private ChatMessageType chatMessageType = ChatMessageType.CHAT;
 
     /**
      * Constructs a message.
@@ -96,8 +98,13 @@ public class NoxetMessage {
         skipPrefix = true;
     }
 
+    public NoxetMessage toActionBar() {
+        chatMessageType = ChatMessageType.ACTION_BAR;
+        return this;
+    }
+
     public void send(Player player) {
-        player.spigot().sendMessage(getBakedMessage());
+        player.spigot().sendMessage(chatMessageType, getBakedMessage());
     }
 
     public void send(CommandSender commandSender) {

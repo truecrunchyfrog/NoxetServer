@@ -105,6 +105,7 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("anarchy")).setExecutor(new Anarchy());
         Objects.requireNonNull(getCommand("hub")).setExecutor(new Hub());
         Objects.requireNonNull(getCommand("spawn")).setExecutor(new Spawn());
+        Objects.requireNonNull(getCommand("canvas-world")).setExecutor(new CanvasWorld());
 
         Objects.requireNonNull(getCommand("wild")).setExecutor(new Wild());
 
@@ -127,9 +128,10 @@ public final class NoxetServer extends JavaPlugin {
 
         Objects.requireNonNull(getCommand("toggle-preserve")).setExecutor(new TogglePreserve());
 
-        Objects.requireNonNull(getCommand("canvas-world")).setExecutor(new CanvasWorld());
-
         Objects.requireNonNull(getCommand("loop")).setExecutor(new Loop());
+
+        Objects.requireNonNull(getCommand("set-realm-spawn")).setExecutor(new SetRealmSpawn());
+        Objects.requireNonNull(getCommand("reset-realm-spawn")).setExecutor(new ResetRealmSpawn());
 
         logInfo("Noxet plugin is ready.");
     }
