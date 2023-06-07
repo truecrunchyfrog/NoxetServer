@@ -36,7 +36,7 @@ public class CombatLogging {
         return combatLogged.containsKey(player);
     }
 
-    public static void triggerLocationDisband(Player player) {
+    public static void triggerLocationDisband(Player player) { // TODO actually trigger these.
         if(!isCombatLogged(player))
             return;
 
