@@ -200,6 +200,7 @@ public class RealmManager {
 
         TeleportAsk.abortPlayerRelatedRequests(player);
         Events.abortUnconfirmedPlayerRespawn(player);
+        new CombatLoggingStorageManager().combatLogRejoin(player, getCurrentRealm(player));
 
         if(toRealm != null)
             new NoxetMessage("Entering §e" + toRealm.getDisplayName() + "§7 ...").send(player);

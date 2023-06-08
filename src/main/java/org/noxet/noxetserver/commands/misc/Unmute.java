@@ -15,6 +15,7 @@ import java.util.List;
 
 public class Unmute implements TabExecutor {
     @Override
+    @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!commandSender.isOp()) {
             new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You must be an operator to unmute players.").send(commandSender);
@@ -49,6 +50,7 @@ public class Unmute implements TabExecutor {
     }
 
     @Override
+    @SuppressWarnings("NullableProblems")
     public List<String> onTabComplete(CommandSender commandSender, Command command, String s, String[] strings) {
         if(strings.length == 1) {
             Player playerToRecommend = NoxetServer.getPlugin().getServer().getPlayer(strings[0]);

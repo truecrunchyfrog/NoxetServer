@@ -28,4 +28,11 @@ public class CombatLoggingStorageManager extends ConfigManager {
         String key = (realm != null ? realm.getPlayerStateType() : PlayerState.PlayerStateType.GLOBAL).name();
         return config.getStringList(key).contains(player.getUniqueId().toString());
     }
+
+    public void combatLogRejoin(Player player, RealmManager.Realm realm) {
+        if(isCombatLogged(player, realm)) {
+            setPlayerCombatLogMode(player, realm, false);
+            player.setHealth(0);
+        }
+    }
 }

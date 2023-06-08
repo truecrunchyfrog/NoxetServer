@@ -75,6 +75,9 @@ public class Events implements Listener {
 
             // Don't cancel the teleportation!
         }
+
+        if(CombatLogging.isCombatLogged(e.getPlayer()))
+            CombatLogging.triggerLocationDisband(e.getPlayer());
     }
 
     private static final Map<Player, Long> playersTimePlayed = new HashMap<>();
@@ -145,6 +148,8 @@ public class Events implements Listener {
         }, 10);
 
         updatePlayerListName(e.getPlayer());
+
+        new CombatLoggingStorageManager().combatLogRejoin(e.getPlayer(), getCurrentRealm(e.getPlayer()));
     }
 
     public static void updatePlayerListName(Player player) {
@@ -163,6 +168,7 @@ public class Events implements Listener {
         abortUnconfirmedPlayerRespawn(e.getPlayer());
         MsgConversation.clearActiveConversationModes(e.getPlayer());
         PlayerDataManager.clearCacheForUUID(e.getPlayer().getUniqueId());
+        CombatLogging.triggerLocationDisband(e.getPlayer());
 
         Long timePlayed = playersTimePlayed.remove(e.getPlayer());
 
