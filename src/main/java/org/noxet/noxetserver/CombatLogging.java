@@ -19,9 +19,9 @@ public class CombatLogging {
     public static void triggerCombatLog(Player player) {
         BukkitTask existingTask = combatLogged.remove(player);
         if(existingTask != null)
-            existingTask.cancel();
-
-        new NoxetMessage("§c§lCOMBAT LOGGED!§7 Logging out or teleporting away will kill you.").toActionBar().send(player);
+            existingTask.cancel(); // If already combat logged: cancel the timeout and set a new one:
+        else
+            new NoxetMessage("§c§lCOMBAT LOGGED!§7 Logging out or teleporting away will kill you.").toActionBar().send(player);
 
         combatLogged.put(player, new BukkitRunnable() {
             @Override

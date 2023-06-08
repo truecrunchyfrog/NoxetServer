@@ -560,6 +560,18 @@ public class Events implements Listener {
     }
 
     @EventHandler
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent e) {
+        if(
+                !e.isCancelled() &&
+                e.getEntity() instanceof Player &&
+                e.getDamager() instanceof Player
+        ) {
+            CombatLogging.triggerCombatLog((Player) e.getEntity());
+            CombatLogging.triggerCombatLog((Player) e.getDamager());
+        }
+    }
+
+    @EventHandler
     public void onEntityPortalEnter(EntityPortalEnterEvent e) {
         if(e.getEntity() instanceof Player && e.getLocation().getWorld() == NoxetServer.ServerWorld.HUB.getWorld()) {
             Player player = (Player) e.getEntity();
