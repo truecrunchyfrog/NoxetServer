@@ -15,6 +15,8 @@ import org.noxet.noxetserver.commands.teleportation.Home;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.chat.ChatPromptMenu;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
+import org.noxet.noxetserver.util.InventoryCoordinate;
+import org.noxet.noxetserver.util.InventoryCoordinateUtil;
 
 import java.text.DecimalFormat;
 import java.util.*;
@@ -31,7 +33,8 @@ public class HomeNavigationMenu extends InventoryMenu {
 
     @Override
     protected void updateInventory() {
-        int x = 0, y = 0;
+        int i = 0;
+
         for(Map.Entry<String, Location> home : homes.entrySet()) {
             Location homeLocation = home.getValue();
             World.Environment dimension = Objects.requireNonNull(homeLocation.getWorld()).getEnvironment();
@@ -68,10 +71,9 @@ public class HomeNavigationMenu extends InventoryMenu {
                             "§8X §7" + ((int) homeLocation.getX()),
                             "§8Y §7" + ((int) homeLocation.getY()),
                             "§8Z §7" + ((int) homeLocation.getZ()),
-                            "§f- - -",
-                            "§3Left-click to teleport.",
-                            "§3Right-click to rename.",
-                            "§3Press any number on keyboard to remove this home."
+                            "§e→ Double-click to §5§nteleport§e.",
+                            "§e→ Right-click to §b§nrename§e.",
+                            "§e→ Press any number on keyboard to §c§nremove§e this home."
                     ),
                     isHomeMain
             );
@@ -79,30 +81,27 @@ public class HomeNavigationMenu extends InventoryMenu {
             if(!isHomeMain)
                 generateBannerPatterns(homeItem, home.getValue().hashCode());
 
-            setSlotItem(homeItem, x, y);
-
-            x++;
-            x %= 9;
-            if(x == 0)
-                y++;
+            setSlotItem(homeItem, InventoryCoordinateUtil.getCoordinateFromSlotIndex(i++));
         }
     }
 
     @Override
-    protected void onSlotClick(Player player, int x, int y, ClickType clickType) {
-        int slotIndex = y * 9 + x, i = 0;
+    protected boolean onSlotClick(Player player, InventoryCoordinate coordinate, ClickType clickType) {
+        int i = 0;
 
         for(Map.Entry<String, Location> home : homes.entrySet())
-            if(i++ == slotIndex) {
+            if(InventoryCoordinateUtil.getCoordinateFromSlotIndex(i++).isAt(coordinate)) {
                 switch(clickType) {
+                    case DOUBLE_CLICK:
+                        player.performCommand("home tp " + home.getKey());
+                        break;
                     case NUMBER_KEY:
-                        new ConfirmMenu("Delete home '" + home.getKey() + "'?", () -> {
+                        new ConfirmationMenu("Delete home '" + home.getKey() + "'?", () -> {
                             player.performCommand("home remove " + home.getKey());
                             player.performCommand("home menu");
                         }, () -> player.performCommand("home menu")).openInventory(player);
                         break;
                     case RIGHT:
-                        stop();
                         new ChatPromptMenu(
                                 "new name for home '" + home.getKey() + "'",
                                 player,
@@ -115,16 +114,18 @@ public class HomeNavigationMenu extends InventoryMenu {
                                     }
 
                                     player.performCommand("home rename " + home.getKey() + " " + newName);
+                                    player.performCommand("home menu");
                                 }
                         );
                         break;
                     default:
-                        stop();
-                        player.performCommand("home tp " + home.getKey());
+                        return false;
                 }
 
-                break;
+                return true;
             }
+
+        return false;
     }
 
     private void generateBannerPatterns(ItemStack banner, int seed) {

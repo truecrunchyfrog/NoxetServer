@@ -9,7 +9,7 @@ import java.util.Map;
 
 public abstract class ConfigManager {
     protected YamlConfiguration config;
-    private static Map<String, YamlConfiguration> cache = new HashMap<>();
+    private static final Map<String, YamlConfiguration> cache = new HashMap<>();
 
     protected abstract String getFileName();
     protected String getFileNameWithExtension() {

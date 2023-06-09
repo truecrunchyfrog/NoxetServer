@@ -133,6 +133,13 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("set-realm-spawn")).setExecutor(new SetRealmSpawn());
         Objects.requireNonNull(getCommand("reset-realm-spawn")).setExecutor(new ResetRealmSpawn());
 
+        Objects.requireNonNull(getCommand("friend")).setExecutor(new Friend());
+        Objects.requireNonNull(getCommand("block")).setExecutor(new Block());
+        Objects.requireNonNull(getCommand("unblock")).setExecutor(new Unblock());
+        Objects.requireNonNull(getCommand("block-list")).setExecutor(new BlockList());
+
+        Objects.requireNonNull(getCommand("clear-player-data-cache")).setExecutor(new ClearPlayerDataCache());
+
         logInfo("Noxet plugin is ready.");
     }
 

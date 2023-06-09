@@ -1,0 +1,16 @@
+package org.noxet.noxetserver.messaging;
+
+import net.md_5.bungee.api.ChatMessageType;
+
+public class NoxetActionBarMessage extends NoxetMessage {
+    /**
+     * Constructs a message with a text.
+     *
+     * @param text The text message to be sent
+     */
+    public NoxetActionBarMessage(String text) {
+        super(text);
+        chatMessageType = ChatMessageType.ACTION_BAR;
+        skipPrefix = true;
+    }
+}

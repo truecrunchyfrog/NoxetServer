@@ -18,15 +18,8 @@ import java.util.List;
 
 public class NoxetMessage {
     private final List<TextComponent> textComponents = new ArrayList<>();
-    private boolean skipPrefix = false;
-    private ChatMessageType chatMessageType = ChatMessageType.CHAT;
-
-    /**
-     * Constructs a message.
-     */
-    public NoxetMessage() {
-
-    }
+    protected boolean skipPrefix = false;
+    protected ChatMessageType chatMessageType = ChatMessageType.CHAT;
 
     /**
      * Constructs a message with a text.
@@ -54,6 +47,9 @@ public class NoxetMessage {
     }
 
     public NoxetMessage add(String text, String hoverText, String clickCommand) {
+        if(text == null)
+            return this;
+
         TextComponent textComponent = new TextComponent(text + "§r "); // Padding, for better transitions.
 
         textComponent.setColor(getDefaultColor());
@@ -96,11 +92,6 @@ public class NoxetMessage {
 
     public void skipPrefix() {
         skipPrefix = true;
-    }
-
-    public NoxetMessage toActionBar() {
-        chatMessageType = ChatMessageType.ACTION_BAR;
-        return this;
     }
 
     public void send(Player player) {

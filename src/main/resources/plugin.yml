@@ -30,7 +30,7 @@ commands:
       - touch-grass
   tpa:
     description: Send/accept/deny/cancel a teleportation request to/from a player
-    usage: /tpa <player|cancel|accept|deny|block|unblock|block-list> [player|*]
+    usage: /tpa <player|cancel|accept|deny|toggle-allow-incoming> [player|*]
   whereami:
     description: Check what world and realm you are in
     usage: /whereami
@@ -81,3 +81,20 @@ commands:
   reset-realm-spawn:
     description: Reset the realm's spawn location
     usage: /reset-realm-spawn
+  friend:
+    description: Manage relationships
+    usage: /friend <add|remove|deny|cancel|list|incoming|outgoing|toggle-allow-incoming|toggle-friend-tp> [player]
+    aliases:
+      - f
+  block:
+    description: Block a player
+    usage: /block <player>
+  unblock:
+    description: Unblock a player
+    usage: /unblock <player>
+  block-list:
+    description: Lists players you have blocked
+    usage: /block-list
+  clear-player-data-cache:
+    description: Clear all player's cached data
+    usage: /clear-player-data-cache

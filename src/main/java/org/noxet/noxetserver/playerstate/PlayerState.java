@@ -167,6 +167,7 @@ public class PlayerState {
 
         player.setAllowFlight(true);
         player.setGameMode(GameMode.SURVIVAL);
+        player.getInventory().setHeldItemSlot(3);
         HubInventory.applyToPlayer(player);
     }
 

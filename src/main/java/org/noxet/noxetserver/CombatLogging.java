@@ -6,7 +6,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.messaging.NoxetActionBarMessage;
 
 import java.util.*;
 
@@ -21,13 +21,13 @@ public class CombatLogging {
         if(existingTask != null)
             existingTask.cancel(); // If already combat logged: cancel the timeout and set a new one:
         else
-            new NoxetMessage("§c§lCOMBAT LOGGED!§7 Logging out or teleporting away will kill you.").toActionBar().send(player);
+            new NoxetActionBarMessage("§c§lCOMBAT LOGGED!§7 Logging out or teleporting away will kill you.").send(player);
 
         combatLogged.put(player, new BukkitRunnable() {
             @Override
             public void run() {
                 if(combatLogged.remove(player) != null)
-                    new NoxetMessage("§aYou may now leave without consequences.").toActionBar().send(player);
+                    new NoxetActionBarMessage("§aYou may now leave without consequences.").send(player);
             }
         }.runTaskLater(NoxetServer.getPlugin(), combatLogTimeout));
     }

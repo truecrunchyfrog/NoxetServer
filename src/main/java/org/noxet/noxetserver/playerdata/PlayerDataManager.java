@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -20,16 +21,21 @@ public class PlayerDataManager {
 
     public enum Attribute {
         HAS_DONE_CAPTCHA(new PDTBoolean()),
-        TPA_BLOCKED_PLAYERS(new PDTStringList()),
-        MSG_BLOCKED_PLAYERS(new PDTStringList()),
+        BLOCKED_PLAYERS(new PDTStringList()),
         MSG_SPOKEN_TO(new PDTStringList()),
         MSG_DISABLED(new PDTBoolean()),
+        DISALLOW_INCOMING_FRIEND_REQUESTS(new PDTBoolean()),
+        DISALLOW_INCOMING_TPA_REQUESTS(new PDTBoolean()),
         HOMES(new PDTMapStringMapStringLocation()),
         HAS_UNDERSTOOD_ANARCHY(new PDTBoolean()),
         SEEN_CHAT_NOTICE(new PDTBoolean()),
         MUTED(new PDTBoolean()),
         TIMES_JOINED(new PDTInteger()),
-        SECONDS_PLAYED(new PDTInteger());
+        SECONDS_PLAYED(new PDTInteger()),
+        FRIEND_LIST(new PDTStringList()),
+        INCOMING_FRIEND_REQUESTS(new PDTStringList()),
+        OUTGOING_FRIEND_REQUESTS(new PDTStringList()),
+        FRIEND_TELEPORTATION(new PDTBoolean());
 
         private final PlayerDataType<?> type;
 
@@ -67,6 +73,10 @@ public class PlayerDataManager {
 
     public static void clearCacheForUUID(UUID uuid) {
         configCache.remove(uuid);
+    }
+
+    public static void clearAllCache() {
+        configCache.clear();
     }
 
     private static YamlConfiguration getConfig(UUID uuid) {
@@ -114,6 +124,33 @@ public class PlayerDataManager {
         updateCache(uuid, config);
 
         return this;
+    }
+
+    public PlayerDataManager toggleBoolean(Attribute attribute) {
+        boolean oldValue = (boolean) get(attribute);
+        return set(attribute, !oldValue);
+    }
+
+    public PlayerDataManager addToStringList(Attribute attribute, String value) {
+        List<String> list = config.getStringList(attribute.getKey());
+        list.add(value);
+        return set(attribute, list);
+    }
+
+    public PlayerDataManager removeFromStringList(Attribute attribute, String value) {
+        List<String> list = config.getStringList(attribute.getKey());
+        list.remove(value);
+        return set(attribute, list);
+    }
+
+    public boolean doesContain(Attribute attribute, Object value) {
+        List<?> list = config.getList(attribute.getKey());
+        return list != null && list.contains(value);
+    }
+
+    public int getListSize(Attribute attribute) {
+        List<?> list = config.getList(attribute.getKey());
+        return list != null ? list.size() : 0;
     }
 
     public void save() {

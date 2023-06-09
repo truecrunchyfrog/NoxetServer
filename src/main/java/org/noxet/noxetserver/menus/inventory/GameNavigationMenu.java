@@ -7,6 +7,7 @@ import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.TextBeautifier;
+import org.noxet.noxetserver.util.InventoryCoordinate;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +20,29 @@ public class GameNavigationMenu extends InventoryMenu {
         super(3, TextBeautifier.beautify("Noxet - Choose a game"), false);
     }
 
+    public enum GameSlot implements InventoryCoordinate {
+        ANARCHY_ISLAND(2, 1),
+        WORLD_EATER(4, 1),
+        SMP(6, 1);
+
+        private final int x, y;
+
+        GameSlot(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public int getX() {
+            return x;
+        }
+
+        @Override
+        public int getY() {
+            return y;
+        }
+    }
+
     @Override
     protected void updateInventory() {
         setSlotItem(generateGameModeItem(
@@ -27,7 +51,7 @@ public class GameNavigationMenu extends InventoryMenu {
                 Arrays.asList("Insane vanilla experience.", "No rules. Try to live", "in a destructive world."),
                 RealmManager.Realm.ANARCHY.getPlayerCount(),
                 Material.FLINT_AND_STEEL
-        ), 2, 1);
+        ), GameSlot.ANARCHY_ISLAND);
 
         setSlotItem(generateGameModeItem(
                 "WorldEater",
@@ -35,7 +59,7 @@ public class GameNavigationMenu extends InventoryMenu {
                 Arrays.asList("Hide and seek in one chunk.", "Hiders win if survived for", "30 minutes."),
                 0,
                 Material.SPRUCE_LOG
-        ), 4, 1);
+        ), GameSlot.WORLD_EATER);
 
         setSlotItem(generateGameModeItem(
                 "Smp",
@@ -43,7 +67,7 @@ public class GameNavigationMenu extends InventoryMenu {
                 Arrays.asList("The (somewhat) vanilla", "experience."),
                 RealmManager.Realm.SMP.getPlayerCount(),
                 Material.GRASS_BLOCK
-        ), 6, 1);
+        ), GameSlot.SMP);
     }
 
     private ItemStack generateGameModeItem(String name, ChatColor nameColor, List<String> description, int players, Material material) {
@@ -62,23 +86,15 @@ public class GameNavigationMenu extends InventoryMenu {
     }
 
     @Override
-    protected void onSlotClick(Player player, int x, int y, ClickType clickType) {
-        if(y == 1) {
-            switch(x) {
-                case 2:
-                    RealmManager.migrateToRealm(player, RealmManager.Realm.ANARCHY);
-                    break;
-                case 4:
-                    player.performCommand("eatworld play");
-                    break;
-                case 6:
-                    RealmManager.migrateToRealm(player, RealmManager.Realm.SMP);
-                    break;
-                default:
-                    return;
-            }
+    protected boolean onSlotClick(Player player, InventoryCoordinate coordinate, ClickType clickType) {
+        if(coordinate.isAt(GameSlot.ANARCHY_ISLAND)) {
+            RealmManager.migrateToRealm(player, RealmManager.Realm.ANARCHY);
+        } else if(coordinate.isAt(GameSlot.WORLD_EATER)) {
+            player.performCommand("eatworld play");
+        } else if(coordinate.isAt(GameSlot.SMP)) {
+            RealmManager.migrateToRealm(player, RealmManager.Realm.SMP);
+        } else return false;
 
-            stop();
-        }
+        return true;
     }
 }

@@ -14,6 +14,8 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
+import org.noxet.noxetserver.util.InventoryCoordinate;
+import org.noxet.noxetserver.util.InventoryCoordinateUtil;
 
 @SuppressWarnings("ALL")
 public abstract class InventoryMenu implements InventoryHolder, Listener {
@@ -36,11 +38,22 @@ public abstract class InventoryMenu implements InventoryHolder, Listener {
 
     abstract protected void updateInventory();
 
-    abstract protected void onSlotClick(Player player, int x, int y, ClickType clickType);
+    /**
+     * Listener for when a player clicks a slot.
+     * @param player The player who clicked a slot
+     * @param coordinate What slot the player clicked
+     * @param clickType How the player clicked the slot
+     * @return True if the inventory should be closed, false if it should stay open after the method is called
+     */
+    abstract protected boolean onSlotClick(Player player, InventoryCoordinate coordinate, ClickType clickType);
 
     protected void setSlotItem(ItemStack itemStack, int x, int y) {
         assert x >= 0 && x < 9 && y >= 0 && y < inventory.getSize() / 9;
         inventory.setItem(y * 9 + x, itemStack);
+    }
+
+    protected void setSlotItem(ItemStack itemStack, InventoryCoordinate coordinate) {
+        setSlotItem(itemStack, coordinate.getX(), coordinate.getY());
     }
 
     public void openInventory(Player player) {
@@ -55,10 +68,12 @@ public abstract class InventoryMenu implements InventoryHolder, Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent e) {
         if(e.getClickedInventory().equals(inventory)) {
-            Player player = (Player) e.getWhoClicked();
-            int slot = e.getSlot();
-
-            onSlotClick(player, slot % 9, slot / 9, e.getClick());
+            if(onSlotClick(
+                    (Player) e.getWhoClicked(),
+                    InventoryCoordinateUtil.getCoordinateFromSlotIndex(e.getSlot()),
+                    e.getClick()
+            ))
+                stop();
         } else if(!e.getInventory().equals(inventory))
             return;
 

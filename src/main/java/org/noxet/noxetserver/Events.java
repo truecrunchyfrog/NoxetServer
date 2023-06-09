@@ -28,6 +28,7 @@ import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.menus.HubInventory;
 import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
+import org.noxet.noxetserver.menus.inventory.SocialMenu;
 import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 
@@ -84,6 +85,8 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) {
+        PlayerDataManager.clearCacheForUUID(e.getPlayer().getUniqueId());
+
         new NoxetMessage("§3■ " + TextBeautifier.beautify("Absorb the Echoes: ", false) + "§b§l" + TextBeautifier.beautify("noxet.org") + "§3!").send(e.getPlayer());
 
         playersTimePlayed.put(e.getPlayer(), System.currentTimeMillis());
@@ -142,7 +145,7 @@ public class Events implements Listener {
             if(realm != null) {
                 setTemporaryInvulnerability(e.getPlayer());
                 new NoxetMessage("§eYou are in §l" + TextBeautifier.beautify(realm.getDisplayName(), false) + "§e.").addButton("Leave", ChatColor.RED, "Go to lobby", "hub").send(e.getPlayer());
-                e.getPlayer().sendTitle("§e§l" + TextBeautifier.beautify(realm.getDisplayName(), false), "§6Type §e§l/hub §6to leave this realm.", 0, 120, 10);
+                e.getPlayer().sendTitle("§e§l" + TextBeautifier.beautify(realm.getDisplayName()), "§3Type §b/hub §3to leave this realm.", 0, 120, 10);
             } else
                 goToHub(e.getPlayer()); // Make sure player is at spawn.
         }, 10);
@@ -150,6 +153,14 @@ public class Events implements Listener {
         updatePlayerListName(e.getPlayer());
 
         new CombatLoggingStorageManager().combatLogRejoin(e.getPlayer(), getCurrentRealm(e.getPlayer()));
+
+        int incomingFriendRequests = new PlayerDataManager(e.getPlayer()).getListSize(PlayerDataManager.Attribute.INCOMING_FRIEND_REQUESTS);
+
+        if(incomingFriendRequests != 0) {
+            new NoxetMessage("§6⚐ Incoming friend requests: §c" + incomingFriendRequests)
+                    .addButton("Review", ChatColor.GREEN, "See who wants to befriend you", "friend incoming")
+                    .send(e.getPlayer());
+        }
     }
 
     public static void updatePlayerListName(Player player) {
@@ -468,6 +479,9 @@ public class Events implements Listener {
             if(e.getItem().equals(HubInventory.getGameNavigator())) {
                 new GameNavigationMenu().openInventory(e.getPlayer());
                 e.setCancelled(true);
+            } else if(e.getItem().equals(HubInventory.getSocialNavigator())) {
+                new SocialMenu(e.getPlayer()).openInventory(e.getPlayer());
+                e.setCancelled(true);
             }
         }
 
@@ -503,7 +517,7 @@ public class Events implements Listener {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    new NoxetMessage("§e§lINVULNERABLE §c" + (finalI / 20) + "s").toActionBar().send(player);
+                    new NoxetActionBarMessage("§e§lINVULNERABLE §c" + (finalI / 20) + "s").send(player);
                 }
             }.runTaskLater(NoxetServer.getPlugin(), ticksInvulnerable - i);
         }
@@ -511,7 +525,7 @@ public class Events implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                new NoxetMessage("§cYou are no longer invulnerable.").toActionBar().send(player);
+                new NoxetActionBarMessage("§cYou are no longer invulnerable.").send(player);
                 invulnerablePlayers.remove(player);
             }
         }.runTaskLater(NoxetServer.getPlugin(), ticksInvulnerable);
@@ -648,7 +662,7 @@ public class Events implements Listener {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    new NoxetMessage("§cYour spawn location was §lNOT§c changed! Read chat.").toActionBar().send(e.getPlayer());
+                    new NoxetActionBarMessage("§cYour spawn location was §lNOT§c changed! Read chat.").send(e.getPlayer());
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 0);
 

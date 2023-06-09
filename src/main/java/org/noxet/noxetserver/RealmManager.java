@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.menus.book.BookMenu;
+import org.noxet.noxetserver.messaging.NoxetActionBarMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.messaging.TextBeautifier;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
@@ -277,7 +278,7 @@ public class RealmManager {
 
         Realm realm = getCurrentRealm(player);
 
-        new NoxetMessage("§7You have been sent to " + (realm != null ? "§f§l" + realm.getDisplayName() + "§7 " : "") + "spawn!").toActionBar().send(player);
+        new NoxetActionBarMessage("§7You have been sent to " + (realm != null ? "§f§l" + realm.getDisplayName() + "§7 " : "") + "spawn!").send(player);
     }
 
     /**
