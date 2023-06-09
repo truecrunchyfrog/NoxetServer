@@ -9,6 +9,7 @@ import org.noxet.noxetserver.playerdata.PlayerDataManager;
 
 public class ClearPlayerDataCache implements CommandExecutor {
     @Override
+    @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!commandSender.isOp()) {
             new NoxetErrorMessage(NoxetErrorMessage.ErrorType.PERMISSION, "Only operators can clear player data cache.").send(commandSender);
