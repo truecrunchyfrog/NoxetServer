@@ -197,6 +197,7 @@ public class MsgConversation implements TabExecutor, Listener {
 
             completions.add("toggle");
         } else if(strings.length == 2) {
+            //noinspection SwitchStatementWithTooFewBranches
             switch(strings[0].toLowerCase()) {
                 case "toggle":
                     break;
