@@ -17,7 +17,7 @@ import static org.noxet.noxetserver.menus.ItemGenerator.generateItem;
 
 public class GameNavigationMenu extends InventoryMenu {
     public GameNavigationMenu() {
-        super(3, TextBeautifier.beautify("Noxet - Choose a game"), false);
+        super(3, "⭐ " + TextBeautifier.beautify("Noxet - Choose a game"), false);
     }
 
     public enum GameSlot implements InventoryCoordinate {

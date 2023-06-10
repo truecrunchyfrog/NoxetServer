@@ -20,7 +20,7 @@ public class BlockedPlayersMenu extends InventoryMenu {
     private final InventoryCoordinate blockNewPlayerSlot;
 
     public BlockedPlayersMenu(Player player) {
-        super((new PlayerDataManager(player).getListSize(PlayerDataManager.Attribute.BLOCKED_PLAYERS) - 1) / 9 + 2, "Blocked Players", false);
+        super((new PlayerDataManager(player).getListSize(PlayerDataManager.Attribute.BLOCKED_PLAYERS) - 1) / 9 + 2, "❌ Blocked Players", false);
         //noinspection unchecked
         blockedPlayers = (List<String>) new PlayerDataManager(player.getUniqueId()).get(PlayerDataManager.Attribute.BLOCKED_PLAYERS);
 
@@ -49,10 +49,8 @@ public class BlockedPlayersMenu extends InventoryMenu {
         setSlotItem(
                 ItemGenerator.generateItem(
                         Material.PAPER,
-                        1,
                         "§aBlock Player",
-                        Arrays.asList("§7Block a player to", "§7prevent them from sending", "§7messages and friend/TPA requests."),
-                        true
+                        Arrays.asList("§7Block a player to", "§7prevent them from sending", "§7messages and friend/TPA requests.")
                 ), blockNewPlayerSlot
         );
     }

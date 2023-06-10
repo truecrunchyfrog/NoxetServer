@@ -52,10 +52,10 @@ public class ChatPromptMenu implements Listener {
         timeout = new BukkitRunnable() {
             @Override
             public void run() {
-                stop();
                 for(Player player : promptedPlayers)
                     if(player.isOnline())
                         dispatchPlayerMessage(player, "");
+                stop();
             }
         }.runTaskLater(NoxetServer.getPlugin(), 20 * 60);
     }

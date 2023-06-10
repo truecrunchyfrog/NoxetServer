@@ -26,7 +26,7 @@ public class HomeNavigationMenu extends InventoryMenu {
     private final Map<String, Location> homes;
 
     public HomeNavigationMenu(Player player, Map<String, Location> homes) {
-        super((homes.size() - 1) / 9 + 1, "Homes", false);
+        super((homes.size() - 1) / 9 + 1, "⚑ Homes", false);
         this.homes = homes;
         this.player = player;
     }
@@ -40,7 +40,7 @@ public class HomeNavigationMenu extends InventoryMenu {
             World.Environment dimension = Objects.requireNonNull(homeLocation.getWorld()).getEnvironment();
             String locationNote = "§5";
 
-            switch (dimension) {
+            switch(dimension) {
                 case NORMAL:
                     locationNote += "Overworld";
                     break;
@@ -54,8 +54,8 @@ public class HomeNavigationMenu extends InventoryMenu {
                     locationNote += "???";
             }
 
-            if (homeLocation.getWorld() == player.getWorld()) {
-                // Same world, show distance.
+            if(homeLocation.getWorld() == player.getWorld()) {
+                // Same world: show distance.
                 int blocksAway = (int) player.getLocation().distance(homeLocation);
                 locationNote += " §e" + new DecimalFormat("#,###").format(blocksAway) + " blocks away.";
             }
@@ -64,7 +64,6 @@ public class HomeNavigationMenu extends InventoryMenu {
 
             ItemStack homeItem = ItemGenerator.generateItem(
                     !isHomeMain ? Material.WHITE_BANNER : Material.RED_BED,
-                    1,
                     (!isHomeMain ? "§a" : "§5◆ §3") + home.getKey(),
                     Arrays.asList(
                             locationNote,
@@ -74,8 +73,7 @@ public class HomeNavigationMenu extends InventoryMenu {
                             "§e→ Double-click to §5§nteleport§e.",
                             "§e→ Right-click to §b§nrename§e.",
                             "§e→ Press any number on keyboard to §c§nremove§e this home."
-                    ),
-                    isHomeMain
+                    )
             );
 
             if(!isHomeMain)

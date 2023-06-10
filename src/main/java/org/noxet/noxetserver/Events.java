@@ -7,8 +7,6 @@ import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.*;
 import org.bukkit.block.data.type.Bed;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -96,8 +94,8 @@ public class Events implements Listener {
         int timesJoined = (int) playerDataManager.get(PlayerDataManager.Attribute.TIMES_JOINED) + 1,
             secondsPlayed = (int) playerDataManager.get(PlayerDataManager.Attribute.SECONDS_PLAYED);
 
-        int minutesPlayed = secondsPlayed / 60,
-            hoursPlayed = minutesPlayed / 60;
+        int hoursPlayed = secondsPlayed / 3600,
+            minutesPlayed = secondsPlayed / 60 % 60;
 
         if(secondsPlayed != 0)
             new NoxetMessage("You have played for: §f" + hoursPlayed + "h " + minutesPlayed + "m").send(e.getPlayer());
@@ -304,19 +302,6 @@ public class Events implements Listener {
     public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent e) {
         if(Captcha.isPlayerDoingCaptcha(e.getPlayer())) {
             e.setCancelled(true);
-
-            int answer;
-
-            try {
-                answer = Integer.parseInt(e.getMessage().substring(1));
-            } catch(NumberFormatException numberFormatException) {
-                return; // Not an integer.
-            }
-
-            if(answer < 0 || answer > Captcha.answersPerQuestion - 1)
-                return;
-
-            Objects.requireNonNull(Captcha.getPlayerCaptcha(e.getPlayer())).chooseAnswer(answer);
         } else if(TemporaryCommand.CONFIRM_BED_SPAWN.isMessageThisCommand(e)) {
             e.setCancelled(true);
 
@@ -366,25 +351,21 @@ public class Events implements Listener {
         }
     }
 
+    public static void boostPlayer(Player player) {
+        player.playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1, (float) (Math.random() * 1.5 + 0.5));
+
+        Vector velocity = new Vector(0, 0.5, 0).add(player.getLocation().getDirection().multiply(4));
+
+        player.setVelocity(velocity);
+
+        new NoxetActionBarMessage("§d↑ ↑ ↑ ↑").send(player);
+    }
+
     @EventHandler
     public void onPlayerToggleFlight(PlayerToggleFlightEvent e) {
         if(e.isFlying() && e.getPlayer().getWorld() == NoxetServer.ServerWorld.HUB.getWorld() && e.getPlayer().getGameMode() == GameMode.SURVIVAL) {
-            if(Math.abs(e.getPlayer().getVelocity().getY()) < 0.334 && e.getPlayer().getLocation().getY() < e.getPlayer().getWorld().getSpawnLocation().getY() + 40) {
-                e.getPlayer().playSound(e.getPlayer().getLocation(), Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1, (float) (Math.random() * 1.5 + 0.5));
-                e.getPlayer().setVelocity(new Vector(0, 1, 0).add(e.getPlayer().getLocation().getDirection().multiply(4)));
-
-                Entity projectile = e.getPlayer().getWorld().spawnEntity(e.getPlayer().getLocation().add(0, 1, 0), EntityType.ARROW);
-                projectile.setVelocity(e.getPlayer().getVelocity().multiply(1.5));
-                projectile.setGlowing(true);
-
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        projectile.remove();
-                    }
-                }.runTaskLater(NoxetServer.getPlugin(), 40);
-            }
-
+            if(Math.abs(e.getPlayer().getVelocity().getY()) < 0.334 && e.getPlayer().getLocation().getY() < e.getPlayer().getWorld().getSpawnLocation().getY() + 40)
+                boostPlayer(e.getPlayer());
             e.setCancelled(true);
         }
     }
@@ -475,6 +456,11 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent e) {
+        if(e.getAction() == Action.PHYSICAL && e.getPlayer().getWorld() == NoxetServer.ServerWorld.HUB.getWorld()) {
+            boostPlayer(e.getPlayer());
+            return;
+        }
+
         if(e.getItem() != null && (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK)) {
             if(e.getItem().equals(HubInventory.getGameNavigator())) {
                 new GameNavigationMenu().openInventory(e.getPlayer());
@@ -535,22 +521,26 @@ public class Events implements Listener {
         setTemporaryInvulnerability(player, 6);
     }
 
-    private final Set<Player> recentlyVoidSpawnedPlayers = new HashSet<>();
+    private final Set<Player> recentlyDamageRespawnedPlayers = new HashSet<>();
 
     @EventHandler
     public void onEntityDamage(EntityDamageEvent e) {
         if(NoxetServer.isWorldSafeZone(e.getEntity().getWorld())) {
             if(
                     e.getEntity() instanceof Player &&
-                    e.getCause() == EntityDamageEvent.DamageCause.VOID &&
-                    e.getEntity().getLocation().getY() < e.getEntity().getWorld().getMinHeight() &&
-                    !recentlyVoidSpawnedPlayers.contains((Player) e.getEntity())
+                    (
+                            (e.getCause() == EntityDamageEvent.DamageCause.VOID && // Stuck in void
+                            e.getEntity().getLocation().getY() < e.getEntity().getWorld().getMinHeight())
+                            ||
+                            e.getCause() == EntityDamageEvent.DamageCause.SUFFOCATION // Stuck in wall
+                    ) &&
+                    !recentlyDamageRespawnedPlayers.contains((Player) e.getEntity())
             ) {
-                recentlyVoidSpawnedPlayers.add((Player) e.getEntity());
+                recentlyDamageRespawnedPlayers.add((Player) e.getEntity());
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        recentlyVoidSpawnedPlayers.remove((Player) e.getEntity());
+                        recentlyDamageRespawnedPlayers.remove((Player) e.getEntity());
                     }
                 }.runTaskLater(NoxetServer.getPlugin(), 120);
                 goToSpawn((Player) e.getEntity());
@@ -653,6 +643,7 @@ public class Events implements Listener {
     }
 
     @EventHandler
+    @SuppressWarnings("UnstableApiUsage")
     public void onPlayerSpawnChange(PlayerSpawnChangeEvent e) {
         Location oldBedSpawn = e.getPlayer().getBedSpawnLocation();
 

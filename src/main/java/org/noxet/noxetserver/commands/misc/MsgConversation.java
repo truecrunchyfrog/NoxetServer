@@ -9,13 +9,11 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.noxet.noxetserver.NoxetServer;
+import org.noxet.noxetserver.UsernameStorageManager;
 import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class MsgConversation implements TabExecutor, Listener {
     public MsgConversation() {
@@ -57,15 +55,22 @@ public class MsgConversation implements TabExecutor, Listener {
             return true;
         }
 
-        Player playerToMessage = NoxetServer.getPlugin().getServer().getPlayer(strings[0]);
+        UUID playerToMessageUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(strings[0]);
+
+        if(playerToMessageUUID == null) {
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "That player is not registered on Noxet.org.").send(player);
+            return true;
+        }
+
+        Player playerToMessage = NoxetServer.getPlugin().getServer().getPlayer(playerToMessageUUID);
 
         if(playerToMessage == null) {
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Invalid player.").send(player);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "That player is not online.").send(player);
             return true;
         }
 
         if(player.equals(playerToMessage)) {
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "You cannot message yourself!").send(player);
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You cannot message yourself!").send(player);
             return true;
         }
 

@@ -51,9 +51,8 @@ public class ConfirmationMenu extends InventoryMenu {
     protected void updateInventory() {
         setSlotItem(ItemGenerator.generateItem(
                 Material.YELLOW_CONCRETE_POWDER,
-                1,
                 "§e" + question,
-                Collections.singletonList("§7Choose an option to confirm or cancel."), true), 4, 1); // Question.
+                Collections.singletonList("§7Choose an option to confirm or cancel.")), 4, 1); // Question.
 
         setSlotItem(ItemGenerator.generateItem(
                 Material.GREEN_CONCRETE_POWDER,

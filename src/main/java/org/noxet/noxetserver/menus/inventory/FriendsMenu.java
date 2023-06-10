@@ -23,16 +23,17 @@ import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
 public class FriendsMenu extends InventoryMenu {
     private final Player player;
     private final List<String> friends;
-    private final InventoryCoordinate addFriendSlot, toggleAllowFriendRequests, toggleFriendTPSlot;
+    private final InventoryCoordinate addFriendSlot, viewIncomingSlot, toggleAllowFriendRequestsSlot, toggleFriendTPSlot;
 
     public FriendsMenu(Player player) {
-        super((new PlayerDataManager(player).getListSize(PlayerDataManager.Attribute.FRIEND_LIST) - 1) / 9 + 2, "Friends", false);
+        super((new PlayerDataManager(player).getListSize(PlayerDataManager.Attribute.FRIEND_LIST) - 1) / 9 + 2, "☻ Friends", false);
         this.player = player;
         friends = Friend.getFriendList(player.getUniqueId());
 
         int y = getInventory().getSize() / 9 - 1;
         addFriendSlot = InventoryCoordinateUtil.getCoordinateFromXY(0, y);
-        toggleAllowFriendRequests = InventoryCoordinateUtil.getCoordinateFromXY(7, y);
+        viewIncomingSlot = InventoryCoordinateUtil.getCoordinateFromXY(2, y);
+        toggleAllowFriendRequestsSlot = InventoryCoordinateUtil.getCoordinateFromXY(7, y);
         toggleFriendTPSlot = InventoryCoordinateUtil.getCoordinateFromXY(8, y);
     }
 
@@ -53,7 +54,7 @@ public class FriendsMenu extends InventoryMenu {
                             "§3" + (friendName != null ? friendName : friendUUIDString),
                             Arrays.asList(
                                     friendPlayer != null ? "§aOnline" + (realm != null ? "§e @ §6" + realm.getDisplayName() : "") : "§cOffline",
-                                    friendPlayer != null ? "§e→ Double-click to §d§nmessage§e." : "§8Messaging unavailable right now.",
+                                    friendPlayer != null ? "§e→ Double-click to §d§nmessage§e." : "§8Messaging unavailable.",
                                     friendPlayer != null && realm != null && realm.doesAllowTeleportationMethods() && realm.equals(getCurrentRealm(player)) ? "§e→ Shift-click to send §c§5teleportation request§e." : "§8Teleportation unavailable.",
                                     "§e→ Press any number on keyboard to §c§nremove§e as friend."
                             )
@@ -65,43 +66,56 @@ public class FriendsMenu extends InventoryMenu {
         setSlotItem(
                 ItemGenerator.generateItem(
                         Material.PAPER,
-                        1,
                         "§aAdd Friend",
-                        Arrays.asList("§7Send a friend request", "§7to someone to remain", "§7in touch."),
-                        true
+                        Arrays.asList("§7Send a friend request", "§7to someone to remain", "§7in touch.")
                 ), addFriendSlot
+        );
+
+        int incomingFriendRequests = new PlayerDataManager(player).getListSize(PlayerDataManager.Attribute.INCOMING_FRIEND_REQUESTS);
+
+        setSlotItem(
+                ItemGenerator.generateItem(
+                        Material.WRITABLE_BOOK,
+                        Math.max(incomingFriendRequests, 1),
+                        "§dIncoming Friend Requests: §5" + incomingFriendRequests,
+                        Arrays.asList(
+                                "§7You have §f" + incomingFriendRequests + "§7 incoming",
+                                "§7friend requests.",
+                                "§e→ Click to view requests."
+                        )
+                ), viewIncomingSlot
         );
 
         boolean allowFriendRequestsStatus = !(boolean) new PlayerDataManager(player).get(PlayerDataManager.Attribute.DISALLOW_INCOMING_FRIEND_REQUESTS);
 
         setSlotItem(
                 ItemGenerator.generateItem(
-                        allowFriendRequestsStatus ? Material.GREEN_WOOL : Material.RED_WOOL,
+                        Material.BOOK,
                         "§aIncoming Friend Requests",
                         Arrays.asList(
-                                allowFriendRequestsStatus ? "§a§lENABLED" : "§c§lDISABLED",
+                                allowFriendRequestsStatus ? "§a§l✔ ENABLED" : "§c§l❌ DISABLED",
                                 "§7When disabled, players cannot",
                                 "§7send friend requests to you.",
                                 "§7Only you can send requests to",
                                 "§7them (unless they disabled this too).",
                                 "§7Recommended to disable if you are spammed.",
                                 "§e→ Click to " + (allowFriendRequestsStatus ? "disable" : "enable") + ".")
-                ), toggleAllowFriendRequests
+                ), toggleAllowFriendRequestsSlot
         );
 
         boolean friendTeleportStatus = (boolean) new PlayerDataManager(player).get(PlayerDataManager.Attribute.FRIEND_TELEPORTATION);
 
         setSlotItem(
                 ItemGenerator.generateItem(
-                        friendTeleportStatus ? Material.GREEN_WOOL : Material.RED_WOOL,
+                        Material.ENDER_PEARL,
                         "§aFriend Teleportation",
                         Arrays.asList(
-                                friendTeleportStatus ? "§a§lENABLED" : "§c§lDISABLED",
+                                friendTeleportStatus ? "§a§l✔ ENABLED" : "§c§l❌ DISABLED",
                                 "§7When enabled, friends who",
                                 "§7/tpa to you will automatically",
-                                "§7be teleported without waiting for",
-                                "§7you to accept.",
-                                "§4Only enable if you trust your friends.",
+                                "§7be teleported without you",
+                                "§7requiring to accept it.",
+                                "§c⚠ Only enable if you trust your friends.",
                                 "§e→ Click to " + (friendTeleportStatus ? "disable" : "enable") + ".")
                 ), toggleFriendTPSlot
         );
@@ -117,7 +131,12 @@ public class FriendsMenu extends InventoryMenu {
             return true;
         }
 
-        if(coordinate.isAt(toggleAllowFriendRequests)) {
+        if(coordinate.isAt(viewIncomingSlot)) {
+            new IncomingFriendRequestsMenu(player).openInventory(player);
+            return true;
+        }
+
+        if(coordinate.isAt(toggleAllowFriendRequestsSlot)) {
             player.performCommand("friend toggle-allow-incoming");
             updateInventory();
             return false;

@@ -67,7 +67,7 @@ public abstract class InventoryMenu implements InventoryHolder, Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent e) {
-        if(e.getClickedInventory().equals(inventory)) {
+        if(e.getClickedInventory() != null && e.getClickedInventory().equals(inventory)) {
             if(onSlotClick(
                     (Player) e.getWhoClicked(),
                     InventoryCoordinateUtil.getCoordinateFromSlotIndex(e.getSlot()),

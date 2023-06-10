@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import org.noxet.noxetserver.menus.inventory.CaptchaSelectionMenu;
 import org.noxet.noxetserver.messaging.ClearChat;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.messaging.TextBeautifier;
@@ -19,42 +20,44 @@ import static org.noxet.noxetserver.RealmManager.goToHub;
 
 public class Captcha {
 
-    private enum CaptchaSound {
-        DOG("Wolf", Sound.ENTITY_WOLF_HURT),
-        PIG("Pig", Sound.ENTITY_PIG_AMBIENT),
-        SHEEP("Sheep", Sound.ENTITY_SHEEP_AMBIENT),
-        CREEPER("Creeper", Sound.ENTITY_CREEPER_PRIMED),
-        GLASS("Glass", Sound.BLOCK_GLASS_BREAK),
-        EXPLOSION("Explosion", Sound.ENTITY_GENERIC_EXPLODE),
-        PARROT("Parrot", Sound.ENTITY_PARROT_AMBIENT),
-        SHULKER_BOX("Shulker Box", Sound.BLOCK_SHULKER_BOX_OPEN),
-        ENDER_DRAGON("Ender Dragon", Sound.ENTITY_ENDER_DRAGON_GROWL),
-        WITHER("Wither", Sound.ENTITY_WITHER_AMBIENT),
-        CHEST("Chest", Sound.BLOCK_CHEST_OPEN),
-        ENDERMAN("Enderman", Sound.ENTITY_ENDERMAN_AMBIENT),
-        SILVERFISH("Silverfish", Sound.ENTITY_SILVERFISH_AMBIENT),
-        DEEPSLATE("Deepslate", Sound.BLOCK_DEEPSLATE_BREAK),
-        FIRE("Fire", Sound.BLOCK_FIRE_EXTINGUISH),
-        ANVIL("Anvil", Sound.BLOCK_ANVIL_USE),
-        HORSE("Horse", Sound.ENTITY_HORSE_AMBIENT),
-        ARMOR("Armor", Sound.ITEM_ARMOR_EQUIP_GENERIC),
-        GRASS("Grass", Sound.BLOCK_GRASS_BREAK),
-        END_PORTAL("End Portal Frame", Sound.BLOCK_END_PORTAL_FRAME_FILL),
-        NETHER_PORTAL("Nether Portal", Sound.BLOCK_PORTAL_AMBIENT),
-        WOOL("Wool", Sound.BLOCK_WOOL_BREAK),
-        DOLPHIN("Dolphin", Sound.ENTITY_DOLPHIN_AMBIENT),
-        BURP("Burping", Sound.ENTITY_PLAYER_BURP),
-        FALL("Fall", Sound.ENTITY_PLAYER_BIG_FALL),
-        ZOMBIE("Zombie", Sound.ENTITY_ZOMBIE_AMBIENT),
-        SKELETON("Skeleton", Sound.ENTITY_SKELETON_AMBIENT),
-        VILLAGER("Villager", Sound.ENTITY_VILLAGER_YES);
+    public enum CaptchaSound {
+        DOG("Wolf", Sound.ENTITY_WOLF_HURT, Material.WOLF_SPAWN_EGG),
+        PIG("Pig", Sound.ENTITY_PIG_AMBIENT, Material.PIG_SPAWN_EGG),
+        SHEEP("Sheep", Sound.ENTITY_SHEEP_AMBIENT, Material.SHEEP_SPAWN_EGG),
+        CREEPER("Creeper", Sound.ENTITY_CREEPER_PRIMED, Material.CREEPER_HEAD),
+        GLASS("Glass", Sound.BLOCK_GLASS_BREAK, Material.GLASS),
+        EXPLOSION("Explosion", Sound.ENTITY_GENERIC_EXPLODE, Material.TNT),
+        PARROT("Parrot", Sound.ENTITY_PARROT_AMBIENT, Material.PARROT_SPAWN_EGG),
+        SHULKER_BOX("Shulker Box", Sound.BLOCK_SHULKER_BOX_OPEN, Material.SHULKER_BOX),
+        ENDER_DRAGON("Ender Dragon", Sound.ENTITY_ENDER_DRAGON_GROWL, Material.DRAGON_HEAD),
+        WITHER("Wither", Sound.ENTITY_WITHER_AMBIENT, Material.WITHER_ROSE),
+        CHEST("Chest", Sound.BLOCK_CHEST_OPEN, Material.CHEST),
+        ENDERMAN("Enderman", Sound.ENTITY_ENDERMAN_AMBIENT, Material.ENDERMAN_SPAWN_EGG),
+        SILVERFISH("Silverfish", Sound.ENTITY_SILVERFISH_AMBIENT, Material.SILVERFISH_SPAWN_EGG),
+        DEEPSLATE("Deepslate", Sound.BLOCK_DEEPSLATE_BREAK, Material.DEEPSLATE),
+        FIRE("Fire", Sound.BLOCK_FIRE_EXTINGUISH, Material.FLINT_AND_STEEL),
+        ANVIL("Anvil", Sound.BLOCK_ANVIL_USE, Material.ANVIL),
+        HORSE("Horse", Sound.ENTITY_HORSE_AMBIENT, Material.HORSE_SPAWN_EGG),
+        ARMOR("Armor", Sound.ITEM_ARMOR_EQUIP_GENERIC, Material.ARMOR_STAND),
+        GRASS("Grass", Sound.BLOCK_GRASS_BREAK, Material.GRASS_BLOCK),
+        END_PORTAL("End Portal Frame", Sound.BLOCK_END_PORTAL_FRAME_FILL, Material.END_PORTAL_FRAME),
+        NETHER_PORTAL("Nether Portal", Sound.BLOCK_PORTAL_AMBIENT, Material.OBSIDIAN),
+        WOOL("Wool", Sound.BLOCK_WOOL_BREAK, Material.WHITE_WOOL),
+        DOLPHIN("Dolphin", Sound.ENTITY_DOLPHIN_AMBIENT, Material.DOLPHIN_SPAWN_EGG),
+        BURP("Burping", Sound.ENTITY_PLAYER_BURP, Material.COOKED_RABBIT),
+        FALL("Fall", Sound.ENTITY_PLAYER_BIG_FALL, Material.PLAYER_HEAD),
+        ZOMBIE("Zombie", Sound.ENTITY_ZOMBIE_AMBIENT, Material.ZOMBIE_HEAD),
+        SKELETON("Skeleton", Sound.ENTITY_SKELETON_AMBIENT, Material.SKELETON_SKULL),
+        VILLAGER("Villager", Sound.ENTITY_VILLAGER_YES, Material.EMERALD);
 
         private final String name;
         private final Sound sound;
+        private final Material material;
 
-        CaptchaSound(String name, Sound sound) {
+        CaptchaSound(String name, Sound sound, Material material) {
             this.name = name;
             this.sound = sound;
+            this.material = material;
         }
 
         public String getName() {
@@ -64,6 +67,10 @@ public class Captcha {
         public Sound getSound() {
             return sound;
         }
+
+        public Material getMaterial() {
+            return material;
+        }
     }
 
     private static final List<Captcha> captchaInstances = new ArrayList<>();
@@ -71,7 +78,7 @@ public class Captcha {
     private final Player player;
     private final Location assignedLocation;
     private int lastQuestion;
-    private int correctAnswer = -1;
+    private CaptchaSound correctAnswer = null;
     private final List<BukkitTask> bukkitTasks = new ArrayList<>();
     private BukkitTask timeoutTask;
 
@@ -101,29 +108,29 @@ public class Captcha {
         BukkitTask teleportTimer = new BukkitRunnable() {
             @Override
             public void run() {
-                player.teleport(assignedLocation);
+                if(!player.getLocation().toVector().subtract(assignedLocation.toVector()).isZero())
+                    player.teleport(assignedLocation);
             }
-        }.runTaskTimer(NoxetServer.getPlugin(), 0, 5);
+        }.runTaskTimer(NoxetServer.getPlugin(), 0, 10);
 
         bukkitTasks.add(teleportTimer);
 
         player.sendTitle("§3§l" + TextBeautifier.beautify("noxet"), "§eCaptcha System", 0, 120, 0);
 
-        bukkitTasks.add(new BukkitRunnable() {
-            @Override
-            public void run() {
-                new ClearChat().send(player);
-                new NoxetMessage("§eBefore we let you in to the server, we must confirm that you are human.").send(player);
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 20));
+        new ClearChat().send(player);
+        new NoxetMessage("§eHello! Before we let you in, please do this little captcha test.").send(player);
+
+        int delay = 5;
 
         bukkitTasks.add(new BukkitRunnable() {
             @Override
             public void run() {
                 new ClearChat().send(player);
-                new NoxetMessage("§bYou will hear a few sounds. For each sound, answer what you heard.").send(player);
+                new NoxetMessage("§bYou will hear a few sounds. Every time, you should answer by clicking the icon of what you heard.").send(player);
             }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * (1 + 8)));
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * delay));
+
+        delay += 6;
 
         bukkitTasks.add(new BukkitRunnable() {
             @Override
@@ -131,14 +138,16 @@ public class Captcha {
                 new ClearChat().send(player);
                 new NoxetMessage("§9§oUnable to hear sounds? Enable Minecraft Subtitles in the sound options.").send(player);
             }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * (1 + 8 + 5)));
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * delay));
+
+        delay += 5;
 
         bukkitTasks.add(new BukkitRunnable() {
             @Override
             public void run() {
                 nextQuestion(0);
             }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * (1 + 8 + 5 + 5)));
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * delay));
     }
 
     private void nextQuestion(int index) {
@@ -157,23 +166,21 @@ public class Captcha {
             captchaSounds.add(suggestSound);
         }
 
-        correctAnswer = random.nextInt(captchaSounds.size());
+        correctAnswer = captchaSounds.get(random.nextInt(captchaSounds.size()));
 
-        new ClearChat().send(player);
+        player.sendTitle("§d§lLISTEN", "§3What do you hear?", 0, 20 * 2, 0);
 
-        player.sendTitle("§e§l?§f§l?", "§7What sound did you hear? Click in chat to answer.", 20, 60, 10);
+        player.playSound(player.getLocation(), correctAnswer.getSound(), 1, 1);
 
-        new NoxetMessage("§9§lSOUND §f" + (index + 1) + " §7/ §f" + totalQuestions).send(player);
+        bukkitTasks.add(new BukkitRunnable() {
+            @Override
+            public void run() {
+                new CaptchaSelectionMenu(captchaSounds, index + 1, totalQuestions, captchaSound -> chooseAnswer(captchaSound)).openInventory(player);
 
-        new NoxetMessage("§7- - - - - - - - - - - -").send(player);
-
-        int i = 0;
-        for(CaptchaSound captchaSound : captchaSounds)
-            new NoxetMessage(null).add("§e§l" + ++i + " §8§l| §b" + captchaSound.getName(), captchaSound.getName(), String.valueOf(i - 1)).send(player);
-
-        player.playSound(player.getLocation(), captchaSounds.get(correctAnswer).getSound(), 1, 1);
-
-        new NoxetMessage("§eWhat sound did you hear? Click the correct answer above.").send(player);
+                new ClearChat().send(player);
+                new NoxetMessage("§eClick what sound you heard from the menu.").send(player);
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * 2));
 
         timeoutTask = new BukkitRunnable() {
             @Override
@@ -184,14 +191,14 @@ public class Captcha {
         }.runTaskLater(NoxetServer.getPlugin(), 20 * 20);
     }
 
-    public void chooseAnswer(int answer) {
-        if(correctAnswer == -1) {
+    public void chooseAnswer(CaptchaSound answer) {
+        if(correctAnswer == null) {
             new NoxetMessage("§cPlease wait!").send(player);
             return;
         }
 
         if(answer == correctAnswer) {
-            correctAnswer = -1;
+            correctAnswer = null;
 
             new ClearChat().send(player);
 

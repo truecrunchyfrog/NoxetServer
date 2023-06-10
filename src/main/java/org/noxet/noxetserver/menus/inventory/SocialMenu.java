@@ -12,7 +12,7 @@ public class SocialMenu extends InventoryMenu {
     private final Player player;
 
     public SocialMenu(Player player) {
-        super(3, "Social", false);
+        super(3, "❤ Social", false);
         this.player = player;
     }
 
