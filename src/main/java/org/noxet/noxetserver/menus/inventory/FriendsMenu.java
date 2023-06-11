@@ -11,6 +11,7 @@ import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.chat.ChatPromptMenu;
 import org.noxet.noxetserver.messaging.NoxetNoteMessage;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
+import org.noxet.noxetserver.util.FancyTimeConverter;
 import org.noxet.noxetserver.util.InventoryCoordinate;
 import org.noxet.noxetserver.util.InventoryCoordinateUtil;
 
@@ -48,15 +49,19 @@ public class FriendsMenu extends InventoryMenu {
             if(friendPlayer != null)
                 realm = getCurrentRealm(friendPlayer);
 
+            Long lastSeen = (Long) new PlayerDataManager(friendUUID).get(PlayerDataManager.Attribute.LAST_PLAYED);
+
             setSlotItem(
                     ItemGenerator.generatePlayerSkull(
                             NoxetServer.getPlugin().getServer().getOfflinePlayer(friendUUID),
                             "§3" + (friendName != null ? friendName : friendUUIDString),
                             Arrays.asList(
-                                    friendPlayer != null ? "§aOnline" + (realm != null ? "§e @ §6" + realm.getDisplayName() : "") : "§cOffline",
+                                    friendPlayer != null ?
+                                            "§aOnline" + (realm != null ? "§e @ §6" + realm.getDisplayName() : "") :
+                                            "§cOffline §7(Last seen " + FancyTimeConverter.deltaSecondsToFancyTime((int) (System.currentTimeMillis() / 1000 - lastSeen)) + " ago)",
                                     friendPlayer != null ? "§e→ Double-click to §d§nmessage§e." : "§8Messaging unavailable.",
                                     friendPlayer != null && realm != null && realm.doesAllowTeleportationMethods() && realm.equals(getCurrentRealm(player)) ? "§e→ Shift-click to send §c§5teleportation request§e." : "§8Teleportation unavailable.",
-                                    "§e→ Press any number on keyboard to §c§nremove§e as friend."
+                                    "§e→ Press any number on keyboard to §c§nunfriend§e."
                             )
                     ),
                     InventoryCoordinateUtil.getCoordinateFromSlotIndex(friends.indexOf(friendUUIDString))

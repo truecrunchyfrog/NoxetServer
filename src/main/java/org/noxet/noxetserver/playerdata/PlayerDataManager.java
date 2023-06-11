@@ -3,10 +3,7 @@ package org.noxet.noxetserver.playerdata;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.playerdata.types.PDTBoolean;
-import org.noxet.noxetserver.playerdata.types.PDTInteger;
-import org.noxet.noxetserver.playerdata.types.PDTMapStringMapStringLocation;
-import org.noxet.noxetserver.playerdata.types.PDTStringList;
+import org.noxet.noxetserver.playerdata.types.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,6 +29,7 @@ public class PlayerDataManager {
         MUTED(new PDTBoolean()),
         TIMES_JOINED(new PDTInteger()),
         SECONDS_PLAYED(new PDTInteger()),
+        LAST_PLAYED(new PDTLong()),
         FRIEND_LIST(new PDTStringList()),
         INCOMING_FRIEND_REQUESTS(new PDTStringList()),
         OUTGOING_FRIEND_REQUESTS(new PDTStringList()),

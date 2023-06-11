@@ -79,7 +79,7 @@ public class Friend implements TabExecutor {
             }
 
             if(new PlayerDataManager(player).doesContain(PlayerDataManager.Attribute.BLOCKED_PLAYERS, uuidToBefriend.toString())) {
-                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You have blocked this player, and cannot send requests to them.").send(player);
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You have blocked this player, and cannot send friend requests to them.").send(player);
                 return true;
             }
 

@@ -29,6 +29,7 @@ import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
 import org.noxet.noxetserver.menus.inventory.SocialMenu;
 import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
+import org.noxet.noxetserver.util.FancyTimeConverter;
 
 import java.util.*;
 
@@ -94,11 +95,8 @@ public class Events implements Listener {
         int timesJoined = (int) playerDataManager.get(PlayerDataManager.Attribute.TIMES_JOINED) + 1,
             secondsPlayed = (int) playerDataManager.get(PlayerDataManager.Attribute.SECONDS_PLAYED);
 
-        int hoursPlayed = secondsPlayed / 3600,
-            minutesPlayed = secondsPlayed / 60 % 60;
-
         if(secondsPlayed != 0)
-            new NoxetMessage("You have played for: §f" + hoursPlayed + "h " + minutesPlayed + "m").send(e.getPlayer());
+            new NoxetMessage("You have played for: §f" + FancyTimeConverter.deltaSecondsToFancyTime(secondsPlayed)).send(e.getPlayer());
 
         String fancyJoinAmount = String.valueOf(timesJoined);
 
@@ -179,18 +177,20 @@ public class Events implements Listener {
         PlayerDataManager.clearCacheForUUID(e.getPlayer().getUniqueId());
         CombatLogging.triggerLocationDisband(e.getPlayer());
 
+        PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
+
         Long timePlayed = playersTimePlayed.remove(e.getPlayer());
 
         if(timePlayed != null) {
-            PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
-
             playerDataManager.set(
                     PlayerDataManager.Attribute.SECONDS_PLAYED,
                     (int) playerDataManager.get(PlayerDataManager.Attribute.SECONDS_PLAYED) + (System.currentTimeMillis() - timePlayed) / 1000
             );
-
-            playerDataManager.save();
         }
+
+        playerDataManager.set(PlayerDataManager.Attribute.LAST_PLAYED, System.currentTimeMillis() / 1000);
+
+        playerDataManager.save();
 
         new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§7 left Noxet.org.").broadcast();
         e.setQuitMessage(null);

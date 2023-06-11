@@ -52,6 +52,21 @@ public class Block implements TabExecutor {
             return true;
         }
 
+        if(Friend.areFriends(player.getUniqueId(), uuidToBlock)) {
+            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You are friends with this player. Please unfriend them before you can block them.").send(player);
+            return true;
+        }
+
+        if(Friend.hasReceivedFriendRequestFrom(player.getUniqueId(), uuidToBlock)) {
+            Friend.denyRequest(player.getUniqueId(), uuidToBlock);
+            new NoxetNoteMessage("Friend request from " + blockName + " was automatically denied due to block.").send(player);
+        }
+
+        if(Friend.hasReceivedFriendRequestFrom(uuidToBlock, player.getUniqueId())) {
+            Friend.denyRequest(uuidToBlock, player.getUniqueId());
+            new NoxetNoteMessage("Friend request to " + blockName + " was canceled due to block.").send(player);
+        }
+
         if(playerDataManager.getListSize(PlayerDataManager.Attribute.BLOCKED_PLAYERS) >= 500) {
             new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You can only block up to 500 players.").send(player);
             return true;
@@ -60,7 +75,6 @@ public class Block implements TabExecutor {
         playerDataManager.addToStringList(PlayerDataManager.Attribute.BLOCKED_PLAYERS, uuidToBlock.toString()).save();
 
         new NoxetSuccessMessage(blockName + " is now blocked. They player can no longer message, friend request or TPA you.").send(player);
-        new NoxetNoteMessage("Any remaining friend or TPA request from/to them is kept.").send(player);
 
         return true;
     }
