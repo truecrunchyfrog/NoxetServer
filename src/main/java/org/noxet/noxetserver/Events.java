@@ -611,26 +611,15 @@ public class Events implements Listener {
         if(to == null)
             return;
 
-        World realmOverworld = realm.getWorld(NoxetServer.WorldFlag.OVERWORLD),
-                realmNether = realm.getWorld(NoxetServer.WorldFlag.NETHER),
-                realmEnd = realm.getWorld(NoxetServer.WorldFlag.END);
-
-        World originWorld = from.getWorld();
-
         switch(Objects.requireNonNull(to.getWorld()).getEnvironment()) {
-            case NETHER: // Overworld <-> Nether (to and from)
-                if(originWorld == realmOverworld) // Overworld to Nether
-                    to.setWorld(realmNether);
-                else // Nether to Overworld
-                    to.setWorld(realmOverworld);
-
+            case NORMAL: // To overworld
+                to.setWorld(realm.getWorld(NoxetServer.WorldFlag.OVERWORLD));
                 break;
-            case THE_END: // Overworld <-> End (to and from)
-                if(originWorld == realmOverworld) // Overworld to End
-                    to.setWorld(realmEnd);
-                else // End to Overworld (end credits)
-                    to.setWorld(realmOverworld);
-
+            case NETHER: // To nether
+                to.setWorld(realm.getWorld(NoxetServer.WorldFlag.NETHER));
+                break;
+            case THE_END: // To end
+                to.setWorld(realm.getWorld(NoxetServer.WorldFlag.END));
                 break;
         }
     }
