@@ -98,3 +98,9 @@ commands:
   clear-player-data-cache:
     description: Clear all player's cached data
     usage: /clear-player-data-cache
+  fake-combat-log:
+    description: Simulate a combat log (when you hit or get hit by a player)
+    usage: /fake-combat-log
+  creeper-sweeper:
+    description: Play a game of Creeper Sweeper
+    usage: /creeper-sweeper

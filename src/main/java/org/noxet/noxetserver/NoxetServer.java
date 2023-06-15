@@ -140,6 +140,10 @@ public final class NoxetServer extends JavaPlugin {
 
         Objects.requireNonNull(getCommand("clear-player-data-cache")).setExecutor(new ClearPlayerDataCache());
 
+        Objects.requireNonNull(getCommand("fake-combat-log")).setExecutor(new FakeCombatLog());
+
+        Objects.requireNonNull(getCommand("creeper-sweeper")).setExecutor(new CreeperSweeper());
+
         logInfo("Noxet plugin is ready.");
     }
 
