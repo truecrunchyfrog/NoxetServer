@@ -9,6 +9,7 @@ import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 
 public class FakeCombatLog implements CommandExecutor {
     @Override
+    @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!commandSender.isOp()) {
             new NoxetErrorMessage(NoxetErrorMessage.ErrorType.PERMISSION, "Only operators can fake combat logging.").send(commandSender);
