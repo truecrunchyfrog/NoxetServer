@@ -33,7 +33,8 @@ public class PlayerDataManager {
         FRIEND_LIST(new PDTStringList()),
         INCOMING_FRIEND_REQUESTS(new PDTStringList()),
         OUTGOING_FRIEND_REQUESTS(new PDTStringList()),
-        FRIEND_TELEPORTATION(new PDTBoolean());
+        FRIEND_TELEPORTATION(new PDTBoolean()),
+        SHOW_FRIEND_HOMES(new PDTBoolean());
 
         private final PlayerDataType<?> type;
 

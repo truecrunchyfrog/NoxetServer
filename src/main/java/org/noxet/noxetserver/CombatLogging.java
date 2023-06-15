@@ -6,7 +6,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.noxet.noxetserver.messaging.NoxetActionBarMessage;
+import org.noxet.noxetserver.messaging.NoxetMessage;
 
 import java.util.*;
 
@@ -21,13 +21,13 @@ public class CombatLogging {
         if(existingTask != null)
             existingTask.cancel(); // If already combat logged: cancel the timeout and set a new one:
         else
-            new NoxetActionBarMessage("§c§lCOMBAT LOGGED!§7 Logging out or teleporting away will kill you.").send(player);
+            new NoxetMessage("§c§lCOMBAT!§7 Logging out or teleporting away while in combat will kill you.").send(player);
 
         combatLogged.put(player, new BukkitRunnable() {
             @Override
             public void run() {
                 if(combatLogged.remove(player) != null)
-                    new NoxetActionBarMessage("§aYou may now leave without consequences.").send(player);
+                    new NoxetMessage("§a§lCOMBAT OVER!§7 You may now leave without consequences.").send(player);
             }
         }.runTaskLater(NoxetServer.getPlugin(), combatLogTimeout));
     }
@@ -39,6 +39,8 @@ public class CombatLogging {
     public static void triggerLocationDisband(Player player) {
         if(!isCombatLogged(player))
             return;
+
+        combatLogged.remove(player);
 
         Location dropAt = player.getLocation();
 
@@ -54,7 +56,8 @@ public class CombatLogging {
         itemsToDrop.addAll(Arrays.asList(playerInventory.getArmorContents()));
 
         for(ItemStack itemStack : itemsToDrop)
-            dropAt.getWorld().dropItemNaturally(dropAt, itemStack);
+            if(itemStack != null)
+                dropAt.getWorld().dropItemNaturally(dropAt, itemStack);
 
         playerInventory.clear(); // Clear inventory to prevent player from dropping those when dying upon return.
         player.setExp(0);

@@ -23,7 +23,8 @@ public class GameNavigationMenu extends InventoryMenu {
     public enum GameSlot implements InventoryCoordinate {
         ANARCHY_ISLAND(2, 1),
         WORLD_EATER(4, 1),
-        SMP(6, 1);
+        SMP(6, 1),
+        CREEPER_SWEEPER(8, 2);
 
         private final int x, y;
 
@@ -68,6 +69,14 @@ public class GameNavigationMenu extends InventoryMenu {
                 RealmManager.Realm.SMP.getPlayerCount(),
                 Material.GRASS_BLOCK
         ), GameSlot.SMP);
+
+        setSlotItem(generateGameModeItem(
+                "Creeper Sweeper",
+                ChatColor.YELLOW,
+                Arrays.asList("Minesweeper clone, enjoy", "anywhere!"),
+                0,
+                Material.CREEPER_HEAD
+        ), GameSlot.CREEPER_SWEEPER);
     }
 
     private ItemStack generateGameModeItem(String name, ChatColor nameColor, List<String> description, int players, Material material) {
@@ -93,6 +102,8 @@ public class GameNavigationMenu extends InventoryMenu {
             player.performCommand("eatworld play");
         } else if(coordinate.isAt(GameSlot.SMP)) {
             RealmManager.migrateToRealm(player, RealmManager.Realm.SMP);
+        } else if(coordinate.isAt(GameSlot.CREEPER_SWEEPER)) {
+            player.performCommand("creeper-sweeper");
         } else return false;
 
         return true;

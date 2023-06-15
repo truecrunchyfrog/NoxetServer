@@ -2,6 +2,7 @@ package org.noxet.noxetserver.menus;
 
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
@@ -17,6 +18,7 @@ public class ItemGenerator {
         assert itemMeta != null;
         itemMeta.setDisplayName(name);
         itemMeta.setLore(lore);
+        itemMeta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
 
         itemStack.setItemMeta(itemMeta);
 

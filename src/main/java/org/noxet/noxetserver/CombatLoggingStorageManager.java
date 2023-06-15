@@ -20,6 +20,7 @@ public class CombatLoggingStorageManager extends ConfigManager {
             realmCombatList.add(player.getUniqueId().toString());
         else
             realmCombatList.remove(player.getUniqueId().toString());
+
         config.set(key, realmCombatList);
         save();
     }
@@ -30,9 +31,9 @@ public class CombatLoggingStorageManager extends ConfigManager {
     }
 
     public void combatLogRejoin(Player player, RealmManager.Realm realm) {
-        if(isCombatLogged(player, realm)) {
-            setPlayerCombatLogMode(player, realm, false);
-            player.setHealth(0);
+        if(isCombatLogged(player, realm)) { // Check if player left while combat logged last time.
+            setPlayerCombatLogMode(player, realm, false); // Reset combat log state.
+            player.setHealth(0); // Kill player!
         }
     }
 }

@@ -2,6 +2,8 @@ package org.noxet.noxetserver;
 
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
+import org.bukkit.WorldType;
+import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.noxet.noxetserver.commands.anarchy.Anarchy;
 import org.noxet.noxetserver.commands.hub.Hub;
@@ -15,13 +17,14 @@ import org.noxet.noxetserver.messaging.Motd;
 
 import java.io.File;
 import java.util.Objects;
+import java.util.Random;
 
 public final class NoxetServer extends JavaPlugin {
 
     private static NoxetServer plugin;
 
     public enum WorldFlag {
-        NEUTRAL, OVERWORLD, NETHER, END
+        NEUTRAL, OVERWORLD, NETHER, THE_END, FLAT, VOID
     }
 
     public static boolean shouldAllowWorldPreservation = true;
@@ -31,12 +34,12 @@ public final class NoxetServer extends JavaPlugin {
         SMP_SPAWN("smp_spawn", RealmManager.Realm.SMP, true, true, WorldFlag.NEUTRAL),
         SMP_WORLD("smp_world", RealmManager.Realm.SMP, false, false, WorldFlag.OVERWORLD),
         SMP_NETHER("smp_nether", RealmManager.Realm.SMP, false, false, WorldFlag.NETHER),
-        SMP_END("smp_end", RealmManager.Realm.SMP, false, false, WorldFlag.END),
+        SMP_END("smp_end", RealmManager.Realm.SMP, false, false, WorldFlag.THE_END),
         ANARCHY_WORLD("anarchy", RealmManager.Realm.ANARCHY, false, false, WorldFlag.OVERWORLD),
         ANARCHY_NETHER("anarchy_nether", RealmManager.Realm.ANARCHY, false, false, WorldFlag.NETHER),
-        ANARCHY_END("anarchy_end", RealmManager.Realm.ANARCHY, false, false, WorldFlag.END),
+        ANARCHY_END("anarchy_end", RealmManager.Realm.ANARCHY, false, false, WorldFlag.THE_END),
 
-        CANVAS_WORLD("canvas", RealmManager.Realm.CANVAS, false, false, WorldFlag.NEUTRAL);
+        CANVAS_WORLD("canvas", RealmManager.Realm.CANVAS, false, true, WorldFlag.VOID);
 
         private final String worldName;
         private final RealmManager.Realm realm;
@@ -60,8 +63,21 @@ public final class NoxetServer extends JavaPlugin {
                 case NETHER:
                     environment = World.Environment.NETHER;
                     break;
-                case END:
+                case THE_END:
                     environment = World.Environment.THE_END;
+                    break;
+                case FLAT:
+                    worldCreator.type(WorldType.FLAT);
+                    worldCreator.generateStructures(false);
+                    break;
+                case VOID:
+                    worldCreator.generator(new ChunkGenerator() {
+                        @Override
+                        @SuppressWarnings({"NullableProblems", "deprecation"})
+                        public ChunkData generateChunkData(World world, Random random, int x, int z, BiomeGrid biome) {
+                            return createChunkData(world);
+                        }
+                    });
                     break;
             }
 

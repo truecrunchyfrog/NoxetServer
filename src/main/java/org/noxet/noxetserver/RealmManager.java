@@ -71,13 +71,19 @@ public class RealmManager {
             }
         }, player -> {
             Events.setPlayerRecentlyKickedToRemoveCheats(player.getUniqueId());
-            player.kickPlayer(
-                    "§a☺ This is just a helping friendly reminder. You are §nnot§a banned.\n\n" +
-                    "§7⚠ §lEXITING ANARCHISTIC REGION §7⚠\n" +
-                    "§c" + TextBeautifier.beautify("You were disconnected because you left Anarchy Island.") + "\n" +
-                    TextBeautifier.beautify("Cheats are not allowed where you are heading.") + "\n" +
-                    "§e" + TextBeautifier.beautify("Close any advantage-granting modifications before rejoining our server, to avoid a ban.")
-            );
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    player.kickPlayer(
+                            "§a☺ This is just a helping friendly reminder. You are §nnot§a banned.\n\n" +
+                                    "§7⚠ §lEXITING ANARCHISTIC REGION §7⚠\n" +
+                                    "§c" + TextBeautifier.beautify("You were disconnected because you left Anarchy Island.") + "\n" +
+                                    TextBeautifier.beautify("Cheats are not allowed where you are heading.") + "\n" +
+                                    "§e" + TextBeautifier.beautify("Close any advantage-granting modifications before rejoining our server, to avoid a ban.")
+                    );
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 20);
         }),
         CANVAS("Canvas", PlayerStateType.CANVAS, true, null, null);
 

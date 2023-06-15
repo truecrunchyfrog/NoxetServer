@@ -91,18 +91,18 @@ public class MsgConversation implements TabExecutor, Listener {
         PlayerDataManager targetPlayerDataManager = new PlayerDataManager(playerToMessage);
 
         //noinspection unchecked
-        List<String> playerTalkedWithList = (List<String>) playerDataManager.get(PlayerDataManager.Attribute.MSG_SPOKEN_TO);
+        List<String> playerSpokenToList = (List<String>) playerDataManager.get(PlayerDataManager.Attribute.MSG_SPOKEN_TO);
 
         //noinspection unchecked
-        if(!((List<String>) targetPlayerDataManager.get(PlayerDataManager.Attribute.MSG_SPOKEN_TO)).contains(player.getUniqueId().toString())) {
+        if(!((List<String>) targetPlayerDataManager.get(PlayerDataManager.Attribute.MSG_SPOKEN_TO)).contains(player.getUniqueId().toString()) && !Friend.areFriends(player.getUniqueId(), playerToMessageUUID)) {
             // Target player does not have this player in their conversation list.
 
-            if(playerTalkedWithList.contains(playerToMessage.getUniqueId().toString())) {
+            if(playerSpokenToList.contains(playerToMessage.getUniqueId().toString())) {
                 // This player has the other player in their conversation list.
                 // This means that this player has already taken contact with the target player, and should not be
                 // allowed to contact again until they receive a reply from target.
 
-                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Please wait for them to reply to your first message before you can send another message.").send(player);
+                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Please wait for them to reply to your first message before you can send another.").send(player);
                 return true;
             }
 
@@ -112,6 +112,8 @@ public class MsgConversation implements TabExecutor, Listener {
             }
 
             // Create a new message request:
+
+            playerDataManager.addToStringList(PlayerDataManager.Attribute.MSG_SPOKEN_TO, playerToMessageUUID.toString()).save();
 
             getConversationMessage(player, MessageDirectionType.INCOMING, messageToSend)
                     .addButton(
@@ -132,12 +134,12 @@ public class MsgConversation implements TabExecutor, Listener {
             return true;
         }
 
-        if(!playerTalkedWithList.contains(playerToMessage.getUniqueId().toString())) {
+        if(!playerSpokenToList.contains(playerToMessage.getUniqueId().toString()) && !Friend.areFriends(player.getUniqueId(), playerToMessageUUID)) {
             // This counts as a reply. Target player has been accepted and conversation created.
 
-            playerTalkedWithList.add(playerToMessage.getUniqueId().toString());
+            playerSpokenToList.add(playerToMessage.getUniqueId().toString());
 
-            playerDataManager.set(PlayerDataManager.Attribute.MSG_SPOKEN_TO, playerTalkedWithList).save();
+            playerDataManager.set(PlayerDataManager.Attribute.MSG_SPOKEN_TO, playerSpokenToList).save();
 
             new NoxetSuccessMessage(player.getName() + " accepted the conversation with you. You can now message them.").send(playerToMessage);
             new NoxetSuccessMessage(playerToMessage.getName() + " can now message you.").send(player);
@@ -155,7 +157,7 @@ public class MsgConversation implements TabExecutor, Listener {
             }
 
             playerConversationChannels.put(player, playerToMessage);
-            new NoxetMessage("§3Entered conversation mode. Messages you send will be messaged to §d" + playerToMessage.getName() + "§3 instead of sending to players in your game.")
+            new NoxetMessage("§3Entered conversation mode. Messages you send will be messaged privately to §d" + playerToMessage.getName() + "§3.")
                     .addButton(
                             "Exit",
                             ChatColor.RED,
@@ -225,7 +227,7 @@ public class MsgConversation implements TabExecutor, Listener {
     private static NoxetMessage getConversationMessage(Player oppositePlayer, MessageDirectionType direction, String message) {
         return new NoxetMessage(null).add(
                 (direction.equals(MessageDirectionType.OUTGOING) ? ("§3→✉ " + TextBeautifier.beautify("to") + "  ") : "§7✉→ " + TextBeautifier.beautify("from")) + " §d" + oppositePlayer.getName() + "§5◇ §f" + message,
-                (direction.equals(MessageDirectionType.OUTGOING) ? "You sent this" : oppositePlayer.getName() + " sent this (use /r <message> to reply)")
+                (direction.equals(MessageDirectionType.OUTGOING) ? "You sent this" : oppositePlayer.getName() + " sent this (use /msg " + oppositePlayer.getName() + " <message> to reply)")
         );
     }
 

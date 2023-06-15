@@ -62,6 +62,25 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerTeleport(PlayerTeleportEvent e) {
+        if(CombatLogging.isCombatLogged(e.getPlayer())) {
+            CombatLogging.triggerLocationDisband(e.getPlayer());
+            new NoxetMessage("§cYou teleported away while combat logged and was killed in penalty.").send(e.getPlayer());
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if(!e.getPlayer().isOnline())
+                        return;
+
+                    Realm fromRealm = getRealmFromWorld(e.getFrom().getWorld());
+                    Realm toRealm = getCurrentRealm(e.getPlayer());
+
+                    if(fromRealm == toRealm)
+                        new CombatLoggingStorageManager().combatLogRejoin(e.getPlayer(), toRealm);
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 1);
+        }
+
         if(e.getTo() != null && e.getFrom().getWorld() != e.getTo().getWorld() && e.getTo().getWorld() != null) { // Teleporting to another world.
             if(e.getTo().getWorld().getName().equalsIgnoreCase("world")) {
                 goToHub(e.getPlayer());
@@ -69,15 +88,12 @@ public class Events implements Listener {
                 return;
             }
 
-            RealmManager.Realm toRealm = getRealmFromWorld(e.getTo().getWorld());
+            Realm toRealm = getRealmFromWorld(e.getTo().getWorld());
 
             migrateToRealm(e.getPlayer(), toRealm); // Migrator will send the player to spawn or last location in realm.
 
             // Don't cancel the teleportation!
         }
-
-        if(CombatLogging.isCombatLogged(e.getPlayer()))
-            CombatLogging.triggerLocationDisband(e.getPlayer());
     }
 
     private static final Map<Player, Long> playersTimePlayed = new HashMap<>();
@@ -96,7 +112,7 @@ public class Events implements Listener {
             secondsPlayed = (int) playerDataManager.get(PlayerDataManager.Attribute.SECONDS_PLAYED);
 
         if(secondsPlayed != 0)
-            new NoxetMessage("You have played for: §f" + FancyTimeConverter.deltaSecondsToFancyTime(secondsPlayed)).send(e.getPlayer());
+            new NoxetMessage("Your total playtime: §f" + FancyTimeConverter.deltaSecondsToFancyTime(secondsPlayed)).send(e.getPlayer());
 
         String fancyJoinAmount = String.valueOf(timesJoined);
 
@@ -117,7 +133,7 @@ public class Events implements Listener {
         else
             fancyJoinAmount += "th";
 
-        new NoxetMessage("§d" + e.getPlayer().getDisplayName() + "§5 hopped on §dNoxet.org§5 for the §3§n" + TextBeautifier.beautify(fancyJoinAmount) + "§5 time.").broadcast();
+        new NoxetMessage("§b" + e.getPlayer().getDisplayName() + "§3 hopped on §bNoxet.org§3 for the §b§n" + TextBeautifier.beautify(fancyJoinAmount) + "§3 time.").broadcast();
         e.setJoinMessage(null);
 
         playerDataManager.set(
@@ -291,10 +307,12 @@ public class Events implements Listener {
                     (channelName != null ? "§7" + TextBeautifier.beautify(channelName) + "§8⏵ " : "") + "§3" + e.getPlayer().getDisplayName() + "§8→ §f" + e.getMessage());
             message.skipPrefix();
 
-            if(realm != null)
+            message.broadcast();
+
+            /*if(realm != null)
                 message.send(realm);
             else
-                message.send(NoxetServer.ServerWorld.HUB.getWorld());
+                message.send(NoxetServer.ServerWorld.HUB.getWorld());*/
         }
     }
 
@@ -331,8 +349,7 @@ public class Events implements Listener {
                 new BookMenu(Collections.singletonList(
                         new ComponentBuilder(
                                 "§8Welcome to the §3" + TextBeautifier.beautify("noxet") + "§8 chat.\n" +
-                                    "Each realm has its own chat channel.\n" +
-                                    "You can still §0/msg§8 players outside of your realm.\n" +
+                                    "You can §0/msg§8 players to talk privately.\n" +
                                     "Make sure that you follow our rules!\n\n")
                                 .append(new ComponentBuilder("§2§l■ I have read and understood this.").event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, TemporaryCommand.UNDERSTAND_CHAT.getSlashCommand())).event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Close this warning"))).create()).create()
                 )).openMenu(e.getPlayer());
@@ -455,6 +472,12 @@ public class Events implements Listener {
     }
 
     @EventHandler
+    public void onItemSpawn(ItemSpawnEvent e) {
+        if(NoxetServer.isWorldPreserved(e.getLocation().getWorld()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
     public void onPlayerInteract(PlayerInteractEvent e) {
         if(e.getAction() == Action.PHYSICAL && e.getPlayer().getWorld() == NoxetServer.ServerWorld.HUB.getWorld()) {
             boostPlayer(e.getPlayer());
@@ -563,7 +586,7 @@ public class Events implements Listener {
             e.setCancelled(true);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent e) {
         if(
                 !e.isCancelled() &&
@@ -619,7 +642,7 @@ public class Events implements Listener {
                 to.setWorld(realm.getWorld(NoxetServer.WorldFlag.NETHER));
                 break;
             case THE_END: // To end
-                to.setWorld(realm.getWorld(NoxetServer.WorldFlag.END));
+                to.setWorld(realm.getWorld(NoxetServer.WorldFlag.THE_END));
                 break;
         }
     }

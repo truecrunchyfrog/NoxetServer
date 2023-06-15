@@ -2,6 +2,7 @@ name: NoxetServer
 version: '${project.version}'
 main: org.noxet.noxetserver.NoxetServer
 api-version: 1.19
+author: dumburk
 commands:
   hub:
     description: Go to the hub
@@ -42,7 +43,7 @@ commands:
       - lets-go
   home:
     description: Teleport to/manage homes
-    usage: /home <tp|set|remove|list|rename> [home name] [(for rename) new home name]
+    usage: /home <tp|set|remove|list|rename|friend-tp> [home name|friend's home] [(for rename) new home name]
     aliases:
       - h
   chickenleg:

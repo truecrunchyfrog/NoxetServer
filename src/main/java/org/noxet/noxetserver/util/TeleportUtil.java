@@ -1,16 +1,44 @@
 package org.noxet.noxetserver.util;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class TeleportUtil {
+    private static final List<Material> blacklistedMaterials = Arrays.asList(
+            Material.LAVA,
+            Material.FIRE,
+            Material.NETHER_PORTAL,
+            Material.CACTUS,
+            Material.POWDER_SNOW,
+            Material.MAGMA_BLOCK
+    );
+
     public static boolean isLocationTeleportSafe(Location location) {
-        return location.clone().subtract(0, 1, 0).getBlock().getType().isSolid();
+        Location below = location.clone().subtract(0, 1, 0),
+                above = location.clone().add(0, 1, 0);
+
+        List<Location> materialCheckLocations = Arrays.asList(
+                location,
+                below,
+                above
+        );
+
+        for(Location materialCheckLocation : materialCheckLocations)
+            if(blacklistedMaterials.contains(materialCheckLocation.getBlock().getType()))
+                return false;
+
+        return below.getBlock().getType().isSolid() &&
+                !location.getBlock().getType().isSolid() &&
+                !above.getBlock().getType().isSolid();
     }
 
     private static final int safeTeleportSearchRadius = 20;
 
     public static Location getSafeTeleportLocation(Location originLocation) {
-        // Search is done in a spiral.
+        /*// Search is done in a spiral.
 
         assert originLocation.getWorld() != null;
 
@@ -26,7 +54,7 @@ public class TeleportUtil {
             if(attemptsLeft-- == 0)
                 return null;
 
-            if(sideIndex == searchLayer * 2 + 1 && currentSide++ == 3) { // Past last index, move to another side.
+            if(sideIndex == searchLayer * 2 + 1 && currentSide++ == 3) { // Past last side and index, move to next layer.
                 if(++searchLayer > safeTeleportSearchRadius)
                     return null; // No safe location found.
                 currentSide = sideIndex = 0;
@@ -68,6 +96,45 @@ public class TeleportUtil {
             sideIndex++;
         }
 
-        return searchLocation;
+        return searchLocation;*/
+        assert originLocation.getWorld() != null;
+
+        Location searchLocation = originLocation.clone();
+
+        int searchLayer = 0, x = 0, z = 0, dx = 0, dz = -1;
+
+        for(int i = 0; i <= safeTeleportSearchRadius * safeTeleportSearchRadius; i++) {
+            if(-safeTeleportSearchRadius <= x && x <= safeTeleportSearchRadius && -safeTeleportSearchRadius <= z && z <= safeTeleportSearchRadius) {
+                searchLocation.setX(originLocation.getX() + x);
+                searchLocation.setY(originLocation.getY());
+                searchLocation.setZ(originLocation.getZ() + z);
+
+                while(searchLocation.clone().subtract(0, 1, 0).getBlock().isEmpty() && searchLocation.getY() > originLocation.getWorld().getMinHeight())
+                    searchLocation.subtract(0, 1, 0);
+
+                if(isLocationTeleportSafe(searchLocation))
+                    return searchLocation;
+            }
+
+            if(x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z)) {
+                int temp = dx;
+                dx = -dz;
+                dz = temp;
+            }
+
+            x += dx;
+            z += dz;
+
+            if(Math.abs(x) > searchLayer || Math.abs(z) > searchLayer) {
+                int temp = dx;
+                dx = -dz;
+                dz = temp;
+
+                if(x >= 0)
+                    searchLayer++;
+            }
+        }
+
+        return null; // No safe location found within the search radius
     }
 }

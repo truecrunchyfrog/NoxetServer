@@ -7,6 +7,7 @@ import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.UsernameStorageManager;
+import org.noxet.noxetserver.menus.inventory.FriendsMenu;
 import org.noxet.noxetserver.messaging.NoxetErrorMessage;
 import org.noxet.noxetserver.messaging.NoxetMessage;
 import org.noxet.noxetserver.messaging.NoxetNoteMessage;
@@ -32,7 +33,7 @@ public class Friend implements TabExecutor {
         Player player = (Player) commandSender;
 
         if(strings.length == 0) {
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.ARGUMENT, "Missing argument: choose something to do with friends.").send(player);
+            new FriendsMenu(player).openInventory(player);
             return true;
         }
 
@@ -119,6 +120,12 @@ public class Friend implements TabExecutor {
             sendFriendRequest(player.getUniqueId(), uuidToBefriend);
 
             new NoxetMessage("§eYou sent a friend request to " + befriendName + ".").send(player);
+
+            if(playerToBefriend != null)
+                new NoxetMessage("§e" + player.getName() + " sent you a friend request!")
+                        .addButton("Accept", ChatColor.GREEN, "Become friends!", "friend add " + player.getName())
+                        .addButton("Deny", ChatColor.RED, "Don't become friends", "friend deny " + player.getName())
+                        .send(playerToBefriend);
 
             return true;
         }
