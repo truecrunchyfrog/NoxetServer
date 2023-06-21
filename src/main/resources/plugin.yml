@@ -105,3 +105,12 @@ commands:
   creeper-sweeper:
     description: Play a game of Creeper Sweeper
     usage: /creeper-sweeper
+  clear-creeper-sweeper-stats:
+    description: Clear your Creeper Sweeper statistics (wins/losses/average)
+    usage: /clear-creeper-sweeper-stats
+  enderchest:
+    description: Access your inventory while mobile!
+    usage: /enderchest [player]
+    aliases:
+      - ec
+      - echest

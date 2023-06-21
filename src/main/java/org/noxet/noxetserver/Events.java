@@ -197,12 +197,8 @@ public class Events implements Listener {
 
         Long timePlayed = playersTimePlayed.remove(e.getPlayer());
 
-        if(timePlayed != null) {
-            playerDataManager.set(
-                    PlayerDataManager.Attribute.SECONDS_PLAYED,
-                    (int) playerDataManager.get(PlayerDataManager.Attribute.SECONDS_PLAYED) + (System.currentTimeMillis() - timePlayed) / 1000
-            );
-        }
+        if(timePlayed != null)
+            playerDataManager.addInt(PlayerDataManager.Attribute.SECONDS_PLAYED, (int) ((System.currentTimeMillis() - timePlayed) / 1000));
 
         playerDataManager.set(PlayerDataManager.Attribute.LAST_PLAYED, System.currentTimeMillis() / 1000);
 
@@ -484,7 +480,7 @@ public class Events implements Listener {
             return;
         }
 
-        if(e.getItem() != null && (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK)) {
+        if(e.getItem() != null && e.getAction() != Action.PHYSICAL) {
             if(e.getItem().equals(HubInventory.getGameNavigator())) {
                 new GameNavigationMenu().openInventory(e.getPlayer());
                 e.setCancelled(true);
@@ -501,6 +497,13 @@ public class Events implements Listener {
 
         if(e.getAction() == Action.LEFT_CLICK_AIR && ChickenLeg.isPlayerChickenLeg(e.getPlayer()))
             ChickenLeg.summonChickenLeg(e.getPlayer());
+
+        if(e.getAction() == Action.RIGHT_CLICK_AIR && e.getMaterial() == Material.ENDER_CHEST) {
+            Realm realm = RealmManager.getCurrentRealm(e.getPlayer());
+
+            if(realm != null && realm.doesAllowTeleportationMethods())
+                e.getPlayer().performCommand("enderchest");
+        }
     }
 
 
