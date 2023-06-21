@@ -9,9 +9,11 @@ import org.noxet.noxetserver.creepersweeper.CreeperSweeperGame;
 import org.noxet.noxetserver.creepersweeper.CreeperSweeperTile;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.util.FancyTimeConverter;
 import org.noxet.noxetserver.util.InventoryCoordinate;
 
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -100,14 +102,37 @@ public class CreeperSweeperGameMenu extends InventoryMenu {
         }
 
         if(game.hasEnded()) {
+            PlayerDataManager playerDataManager = new PlayerDataManager(player);
+
             if(game.didWin()) {
                 player.playSound(player, Sound.ENTITY_CREEPER_DEATH, 1, 0.5f);
 
                 new NoxetMessage("§eYou beat Creeper Sweeper in §c" + FancyTimeConverter.deltaSecondsToFancyTime((int) (game.getGameDuration() / 1000)) + "§e.").send(player);
+
+                playerDataManager.incrementInt(PlayerDataManager.Attribute.CREEPER_SWEEPER_WINS);
+                playerDataManager.addLong(PlayerDataManager.Attribute.CREEPER_SWEEPER_TOTAL_WIN_PLAYTIME, game.getGameDuration() / 1000);
             } else {
                 player.playSound(player, Sound.ENTITY_GENERIC_EXPLODE, 1, 1);
+
                 new NoxetMessage("§c§lTss...! You revealed a creeper.").send(player);
+
+                playerDataManager.incrementInt(PlayerDataManager.Attribute.CREEPER_SWEEPER_LOSSES);
             }
+
+            int wins = (int) playerDataManager.get(PlayerDataManager.Attribute.CREEPER_SWEEPER_WINS),
+                losses = (int) playerDataManager.get(PlayerDataManager.Attribute.CREEPER_SWEEPER_LOSSES);
+
+            new NoxetMessage(null).add(
+                    "W/L: §e" + new DecimalFormat("###.###").format((double) wins / Math.max(losses, 1)) + "§7 (" + wins + " wins, " + losses + " losses)",
+                    "The higher W/L, the better. To clear these stats, type /clear-creeper-sweeper-stats."
+            ).send(player);
+
+            long totalWinPlaytime = (long) playerDataManager.get(PlayerDataManager.Attribute.CREEPER_SWEEPER_TOTAL_WIN_PLAYTIME);
+
+            if(wins > 0)
+                new NoxetMessage("Average time (wins): §e" + FancyTimeConverter.deltaSecondsToFancyTime((int) (totalWinPlaytime / wins))).send(player);
+
+            playerDataManager.save();
         }
 
         updateInventory();
