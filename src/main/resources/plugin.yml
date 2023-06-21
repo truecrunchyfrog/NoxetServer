@@ -1,7 +1,7 @@
 name: NoxetServer
 version: '${project.version}'
 main: org.noxet.noxetserver.NoxetServer
-api-version: 1.19
+api-version: 1.20
 author: dumburk
 commands:
   hub:
