@@ -159,6 +159,9 @@ public final class NoxetServer extends JavaPlugin {
         Objects.requireNonNull(getCommand("fake-combat-log")).setExecutor(new FakeCombatLog());
 
         Objects.requireNonNull(getCommand("creeper-sweeper")).setExecutor(new CreeperSweeper());
+        Objects.requireNonNull(getCommand("clear-creeper-sweeper-stats")).setExecutor(new ClearCreeperSweeperStats());
+
+        Objects.requireNonNull(getCommand("enderchest")).setExecutor(new EnderChest());
 
         logInfo("Noxet plugin is ready.");
     }
