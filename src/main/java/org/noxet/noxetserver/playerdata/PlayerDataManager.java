@@ -34,7 +34,10 @@ public class PlayerDataManager {
         INCOMING_FRIEND_REQUESTS(new PDTStringList()),
         OUTGOING_FRIEND_REQUESTS(new PDTStringList()),
         FRIEND_TELEPORTATION(new PDTBoolean()),
-        SHOW_FRIEND_HOMES(new PDTBoolean());
+        SHOW_FRIEND_HOMES(new PDTBoolean()),
+        CREEPER_SWEEPER_WINS(new PDTInteger()),
+        CREEPER_SWEEPER_LOSSES(new PDTInteger()),
+        CREEPER_SWEEPER_TOTAL_WIN_PLAYTIME(new PDTLong());
 
         private final PlayerDataType<?> type;
 
@@ -128,6 +131,24 @@ public class PlayerDataManager {
     public PlayerDataManager toggleBoolean(Attribute attribute) {
         boolean oldValue = (boolean) get(attribute);
         return set(attribute, !oldValue);
+    }
+
+    public PlayerDataManager addInt(Attribute attribute, int addWith) {
+        int oldValue = (int) get(attribute);
+        return set(attribute, oldValue + addWith);
+    }
+
+    public PlayerDataManager addLong(Attribute attribute, long addWith) {
+        long oldValue = (long) get(attribute);
+        return set(attribute, oldValue + addWith);
+    }
+
+    public PlayerDataManager incrementInt(Attribute attribute) {
+        return addInt(attribute, 1);
+    }
+
+    public PlayerDataManager remove(Attribute attribute) {
+        return set(attribute, null);
     }
 
     public PlayerDataManager addToStringList(Attribute attribute, String value) {
