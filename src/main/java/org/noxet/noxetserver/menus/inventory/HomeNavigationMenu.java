@@ -16,7 +16,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.UsernameStorageManager;
-import org.noxet.noxetserver.commands.misc.Friend;
+import org.noxet.noxetserver.commands.social.Friend;
 import org.noxet.noxetserver.commands.teleportation.Home;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.chat.ChatPromptMenu;

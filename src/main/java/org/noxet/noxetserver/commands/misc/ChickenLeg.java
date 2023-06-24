@@ -8,8 +8,8 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.messaging.NoxetErrorMessage;
-import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.messaging.ErrorMessage;
+import org.noxet.noxetserver.messaging.Message;
 
 import java.util.HashSet;
 import java.util.Random;
@@ -22,14 +22,14 @@ public class ChickenLeg implements CommandExecutor {
     @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "chicken leg only for player!!!").send(commandSender);
+            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "chicken leg only for player!!!").send(commandSender);
             return true;
         }
 
         Player player = (Player) commandSender;
 
         if(chickenLegPlayers.add(player)) {
-            new NoxetMessage("now chicken leg!!!!").send(player);
+            new Message("now chicken leg!!!!").send(player);
         } else
             stopChickenLeg(player);
 
@@ -42,7 +42,7 @@ public class ChickenLeg implements CommandExecutor {
 
     public static void stopChickenLeg(Player player) {
         chickenLegPlayers.remove(player);
-        new NoxetMessage("no longer chicken leg :(").send(player);
+        new Message("no longer chicken leg :(").send(player);
     }
 
     public static void summonChickenLeg(Player player) {

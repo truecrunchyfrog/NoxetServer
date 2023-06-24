@@ -4,11 +4,14 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.creepersweeper.CreeperSweeperGame;
 import org.noxet.noxetserver.creepersweeper.CreeperSweeperTile;
 import org.noxet.noxetserver.menus.ItemGenerator;
-import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.util.FancyTimeConverter;
 import org.noxet.noxetserver.util.InventoryCoordinate;
@@ -80,6 +83,22 @@ public class CreeperSweeperGameMenu extends InventoryMenu {
         }
     }
 
+    enum SurpriseFill {
+        WIN(ItemGenerator.generateItem(Material.EMERALD, "§a§lFinished!")),
+        LOSE(ItemGenerator.generateItem(Material.TNT, "§c§lAwww..."));
+
+        private final ItemStack itemStack;
+
+        SurpriseFill(ItemStack itemStack) {
+            this.itemStack = itemStack;
+        }
+
+        public void fillInventory(Inventory inventory) {
+            for(int i = 0; i < inventory.getSize(); i++)
+                inventory.setItem(i, itemStack);
+        }
+    }
+
     @Override
     protected boolean onSlotClick(Player player, InventoryCoordinate coordinate, ClickType clickType) {
         CreeperSweeperTile clickedTile = game.getTileAt(coordinate);
@@ -101,28 +120,40 @@ public class CreeperSweeperGameMenu extends InventoryMenu {
                 break;
         }
 
+        SurpriseFill surpriseFill = null;
+
         if(game.hasEnded()) {
             PlayerDataManager playerDataManager = new PlayerDataManager(player);
 
             if(game.didWin()) {
                 player.playSound(player, Sound.ENTITY_CREEPER_DEATH, 1, 0.5f);
 
-                new NoxetMessage("§eYou beat Creeper Sweeper in §c" + FancyTimeConverter.deltaSecondsToFancyTime((int) (game.getGameDuration() / 1000)) + "§e.").send(player);
+                new Message("§eYou beat Creeper Sweeper in §c" + FancyTimeConverter.deltaSecondsToFancyTime((int) (game.getGameDuration() / 1000)) + "§e.").send(player);
 
                 playerDataManager.incrementInt(PlayerDataManager.Attribute.CREEPER_SWEEPER_WINS);
                 playerDataManager.addLong(PlayerDataManager.Attribute.CREEPER_SWEEPER_TOTAL_WIN_PLAYTIME, game.getGameDuration() / 1000);
-            } else {
-                player.playSound(player, Sound.ENTITY_GENERIC_EXPLODE, 1, 1);
 
-                new NoxetMessage("§c§lTss...! You revealed a creeper.").send(player);
+                surpriseFill = SurpriseFill.WIN;
+            } else {
+                player.playSound(player, Sound.ENTITY_CREEPER_PRIMED, 1, 1);
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        player.playSound(player, Sound.ENTITY_GENERIC_EXPLODE, 1, 1);
+                    }
+                }.runTaskLater(NoxetServer.getPlugin(), 20);
+
+                new Message("§c§lTss...! You revealed a creeper.").send(player);
 
                 playerDataManager.incrementInt(PlayerDataManager.Attribute.CREEPER_SWEEPER_LOSSES);
+
+                surpriseFill = SurpriseFill.LOSE;
             }
 
             int wins = (int) playerDataManager.get(PlayerDataManager.Attribute.CREEPER_SWEEPER_WINS),
                 losses = (int) playerDataManager.get(PlayerDataManager.Attribute.CREEPER_SWEEPER_LOSSES);
 
-            new NoxetMessage(null).add(
+            new Message(null).add(
                     "W/L: §e" + new DecimalFormat("###.###").format((double) wins / Math.max(losses, 1)) + "§7 (" + wins + " wins, " + losses + " losses)",
                     "The higher W/L, the better. To clear these stats, type /clear-creeper-sweeper-stats."
             ).send(player);
@@ -130,12 +161,21 @@ public class CreeperSweeperGameMenu extends InventoryMenu {
             long totalWinPlaytime = (long) playerDataManager.get(PlayerDataManager.Attribute.CREEPER_SWEEPER_TOTAL_WIN_PLAYTIME);
 
             if(wins > 0)
-                new NoxetMessage("Average time (wins): §e" + FancyTimeConverter.deltaSecondsToFancyTime((int) (totalWinPlaytime / wins))).send(player);
+                new Message("Average time (wins): §e" + FancyTimeConverter.deltaSecondsToFancyTime((int) (totalWinPlaytime / wins))).send(player);
 
             playerDataManager.save();
         }
 
-        updateInventory();
+        if(surpriseFill != null) {
+            surpriseFill.fillInventory(getInventory());
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    updateInventory();
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 20);
+        } else
+            updateInventory();
         return false;
     }
 }

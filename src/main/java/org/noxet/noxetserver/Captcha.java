@@ -7,8 +7,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.noxet.noxetserver.menus.inventory.CaptchaSelectionMenu;
 import org.noxet.noxetserver.messaging.ClearChat;
-import org.noxet.noxetserver.messaging.NoxetMessage;
-import org.noxet.noxetserver.messaging.TextBeautifier;
+import org.noxet.noxetserver.messaging.Message;
+import org.noxet.noxetserver.util.TextBeautifier;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.playerstate.PlayerState;
 
@@ -118,7 +118,7 @@ public class Captcha {
         player.sendTitle("§3§l" + TextBeautifier.beautify("noxet"), "§eCaptcha System", 0, 120, 0);
 
         new ClearChat().send(player);
-        new NoxetMessage("§eHello! Before we let you in, please do this little captcha test.").send(player);
+        new Message("§eHello! Before we let you in, please do this little captcha test.").send(player);
 
         int delay = 5;
 
@@ -126,7 +126,7 @@ public class Captcha {
             @Override
             public void run() {
                 new ClearChat().send(player);
-                new NoxetMessage("§bYou will hear a few sounds. Every time, you should answer by clicking the icon of what you heard.").send(player);
+                new Message("§bYou will hear a few sounds. Every time, you should answer by clicking the icon of what you heard.").send(player);
             }
         }.runTaskLater(NoxetServer.getPlugin(), 20 * delay));
 
@@ -136,7 +136,7 @@ public class Captcha {
             @Override
             public void run() {
                 new ClearChat().send(player);
-                new NoxetMessage("§9§oUnable to hear sounds? Enable Minecraft Subtitles in the sound options.").send(player);
+                new Message("§9§oUnable to hear sounds? Enable Minecraft Subtitles in the sound options.").send(player);
             }
         }.runTaskLater(NoxetServer.getPlugin(), 20 * delay));
 
@@ -178,7 +178,7 @@ public class Captcha {
                 new CaptchaSelectionMenu(captchaSounds, index + 1, totalQuestions, captchaSound -> chooseAnswer(captchaSound)).openInventory(player);
 
                 new ClearChat().send(player);
-                new NoxetMessage("§eClick what sound you heard from the menu.").send(player);
+                new Message("§eClick what sound you heard from the menu.").send(player);
             }
         }.runTaskLater(NoxetServer.getPlugin(), 20 * 2));
 
@@ -193,7 +193,7 @@ public class Captcha {
 
     public void chooseAnswer(CaptchaSound answer) {
         if(correctAnswer == null) {
-            new NoxetMessage("§cPlease wait!").send(player);
+            new Message("§cPlease wait!").send(player);
             return;
         }
 
@@ -238,7 +238,7 @@ public class Captcha {
     public void finish() {
         stop();
 
-        new NoxetMessage("§aYou answered correctly and will now continue to the server.").send(player);
+        new Message("§aYou answered correctly and will now continue to the server.").send(player);
 
         player.sendTitle("§a§lDone", "§eYou seem human enough.", 0, 60, 0);
 

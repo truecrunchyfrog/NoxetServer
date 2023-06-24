@@ -12,9 +12,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.menus.book.BookMenu;
-import org.noxet.noxetserver.messaging.NoxetActionBarMessage;
-import org.noxet.noxetserver.messaging.NoxetMessage;
-import org.noxet.noxetserver.messaging.TextBeautifier;
+import org.noxet.noxetserver.messaging.ActionBarMessage;
+import org.noxet.noxetserver.messaging.Message;
+import org.noxet.noxetserver.util.TextBeautifier;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.playerstate.PlayerState.PlayerStateType;
@@ -210,7 +210,7 @@ public class RealmManager {
         new CombatLoggingStorageManager().combatLogRejoin(player, getCurrentRealm(player));
 
         if(toRealm != null)
-            new NoxetMessage("Entering §e" + toRealm.getDisplayName() + "§7 ...").send(player);
+            new Message("Entering §e" + toRealm.getDisplayName() + "§7 ...").send(player);
 
         if(fromRealm != null) { // Source location is a realm.
             PlayerState.saveState(player, fromRealm.getPlayerStateType()); // Save state in old location's realm.
@@ -250,10 +250,10 @@ public class RealmManager {
         // Say hello/goodbye to new/old realms:
 
         if(fromRealm != null)
-            new NoxetMessage("§f" + player.getDisplayName() + "§7 left §f" + fromRealm.getDisplayName() + "§7.").send(fromRealm);
+            new Message("§f" + player.getDisplayName() + "§7 left §f" + fromRealm.getDisplayName() + "§7.").send(fromRealm);
 
         if(toRealm != null)
-            new NoxetMessage("§f" + player.getDisplayName() + "§7 joined §f" + toRealm.getDisplayName() + "§7.").send(toRealm);
+            new Message("§f" + player.getDisplayName() + "§7 joined §f" + toRealm.getDisplayName() + "§7.").send(toRealm);
     }
 
     public static Location getMainSpawn() {
@@ -284,7 +284,7 @@ public class RealmManager {
 
         Realm realm = getCurrentRealm(player);
 
-        new NoxetActionBarMessage("§7You have been sent to " + (realm != null ? "§f§l" + realm.getDisplayName() + "§7 " : "") + "spawn!").send(player);
+        new ActionBarMessage("§7You have been sent to " + (realm != null ? "§f§l" + realm.getDisplayName() + "§7 " : "") + "spawn!").send(player);
     }
 
     /**

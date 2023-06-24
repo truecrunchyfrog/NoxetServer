@@ -11,7 +11,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Consumer;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.messaging.NoxetMessage;
+import org.noxet.noxetserver.messaging.Message;
 
 import java.util.Set;
 
@@ -68,8 +68,8 @@ public class ChatPromptMenu implements Listener {
         StringBuilder blocks = new StringBuilder();
         for(int i = 0; i < 40; i++)
             blocks.append("■");
-        new NoxetMessage("§8" + blocks).send(player);
-        new NoxetMessage("§3Enter §b" + message + "§3:").send(player);
+        new Message("§8" + blocks).send(player);
+        new Message("§3Enter §b" + message + "§3:").send(player);
     }
 
     public void dispatchPlayerMessage(Player player, String value) {

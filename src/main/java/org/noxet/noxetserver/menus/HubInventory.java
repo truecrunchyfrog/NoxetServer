@@ -3,7 +3,7 @@ package org.noxet.noxetserver.menus;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.noxet.noxetserver.messaging.TextBeautifier;
+import org.noxet.noxetserver.util.TextBeautifier;
 
 public class HubInventory {
     private static ItemStack gameNavigator, socialNavigator;

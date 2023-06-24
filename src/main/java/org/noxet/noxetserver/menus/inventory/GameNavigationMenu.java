@@ -6,7 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 import org.noxet.noxetserver.RealmManager;
-import org.noxet.noxetserver.messaging.TextBeautifier;
+import org.noxet.noxetserver.util.TextBeautifier;
 import org.noxet.noxetserver.util.InventoryCoordinate;
 
 import java.util.ArrayList;

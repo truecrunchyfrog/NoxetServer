@@ -1,6 +1,6 @@
 package org.noxet.noxetserver.messaging;
 
-public class ClearChat extends NoxetMessage {
+public class ClearChat extends Message {
     public ClearChat() {
         super(getClearChatMessage());
     }

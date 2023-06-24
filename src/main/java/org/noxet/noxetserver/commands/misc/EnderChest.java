@@ -7,14 +7,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.InventoryView;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
-import org.noxet.noxetserver.messaging.NoxetErrorMessage;
+import org.noxet.noxetserver.messaging.ErrorMessage;
 
 public class EnderChest implements CommandExecutor {
     @Override
     @SuppressWarnings("NullableProblems")
     public boolean onCommand(CommandSender commandSender, Command command, String s, String[] strings) {
         if(!(commandSender instanceof Player)) {
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Only players can view their ender chest.").send(commandSender);
+            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Only players can view their ender chest.").send(commandSender);
             return true;
         }
 
@@ -23,7 +23,7 @@ public class EnderChest implements CommandExecutor {
         RealmManager.Realm realm = RealmManager.getCurrentRealm(player);
 
         if(realm == null || !realm.doesAllowTeleportationMethods()) {
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.PERMISSION, "You may not use /enderchest here.").send(player);
+            new ErrorMessage(ErrorMessage.ErrorType.PERMISSION, "You may not use /enderchest here.").send(player);
             return true;
         }
 
@@ -33,14 +33,14 @@ public class EnderChest implements CommandExecutor {
             if(player.isOp()) {
                 peekOn = NoxetServer.getPlugin().getServer().getPlayer(strings[0]);
             } else {
-                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.PERMISSION, "You are not allowed to open other players' ender chests.").send(player);
+                new ErrorMessage(ErrorMessage.ErrorType.PERMISSION, "You are not allowed to open other players' ender chests.").send(player);
                 return true;
             }
 
         InventoryView inventoryView = player.openInventory((peekOn == null ? player : peekOn).getEnderChest());
 
         if(inventoryView == null) {
-            new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Failed to open inventory.").send(player);
+            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Failed to open inventory.").send(player);
             return true;
         }
 

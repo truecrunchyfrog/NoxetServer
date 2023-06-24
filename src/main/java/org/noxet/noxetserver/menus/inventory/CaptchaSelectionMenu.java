@@ -5,7 +5,7 @@ import org.bukkit.event.inventory.ClickType;
 import org.bukkit.util.Consumer;
 import org.noxet.noxetserver.Captcha;
 import org.noxet.noxetserver.menus.ItemGenerator;
-import org.noxet.noxetserver.messaging.TextBeautifier;
+import org.noxet.noxetserver.util.TextBeautifier;
 import org.noxet.noxetserver.util.InventoryCoordinate;
 import org.noxet.noxetserver.util.InventoryCoordinateUtil;
 

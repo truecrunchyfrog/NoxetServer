@@ -6,10 +6,10 @@ import org.bukkit.event.inventory.ClickType;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.UsernameStorageManager;
-import org.noxet.noxetserver.commands.misc.Friend;
+import org.noxet.noxetserver.commands.social.Friend;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.chat.ChatPromptMenu;
-import org.noxet.noxetserver.messaging.NoxetNoteMessage;
+import org.noxet.noxetserver.messaging.NoteMessage;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.util.FancyTimeConverter;
 import org.noxet.noxetserver.util.InventoryCoordinate;
@@ -60,7 +60,7 @@ public class FriendsMenu extends InventoryMenu {
                                             "§aOnline" + (realm != null ? "§e @ §6" + realm.getDisplayName() : "") :
                                             "§cOffline §7(Last seen " + FancyTimeConverter.deltaSecondsToFancyTime((int) (System.currentTimeMillis() / 1000 - lastSeen)) + " ago)",
                                     friendPlayer != null ? "§e→ Double-click to §d§nmessage§e." : "§8Messaging unavailable.",
-                                    friendPlayer != null && realm != null && realm.doesAllowTeleportationMethods() && realm.equals(getCurrentRealm(player)) ? "§e→ Shift-click to send §c§5teleportation request§e." : "§8Teleportation unavailable.",
+                                    friendPlayer != null && realm != null && realm.doesAllowTeleportationMethods() && realm.equals(getCurrentRealm(player)) ? "§e→ Shift-click to send §5§nteleportation request§e." : "§8Teleportation unavailable.",
                                     "§e→ Press any number on keyboard to §c§nunfriend§e."
                             )
                     ),
@@ -186,7 +186,7 @@ public class FriendsMenu extends InventoryMenu {
                             new FriendsMenu(player).openInventory(player);
                         },
                         () -> {
-                            new NoxetNoteMessage(friendName + " is still your friend.").send(player);
+                            new NoteMessage(friendName + " is still your friend.").send(player);
                             new FriendsMenu(player).openInventory(player);
                         }
                 ).openInventory(player);

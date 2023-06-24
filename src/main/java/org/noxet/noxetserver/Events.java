@@ -21,15 +21,18 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
-import org.noxet.noxetserver.commands.misc.MsgConversation;
+import org.noxet.noxetserver.commands.social.MsgConversation;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.menus.HubInventory;
 import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
 import org.noxet.noxetserver.menus.inventory.SocialMenu;
 import org.noxet.noxetserver.messaging.*;
+import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.util.FancyTimeConverter;
+import org.noxet.noxetserver.util.TextBeautifier;
+import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
 import java.util.*;
 
@@ -64,7 +67,7 @@ public class Events implements Listener {
     public void onPlayerTeleport(PlayerTeleportEvent e) {
         if(CombatLogging.isCombatLogged(e.getPlayer())) {
             CombatLogging.triggerLocationDisband(e.getPlayer());
-            new NoxetMessage("§cYou teleported away while combat logged and was killed in penalty.").send(e.getPlayer());
+            new Message("§cYou teleported away while combat logged and was killed in penalty.").send(e.getPlayer());
 
             new BukkitRunnable() {
                 @Override
@@ -82,7 +85,7 @@ public class Events implements Listener {
         }
 
         if(e.getTo() != null && e.getFrom().getWorld() != e.getTo().getWorld() && e.getTo().getWorld() != null) { // Teleporting to another world.
-            if(e.getTo().getWorld().getName().equalsIgnoreCase("world")) {
+            if(e.getTo().getWorld().getName().equals("world")) {
                 goToHub(e.getPlayer());
                 e.setCancelled(true);
                 return;
@@ -102,7 +105,7 @@ public class Events implements Listener {
     public void onPlayerJoin(PlayerJoinEvent e) {
         PlayerDataManager.clearCacheForUUID(e.getPlayer().getUniqueId());
 
-        new NoxetMessage("§3■ " + TextBeautifier.beautify("Absorb the Echoes: ", false) + "§b§l" + TextBeautifier.beautify("noxet.org") + "§3!").send(e.getPlayer());
+        new Message("§3■ " + TextBeautifier.beautify("Absorb the Echoes: ", false) + "§b§l" + TextBeautifier.beautify("noxet.org") + "§3!").send(e.getPlayer());
 
         playersTimePlayed.put(e.getPlayer(), System.currentTimeMillis());
 
@@ -112,7 +115,7 @@ public class Events implements Listener {
             secondsPlayed = (int) playerDataManager.get(PlayerDataManager.Attribute.SECONDS_PLAYED);
 
         if(secondsPlayed != 0)
-            new NoxetMessage("Your total playtime: §f" + FancyTimeConverter.deltaSecondsToFancyTime(secondsPlayed)).send(e.getPlayer());
+            new Message("Your total playtime: §f" + FancyTimeConverter.deltaSecondsToFancyTime(secondsPlayed)).send(e.getPlayer());
 
         String fancyJoinAmount = String.valueOf(timesJoined);
 
@@ -133,7 +136,7 @@ public class Events implements Listener {
         else
             fancyJoinAmount += "th";
 
-        new NoxetMessage("§b" + e.getPlayer().getDisplayName() + "§3 hopped on §bNoxet.org§3 for the §b§n" + TextBeautifier.beautify(fancyJoinAmount) + "§3 time.").broadcast();
+        new Message("§b" + e.getPlayer().getDisplayName() + "§3 hopped on §bNoxet.org§3 for the §b§n" + TextBeautifier.beautify(fancyJoinAmount) + "§3 time.").broadcast();
         e.setJoinMessage(null);
 
         playerDataManager.set(
@@ -156,7 +159,7 @@ public class Events implements Listener {
 
             if(realm != null) {
                 setTemporaryInvulnerability(e.getPlayer());
-                new NoxetMessage("§eYou are in §l" + TextBeautifier.beautify(realm.getDisplayName(), false) + "§e.").addButton("Leave", ChatColor.RED, "Go to lobby", "hub").send(e.getPlayer());
+                new Message("§eYou are in §l" + TextBeautifier.beautify(realm.getDisplayName(), false) + "§e.").addButton("Leave", ChatColor.RED, "Go to lobby", "hub").send(e.getPlayer());
                 e.getPlayer().sendTitle("§e§l" + TextBeautifier.beautify(realm.getDisplayName()), "§3Type §b/hub §3to leave this realm.", 0, 120, 10);
             } else
                 goToHub(e.getPlayer()); // Make sure player is at spawn.
@@ -169,7 +172,7 @@ public class Events implements Listener {
         int incomingFriendRequests = new PlayerDataManager(e.getPlayer()).getListSize(PlayerDataManager.Attribute.INCOMING_FRIEND_REQUESTS);
 
         if(incomingFriendRequests != 0) {
-            new NoxetMessage("§6⚐ Incoming friend requests: §c" + incomingFriendRequests)
+            new Message("§6⚐ Incoming friend requests: §c" + incomingFriendRequests)
                     .addButton("Review", ChatColor.GREEN, "See who wants to befriend you", "friend incoming")
                     .send(e.getPlayer());
         }
@@ -204,7 +207,7 @@ public class Events implements Listener {
 
         playerDataManager.save();
 
-        new NoxetMessage("§f" + e.getPlayer().getDisplayName() + "§7 left Noxet.org.").broadcast();
+        new Message("§f" + e.getPlayer().getDisplayName() + "§7 left Noxet.org.").broadcast();
         e.setQuitMessage(null);
     }
 
@@ -239,7 +242,13 @@ public class Events implements Listener {
             }
         }, 2);
 
-        new NoxetMessage("§c" + deathMessage + ".").send(getCurrentRealm(player));
+        new Message("§c" + deathMessage + ".").send(getCurrentRealm(player));
+    }
+
+    @EventHandler
+    public void onPlayerSpawnLocation(PlayerSpawnLocationEvent e) {
+        if(e.getSpawnLocation().getWorld() != null && (e.getSpawnLocation().getWorld().getName().equals("world") || e.getSpawnLocation().getWorld().getName().startsWith(MiniGameController.gameWorldPrefix)))
+            e.setSpawnLocation(RealmManager.getMainSpawn());
     }
 
     @EventHandler
@@ -278,7 +287,7 @@ public class Events implements Listener {
             PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
 
             if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE)) {
-                new NoxetMessage(
+                new Message(
                         "§eHello, " + e.getPlayer().getName() + "!\n" +
                             "Please read a message from us before you can chat.\n"
                 ).addButton(
@@ -291,7 +300,7 @@ public class Events implements Listener {
             }
 
             if((boolean) playerDataManager.get(PlayerDataManager.Attribute.MUTED)) {
-                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You are muted, and cannot chat at the moment!").send(e.getPlayer());
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are muted, and cannot chat at the moment!").send(e.getPlayer());
                 return;
             }
 
@@ -299,9 +308,9 @@ public class Events implements Listener {
 
             String channelName = realm != null ? realm.getDisplayName() : (NoxetServer.ServerWorld.HUB.getWorld().equals(e.getPlayer().getWorld()) ? "HUB" : null);
 
-            NoxetMessage message = new NoxetMessage(
+            Message message = new Message(
                     (channelName != null ? "§7" + TextBeautifier.beautify(channelName) + "§8⏵ " : "") + "§3" + e.getPlayer().getDisplayName() + "§8→ §f" + e.getMessage());
-            message.skipPrefix();
+            message.setPrefix(null);
 
             message.broadcast();
 
@@ -320,7 +329,7 @@ public class Events implements Listener {
             e.setCancelled(true);
 
             if(!unconfirmedPlayerRespawns.containsKey(e.getPlayer())) {
-                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "You cannot do this now.").send(e.getPlayer());
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You cannot do this now.").send(e.getPlayer());
                 return;
             }
 
@@ -328,15 +337,15 @@ public class Events implements Listener {
             e.getPlayer().setBedSpawnLocation(newBedSpawn);
 
             if(e.getPlayer().getBedSpawnLocation() != null && newBedSpawn.getBlock().getBlockData() instanceof Bed)
-                new NoxetMessage("§aYour respawn location has been updated.").send(e.getPlayer());
+                new Message("§aYour respawn location has been updated.").send(e.getPlayer());
             else
-                new NoxetErrorMessage(NoxetErrorMessage.ErrorType.COMMON, "Could not change your respawn location.").send(e.getPlayer());
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Could not change your respawn location.").send(e.getPlayer());
         } else if(TemporaryCommand.UNDERSTAND_ANARCHY.isMessageThisCommand(e)) {
             PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
             if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.HAS_UNDERSTOOD_ANARCHY)) {
                 playerDataManager.set(PlayerDataManager.Attribute.HAS_UNDERSTOOD_ANARCHY, true).save();
                 e.getPlayer().closeInventory();
-                new NoxetMessage("§aThank you for understanding. We will not prompt you that again.").send(e.getPlayer());
+                new Message("§aThank you for understanding. We will not prompt you that again.").send(e.getPlayer());
                 e.setCancelled(true);
             }
         } else if(TemporaryCommand.READ_BEFORE_CHAT.isMessageThisCommand(e)) {
@@ -356,7 +365,7 @@ public class Events implements Listener {
             PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
             if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE)) {
                 playerDataManager.set(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE, true).save();
-                new NoxetMessage("§aYou can now chat!").send(e.getPlayer());
+                new Message("§aYou can now chat!").send(e.getPlayer());
                 e.getPlayer().closeInventory();
 
                 e.setCancelled(true);
@@ -371,7 +380,7 @@ public class Events implements Listener {
 
         player.setVelocity(velocity);
 
-        new NoxetActionBarMessage("§d↑ ↑ ↑ ↑").send(player);
+        new ActionBarMessage("§d↑ ↑ ↑ ↑").send(player);
     }
 
     @EventHandler
@@ -490,6 +499,13 @@ public class Events implements Listener {
             }
         }
 
+        if(e.getAction() == Action.RIGHT_CLICK_AIR && e.getMaterial() == Material.ENDER_CHEST) {
+            Realm realm = RealmManager.getCurrentRealm(e.getPlayer());
+
+            if(realm != null && realm.doesAllowTeleportationMethods())
+                e.getPlayer().performCommand("enderchest");
+        }
+
         if(NoxetServer.isWorldPreserved(e.getPlayer().getWorld()) && !(e.getAction() == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null && e.getClickedBlock().getType() == Material.ENDER_CHEST)) {
             e.setCancelled(true);
             return;
@@ -497,13 +513,6 @@ public class Events implements Listener {
 
         if(e.getAction() == Action.LEFT_CLICK_AIR && ChickenLeg.isPlayerChickenLeg(e.getPlayer()))
             ChickenLeg.summonChickenLeg(e.getPlayer());
-
-        if(e.getAction() == Action.RIGHT_CLICK_AIR && e.getMaterial() == Material.ENDER_CHEST) {
-            Realm realm = RealmManager.getCurrentRealm(e.getPlayer());
-
-            if(realm != null && realm.doesAllowTeleportationMethods())
-                e.getPlayer().performCommand("enderchest");
-        }
     }
 
 
@@ -529,7 +538,7 @@ public class Events implements Listener {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    new NoxetActionBarMessage("§e§lINVULNERABLE §c" + (finalI / 20) + "s").send(player);
+                    new ActionBarMessage("§e§lINVULNERABLE §c" + (finalI / 20) + "s").send(player);
                 }
             }.runTaskLater(NoxetServer.getPlugin(), ticksInvulnerable - i);
         }
@@ -537,7 +546,7 @@ public class Events implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                new NoxetActionBarMessage("§cYou are no longer invulnerable.").send(player);
+                new ActionBarMessage("§cYou are no longer invulnerable.").send(player);
                 invulnerablePlayers.remove(player);
             }
         }.runTaskLater(NoxetServer.getPlugin(), ticksInvulnerable);
@@ -654,7 +663,7 @@ public class Events implements Listener {
 
     public static void abortUnconfirmedPlayerRespawn(Player player) {
         if(unconfirmedPlayerRespawns.remove(player) != null)
-            new NoxetMessage("§cYour respawn location was not changed.").send(player);
+            new Message("§cYour respawn location was not changed.").send(player);
     }
 
     @EventHandler
@@ -668,18 +677,18 @@ public class Events implements Listener {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    new NoxetActionBarMessage("§cYour spawn location was §lNOT§c changed! Read chat.").send(e.getPlayer());
+                    new ActionBarMessage("§cYour spawn location was §lNOT§c changed! Read chat.").send(e.getPlayer());
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 0);
 
-            new NoxetWarningMessage("You already have a respawn location. Replace it?")
+            new WarningMessage("You already have a respawn location. Replace it?")
                     .addButton("Replace", ChatColor.RED, "Set this as your new spawn", TemporaryCommand.CONFIRM_BED_SPAWN.getRawCommand())
                     .send(e.getPlayer());
 
             Realm realm = getCurrentRealm(e.getPlayer());
 
             if(realm != null && realm.doesAllowTeleportationMethods())
-                new NoxetNoteMessage("In " + realm.getDisplayName() + ", you can save locations which you can teleport to, simply with the /home command.")
+                new NoteMessage("In " + realm.getDisplayName() + ", you can save locations which you can teleport to, simply with the /home command.")
                         .addButton(
                                 "Add home here",
                                 ChatColor.GREEN,

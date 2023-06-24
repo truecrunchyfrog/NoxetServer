@@ -1,6 +1,7 @@
 package org.noxet.noxetserver.messaging;
 
 import org.noxet.noxetserver.NoxetServer;
+import org.noxet.noxetserver.util.TextBeautifier;
 
 import java.io.BufferedReader;
 import java.io.File;

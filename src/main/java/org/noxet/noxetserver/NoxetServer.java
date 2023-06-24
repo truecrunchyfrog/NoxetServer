@@ -5,18 +5,10 @@ import org.bukkit.WorldCreator;
 import org.bukkit.WorldType;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.noxet.noxetserver.commands.anarchy.Anarchy;
-import org.noxet.noxetserver.commands.hub.Hub;
-import org.noxet.noxetserver.commands.misc.*;
-import org.noxet.noxetserver.commands.smp.SMP;
-import org.noxet.noxetserver.commands.smp.Wild;
-import org.noxet.noxetserver.commands.spawn.Spawn;
-import org.noxet.noxetserver.commands.teleportation.Home;
-import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
+import org.noxet.noxetserver.commands.CommandRegistration;
 import org.noxet.noxetserver.messaging.Motd;
 
 import java.io.File;
-import java.util.Objects;
 import java.util.Random;
 
 public final class NoxetServer extends JavaPlugin {
@@ -117,51 +109,7 @@ public final class NoxetServer extends JavaPlugin {
 
         logInfo("Loading commands...");
 
-        Objects.requireNonNull(getCommand("smp")).setExecutor(new SMP());
-        Objects.requireNonNull(getCommand("anarchy")).setExecutor(new Anarchy());
-        Objects.requireNonNull(getCommand("hub")).setExecutor(new Hub());
-        Objects.requireNonNull(getCommand("spawn")).setExecutor(new Spawn());
-        Objects.requireNonNull(getCommand("canvas-world")).setExecutor(new CanvasWorld());
-
-        Objects.requireNonNull(getCommand("wild")).setExecutor(new Wild());
-
-        Objects.requireNonNull(getCommand("tpa")).setExecutor(new TeleportAsk());
-
-        Objects.requireNonNull(getCommand("whereami")).setExecutor(new WhereAmI());
-
-        Objects.requireNonNull(getCommand("games")).setExecutor(new GameSelector());
-
-        Objects.requireNonNull(getCommand("home")).setExecutor(new Home());
-
-        Objects.requireNonNull(getCommand("chickenleg")).setExecutor(new ChickenLeg());
-
-        Objects.requireNonNull(getCommand("doas")).setExecutor(new DoAs());
-
-        Objects.requireNonNull(getCommand("mute")).setExecutor(new Mute());
-        Objects.requireNonNull(getCommand("unmute")).setExecutor(new Unmute());
-
-        Objects.requireNonNull(getCommand("msg")).setExecutor(new MsgConversation());
-
-        Objects.requireNonNull(getCommand("toggle-preserve")).setExecutor(new TogglePreserve());
-
-        Objects.requireNonNull(getCommand("loop")).setExecutor(new Loop());
-
-        Objects.requireNonNull(getCommand("set-realm-spawn")).setExecutor(new SetRealmSpawn());
-        Objects.requireNonNull(getCommand("reset-realm-spawn")).setExecutor(new ResetRealmSpawn());
-
-        Objects.requireNonNull(getCommand("friend")).setExecutor(new Friend());
-        Objects.requireNonNull(getCommand("block")).setExecutor(new Block());
-        Objects.requireNonNull(getCommand("unblock")).setExecutor(new Unblock());
-        Objects.requireNonNull(getCommand("block-list")).setExecutor(new BlockList());
-
-        Objects.requireNonNull(getCommand("clear-player-data-cache")).setExecutor(new ClearPlayerDataCache());
-
-        Objects.requireNonNull(getCommand("fake-combat-log")).setExecutor(new FakeCombatLog());
-
-        Objects.requireNonNull(getCommand("creeper-sweeper")).setExecutor(new CreeperSweeper());
-        Objects.requireNonNull(getCommand("clear-creeper-sweeper-stats")).setExecutor(new ClearCreeperSweeperStats());
-
-        Objects.requireNonNull(getCommand("enderchest")).setExecutor(new EnderChest());
+        CommandRegistration.registerCommands();
 
         logInfo("Noxet plugin is ready.");
     }
@@ -184,26 +132,21 @@ public final class NoxetServer extends JavaPlugin {
         return dir;
     }
     
-    @SuppressWarnings("SameReturnValue")
     private static String getLogPrefix() {
-        return "[ NOXET ] ";
+        return "< Noxet > ";
     }
 
     public static void logInfo(String message) {
         getPlugin().getLogger().info(getLogPrefix() + message);
     }
 
-// --Commented out by Inspection START (2023-05-28 19:34):
-//    public static void logWarning(String message) {
-//        getPlugin().getLogger().warning(getLogPrefix() + message);
-//    }
-// --Commented out by Inspection STOP (2023-05-28 19:34)
+    public static void logWarning(String message) {
+        getPlugin().getLogger().warning(getLogPrefix() + message);
+    }
 
-// --Commented out by Inspection START (2023-05-28 19:34):
-//    public static void logSevere(String message) {
-//        getPlugin().getLogger().severe(getLogPrefix() + message);
-//    }
-// --Commented out by Inspection STOP (2023-05-28 19:34)
+    public static void logSevere(String message) {
+        getPlugin().getLogger().severe(getLogPrefix() + message);
+    }
 
     public static boolean isWorldPreserved(World world) {
         for(ServerWorld serverWorld : ServerWorld.values())
