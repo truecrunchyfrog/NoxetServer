@@ -8,6 +8,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.noxet.noxetserver.menus.inventory.CaptchaSelectionMenu;
 import org.noxet.noxetserver.messaging.ClearChat;
 import org.noxet.noxetserver.messaging.Message;
+import org.noxet.noxetserver.util.PlayerFreezer;
 import org.noxet.noxetserver.util.TextBeautifier;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.playerstate.PlayerState;
@@ -74,6 +75,7 @@ public class Captcha {
     }
 
     private static final List<Captcha> captchaInstances = new ArrayList<>();
+    private static final PlayerFreezer freezer = new PlayerFreezer(20);
 
     private final Player player;
     private final Location assignedLocation;
@@ -105,15 +107,7 @@ public class Captcha {
 
         getWorld().setBlockData(assignedLocation.clone().subtract(0, 1, 0), Material.BARRIER.createBlockData()); // Place standing block.
 
-        BukkitTask teleportTimer = new BukkitRunnable() {
-            @Override
-            public void run() {
-                if(!player.getLocation().toVector().subtract(assignedLocation.toVector()).isZero())
-                    player.teleport(assignedLocation);
-            }
-        }.runTaskTimer(NoxetServer.getPlugin(), 0, 10);
-
-        bukkitTasks.add(teleportTimer);
+        freezer.freeze(player, assignedLocation);
 
         player.sendTitle("§3§l" + TextBeautifier.beautify("noxet"), "§eCaptcha System", 0, 120, 0);
 
@@ -256,6 +250,8 @@ public class Captcha {
 
     public void stop() {
         captchaInstances.remove(this);
+
+        freezer.unfreeze(player);
 
         for(BukkitTask bukkitTask : bukkitTasks)
             bukkitTask.cancel();

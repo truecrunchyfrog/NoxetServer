@@ -8,10 +8,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerBedEnterEvent;
-import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerPortalEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.noxet.noxetserver.NoxetServer;
@@ -22,13 +19,11 @@ import org.noxet.noxetserver.messaging.MessagingContext;
 import org.noxet.noxetserver.messaging.channels.MessagingGameChannel;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.util.ConcatSet;
+import org.noxet.noxetserver.util.PlayerFreezer;
 import org.noxet.noxetserver.util.TextBeautifier;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 public abstract class MiniGameController implements Listener {
     public static final String gameWorldPrefix = "NOXET_GAME_WORLD_";
@@ -48,6 +43,7 @@ public abstract class MiniGameController implements Listener {
     private final ConcatSet<Player> allPlayers;
     private final World workingWorld;
     private final MiniGameOptions options;
+    private final PlayerFreezer freezer;
 
     private final MessagingContext messagingContext;
 
@@ -79,6 +75,8 @@ public abstract class MiniGameController implements Listener {
         NoxetServer.getPlugin().getServer().getPluginManager().registerEvents(this, NoxetServer.getPlugin());
 
         MiniGameManager.registerGame(this);
+
+        freezer = new PlayerFreezer(1);
     }
 
     public String getGameId() {
@@ -134,6 +132,13 @@ public abstract class MiniGameController implements Listener {
     public abstract void handlePlayerLeave(Player player);
 
     /**
+     * Called when a player or spectator has been removed from the game.
+     * Used to clean up player from variables and such.
+     * @param player The player that was removed from the game
+     */
+    public abstract void handlePlayerRemoved(Player player);
+
+    /**
      * Called when the game is over, but still running.
      * @return The ticks to wait before stopping the game
      */
@@ -151,6 +156,12 @@ public abstract class MiniGameController implements Listener {
      * @return What should happen with the player
      */
     public abstract DeathContract handleDeath(Player player);
+
+    /**
+     * Called when a player respawns.
+     * @param player The player that respawned
+     */
+    public abstract void handleRespawn(Player player);
 
     /**
      * Get the default spawn location for the game.
@@ -188,6 +199,8 @@ public abstract class MiniGameController implements Listener {
                 attemptStart();
             }
         }.runTaskLater(NoxetServer.getPlugin(), ticksBeforeAttempt);
+
+        addTask(startTask);
     }
 
     private void attemptStart() {
@@ -296,6 +309,7 @@ public abstract class MiniGameController implements Listener {
     }
 
     public void disconnectPlayerFromGame(Player player) {
+        handlePlayerRemoved(player);
         RealmManager.goToHub(player);
     }
 
@@ -392,7 +406,7 @@ public abstract class MiniGameController implements Listener {
      * Stops the game immediately. Unregisters this game instance, cancels tasks, unregisters event listener, removes players from world, unloads world, and deletes world.
      */
     public void stop() {
-        startTask.cancel();
+        freezer.empty();
 
         for(BukkitTask task : tasks)
             task.cancel();
@@ -488,6 +502,12 @@ public abstract class MiniGameController implements Listener {
     }
 
     @EventHandler
+    public void onPlayerRespawn(PlayerRespawnEvent e) {
+        if(isPlayer(e.getPlayer()))
+            handleRespawn(e.getPlayer());
+    }
+
+    @EventHandler
     public void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
         if(e.getFrom() == workingWorld)
             disbandPlayer(e.getPlayer());
@@ -512,5 +532,26 @@ public abstract class MiniGameController implements Listener {
 
     public void addTask(BukkitTask task) {
         tasks.add(task);
+    }
+
+    public PlayerFreezer getFreezer() {
+        return freezer;
+    }
+
+    public Player getRandomPlayer() {
+        return getRandomPlayer(false);
+    }
+
+    public Player getRandomPlayer(boolean notFrozen) {
+        Set<Player> availablePlayers = new HashSet<>(players);
+
+        if(notFrozen) {
+            availablePlayers.removeAll(freezer.getFrozenPlayers());
+
+            if(availablePlayers.size() == 0)
+                return getRandomPlayer();
+        }
+
+        return availablePlayers.toArray(new Player[0])[(int) (availablePlayers.size() * Math.random())];
     }
 }

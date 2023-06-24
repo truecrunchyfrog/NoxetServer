@@ -3,7 +3,9 @@ package org.noxet.noxetserver.minigames.worldeater;
 import org.bukkit.*;
 import org.bukkit.block.Biome;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.*;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Firework;
+import org.bukkit.entity.Player;
 import org.bukkit.generator.BiomeProvider;
 import org.bukkit.generator.WorldInfo;
 import org.bukkit.inventory.meta.FireworkMeta;
@@ -21,17 +23,23 @@ import org.noxet.noxetserver.minigames.GameDefinition;
 import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.util.FancyTimeConverter;
+import org.noxet.noxetserver.util.TextBeautifier;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
 public class WorldEater extends MiniGameController {
-    protected final Set<Player> hiders, frozenPlayers;
+    private final Set<Player> hiders;
     private Team seekersTeam;
     private Team hidersTeam;
     private Scoreboard scoreboard;
     private static final String cacheWorldName = "WORLDEATER_CACHE";
+
+    /**
+     * Used for accessing the game instance from other scopes.
+     */
+    private final WorldEater controllerInstance = this;
 
     @Override
     public void handlePreStart() {
@@ -55,31 +63,78 @@ public class WorldEater extends MiniGameController {
 
                 if(hiders.isEmpty()) { // No hider remains.
                     sendGameMessage(new Message("§cThere is no hider remaining, so the game is over."));
-                    stop(false);
+                    finish(GameResult.TIE);
                 }
             } else if(getPlayers().size() == hiders.size()) { // Only hiders remain.
                 sendGameMessage(new Message("§cThere is no seeker remaining, so the game is over."));
-                stop(true);
+                finish(GameResult.TIE);
             } else if(getPlayers().size() == 1) { // Only 1 player remain.
                 sendGameMessage(new Message("§cEverybody else quit. The game is over. :("));
-                stop(isHider(getPlayers().toArray(new Player[0])[0]));
+                finish(GameResult.TIE);
             }
         }
     }
 
     @Override
+    public void handlePlayerRemoved(Player player) {
+        getFreezer().unfreeze(player);
+    }
+
+    @Override
     public int handleSoftStop() {
-        return 0;
+        return 20 * 15;
     }
 
     @Override
     public void handlePostStop() {
+        if(scoreboard != null)
+            scoreboard.getObjectives().forEach(Objective::unregister);
 
+        if(seekersTeam != null)
+            for(String entry : seekersTeam.getEntries())
+                seekersTeam.removeEntry(entry);
+
+        if(hidersTeam != null)
+            for(String entry : hidersTeam.getEntries())
+                hidersTeam.removeEntry(entry);
     }
 
     @Override
     public DeathContract handleDeath(Player player) {
-        return null;
+        return isSeeker(player) ? DeathContract.SPECTATE : DeathContract.RESPAWN_SAME_LOCATION_KEEP_INVENTORY;
+    }
+
+    @Override
+    public void handleRespawn(Player player) {
+        if(!isSeeker(player))
+            return;
+
+        getFreezer().freeze(player);
+        player.setGameMode(GameMode.SPECTATOR);
+
+        player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 10, 10, true, false));
+
+        for(int i = 10; i > 0; i--) {
+            int finalI = i;
+            addTask(new BukkitRunnable() {
+                @Override
+                public void run() {
+                    player.sendTitle("§c" + finalI, "§euntil you respawn...", 0, 20 * 2, 0);
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 20L * (10 - i)));
+        }
+
+        addTask(new BukkitRunnable() {
+            @Override
+            public void run() {
+                player.setGameMode(GameMode.SURVIVAL);
+                getFreezer().unfreeze(player);
+
+                PlayerState.prepareNormal(player, false);
+
+                player.teleport(getSpawnLocation());
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * 10));
     }
 
     @Override
@@ -88,27 +143,12 @@ public class WorldEater extends MiniGameController {
     }
 
     private int timeLeft;
-    private final List<GameEvent> events;
-
-    private enum GameEvent {
-        METEOR_RAIN("Meteor rain"),
-        VISIBLE_HIDERS("Hiders are exposed"),
-        DRILLING("Drilling"),
-        SHRINKING_WORLD_BORDER("World border is shrinking"),
-        EXPLODING_HORSES("Exploding horses are incoming");
-
-        public final String eventName;
-
-        GameEvent(String eventName) {
-            this.eventName = eventName;
-        }
-    }
+    private final List<WorldEaterEvents.GameEvent> events;
 
     public WorldEater() {
         super(GameDefinition.WORLD_EATER);
 
         hiders = new HashSet<>();
-        frozenPlayers = new HashSet<>();
         events = new ArrayList<>();
     }
 
@@ -280,7 +320,7 @@ public class WorldEater extends MiniGameController {
             player.setScoreboard(scoreboard);
         });
 
-        frozenPlayers.addAll(getPlayers());
+        getFreezer().bulkFreeze(getPlayers());
     }
 
     private void gamePlay(Chunk chunk) {
@@ -299,7 +339,7 @@ public class WorldEater extends MiniGameController {
         addTask(new BukkitRunnable() {
             @Override
             public void run() {
-                frozenPlayers.clear();
+                getFreezer().empty();
 
                 sendGameMessage(new Message("§eHiders are given a head start."));
 
@@ -371,7 +411,7 @@ public class WorldEater extends MiniGameController {
                         for(BukkitTask task : seekerCircleTasks)
                             task.cancel();
 
-                        frozenPlayers.clear();
+                        getFreezer().empty();
 
                         sendGameMessage(new Message("§c§lSEEKERS HAVE BEEN RELEASED!"));
 
@@ -435,190 +475,35 @@ public class WorldEater extends MiniGameController {
 
                                         switch(finalI) { // Timed events
                                             case 20:
-                                                events.add(GameEvent.METEOR_RAIN);
-
-                                                playGameSound(Sound.ITEM_GOAT_HORN_SOUND_3, 1, 2);
-                                                sendGameMessage(new Message("§c§lMETEOR RAIN! §cHead to shelter!"));
-
-                                                final int meteorAmount = 10;
-                                                for(int i = 0; i < meteorAmount; i++) {
-                                                    boolean isLast = i == meteorAmount - 1;
-                                                    addTask(new BukkitRunnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            Player meteorTarget = getRandomPlayer(true);
-
-                                                            meteorTarget.playSound(meteorTarget, Sound.ITEM_GOAT_HORN_SOUND_0, 1, 0.5f);
-
-                                                            Location targetLocation = meteorTarget.getLocation();
-
-                                                            Random random = new Random();
-
-                                                            Location meteorStart = targetLocation.clone();
-                                                            meteorStart.add(random.nextInt(-50, 50), random.nextInt(50, 100), random.nextInt(-50, 50));
-
-                                                            Fireball meteor = getWorkingWorld().spawn(meteorStart, Fireball.class);
-
-                                                            meteor.setIsIncendiary(true);
-                                                            meteor.setYield(8);
-
-                                                            meteor.setDirection(targetLocation.toVector().subtract(meteorStart.toVector()));
-
-                                                            if(isLast)
-                                                                events.remove(GameEvent.METEOR_RAIN);
-                                                        }
-                                                    }.runTaskLater(NoxetServer.getPlugin(), 20 * (i + 1) * 15));
-                                                }
-
+                                                events.add(WorldEaterEvents.GameEvent.METEOR_RAIN);
+                                                WorldEaterEvents.meteorRain(controllerInstance);
                                                 break;
                                             case 22:
                                             case 15:
                                             case 8:
-                                                events.add(GameEvent.VISIBLE_HIDERS);
-
-                                                playGameSound(Sound.ITEM_GOAT_HORN_SOUND_7, 1, 0.8f);
-                                                sendGameMessage(new Message("§c§lALERT! §eHiders are now visible for 10 seconds!"));
-
-                                                forEachHider(hider -> {
-                                                    hider.sendTitle("§c§lEXPOSED!", "§eYour location is now visible.", 5, 20 * 10, 5);
-                                                    hider.addPotionEffect(
-                                                            new PotionEffect(
-                                                                    PotionEffectType.GLOWING, 20 * 10, 10, true, false, false
-                                                            )
-                                                    );
-                                                });
-
-                                                addTask(new BukkitRunnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        events.remove(GameEvent.VISIBLE_HIDERS);
-                                                    }
-                                                }.runTaskLater(NoxetServer.getPlugin(), 20 * 10));
+                                                events.add(WorldEaterEvents.GameEvent.VISIBLE_HIDERS);
+                                                WorldEaterEvents.visibleHiders(controllerInstance);
                                                 break;
                                             case 12:
-                                                events.add(GameEvent.DRILLING);
-
-                                                playGameSound(Sound.ITEM_GOAT_HORN_SOUND_4, 1, 2f);
-                                                sendGameMessage(new Message("§c§lDRILLING! §cDrills will now be performed randomly. A whole Y-axis will be drilled down into void!"));
-                                                Random random = new Random();
-
-                                                final int drillHoles = 15;
-                                                for(int i = 0; i < drillHoles; i++) {
-                                                    boolean isLast = i == drillHoles - 1;
-
-                                                    addTask(new BukkitRunnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            Location drillLocation = new Location(getWorkingWorld(), random.nextInt(0, 16), 0, random.nextInt(0, 16));
-                                                            int yMax = getWorkingWorld().getMaxHeight(), yMin = getWorkingWorld().getMinHeight();
-
-                                                            for(int y = yMin; y < yMax; y++) {
-                                                                Location drillBlock = drillLocation.clone();
-                                                                drillBlock.setY(y);
-
-                                                                getWorkingWorld().spawnParticle(Particle.SWEEP_ATTACK, drillBlock, 3);
-                                                                int finalY = y;
-                                                                boolean isLast2 = isLast && y == yMin + 1;
-
-                                                                addTask(new BukkitRunnable() {
-                                                                    @Override
-                                                                    public void run() {
-                                                                        if(finalY % 2 == 0)
-                                                                            getWorkingWorld().playSound(drillBlock, Sound.BLOCK_BAMBOO_BREAK, 1, 2f);
-
-                                                                        getWorkingWorld().spawnParticle(Particle.SWEEP_ATTACK, drillBlock, 5);
-                                                                        drillBlock.getBlock().setBlockData(Material.AIR.createBlockData(), false);
-
-                                                                        if(isLast2)
-                                                                            events.remove(GameEvent.DRILLING);
-                                                                    }
-                                                                }.runTaskLater(NoxetServer.getPlugin(), 2L * (yMax - y)));
-                                                            }
-                                                        }
-                                                    }.runTaskLater(NoxetServer.getPlugin(), 20 * 15 * (i + 1)));
-                                                }
-
+                                                events.add(WorldEaterEvents.GameEvent.DRILLING);
+                                                WorldEaterEvents.drilling(controllerInstance);
                                                 break;
                                             case 10:
-                                                events.add(GameEvent.SHRINKING_WORLD_BORDER);
-
-                                                playGameSound(Sound.ITEM_GOAT_HORN_SOUND_6, 1, 2);
-                                                sendGameMessage(new Message("§eThe world border will shrink in §c30§e seconds!"));
-
-                                                addTask(new BukkitRunnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        playGameSound(Sound.ITEM_GOAT_HORN_SOUND_6, 1, 0.5f);
-
-                                                        getWorkingWorld().getWorldBorder().setSize(32);
-                                                        getWorkingWorld().getWorldBorder().setWarningTime(20);
-                                                        getWorkingWorld().getWorldBorder().setCenter(getSpawnLocation());
-                                                        sendGameMessage(new Message("§eWorld border has shrunk!"));
-
-                                                        events.remove(GameEvent.SHRINKING_WORLD_BORDER);
-                                                    }
-                                                }.runTaskLater(NoxetServer.getPlugin(), 20 * 30));
+                                                events.add(WorldEaterEvents.GameEvent.SHRINKING_WORLD_BORDER);
+                                                WorldEaterEvents.shrinkingWorldBorder(controllerInstance);
                                                 break;
                                             case 5:
-                                                events.add(GameEvent.EXPLODING_HORSES);
-
-                                                sendGameMessage(new Message("§8<§k-§8> §4§lSUDDEN DEATH! §cExploding horses will appear. They may be killed with a single hit, but - if not - they will put you down."));
-
-                                                playGameSound(Sound.ENTITY_HORSE_ANGRY, 5, 5);
-
-                                                final int horseCount = 20;
-
-                                                for(int i = 0; i < horseCount; i++) {
-                                                    boolean isLast = i == horseCount - 1;
-
-                                                    addTask(new BukkitRunnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            if(Math.random() * 10 < 3) {
-                                                                Player unluckyPlayer = getRandomPlayer();
-                                                                unluckyPlayer.playSound(unluckyPlayer, Sound.ENTITY_HORSE_ANGRY, 6, 6);
-
-                                                                Horse horse = (Horse) getWorkingWorld().spawnEntity(unluckyPlayer.getLocation(), EntityType.HORSE);
-
-                                                                horse.setVisualFire(true);
-                                                                horse.setHealth(0.5);
-
-                                                                addTask(new BukkitRunnable() {
-                                                                    @Override
-                                                                    public void run() {
-                                                                        if(!horse.isDead()) {
-                                                                            getWorkingWorld().playSound(horse.getLocation(), Sound.ENTITY_GHAST_SCREAM, 1, 0.5f);
-                                                                            horse.remove();
-                                                                            getWorkingWorld().createExplosion(horse.getLocation(), 12);
-                                                                        }
-
-                                                                        if(isLast)
-                                                                            events.remove(GameEvent.EXPLODING_HORSES);
-                                                                    }
-                                                                }.runTaskLater(NoxetServer.getPlugin(), 20 * 4));
-                                                            }
-                                                        }
-                                                    }.runTaskLater(NoxetServer.getPlugin(), 20 * 3 * i));
-                                                }
+                                                events.add(WorldEaterEvents.GameEvent.EXPLODING_HORSES);
+                                                WorldEaterEvents.explodingHorses(controllerInstance);
                                                 break;
                                             case 1:
-                                                playGameSound(Sound.ITEM_GOAT_HORN_SOUND_7, 1, 0.5f);
-                                                sendGameMessage(new Message("§c§lALERT! §eEVERYONE are now visible!"));
-
-                                                forEachPlayer(player -> {
-                                                    player.sendTitle("§c§lEXPOSED!", "§eEveryone can now see everyone.", 5, 20 * 5, 5);
-                                                    player.addPotionEffect(
-                                                            new PotionEffect(
-                                                                    PotionEffectType.GLOWING, 20 * 60, 10, true, false, false
-                                                            )
-                                                    );
-                                                });
-
+                                                events.add(WorldEaterEvents.GameEvent.EVERYONE_VISIBLE);
+                                                WorldEaterEvents.everyoneVisible(controllerInstance);
                                                 break;
                                         }
                                     } else {
                                         sendGameMessage(new Message("§aTime has gone out! Hiders win."));
-                                        stop(true);
+                                        finish(GameResult.HIDERS_WIN);
                                     }
                                 }
                             }.runTaskLater(NoxetServer.getPlugin(), 20L * 60 * (timeLeft - i)));
@@ -637,27 +522,31 @@ public class WorldEater extends MiniGameController {
         }.runTaskLater(NoxetServer.getPlugin(), 20 * 5));
     }
 
-    protected void stopHard(boolean wait) {
-        if(scoreboard != null)
-            scoreboard.getObjectives().forEach(Objective::unregister);
-
-        if(seekersTeam != null)
-            for(String entry : seekersTeam.getEntries())
-                seekersTeam.removeEntry(entry);
-
-        if(hidersTeam != null)
-            for(String entry : hidersTeam.getEntries())
-                hidersTeam.removeEntry(entry);
+    public enum GameResult {
+        SEEKERS_WIN, TIE, HIDERS_WIN
     }
 
-    protected void stop(boolean hiderWins) {
+    public boolean didPlayerWin(Player player, GameResult result) {
+        return (isSeeker(player) && result == GameResult.SEEKERS_WIN) || (isHider(player) && result == GameResult.HIDERS_WIN);
+    }
+
+    private void finish(GameResult result) {
         playGameSound(Sound.BLOCK_BELL_USE, 3, 3);
 
+        if(result != GameResult.TIE)
+            sendGameMessage(new Message((result == GameResult.SEEKERS_WIN ? "Seekers" : "Hiders") + " won the game!"));
+        else
+            sendGameMessage(new Message("Tie! Nobody won the game."));
+
         forEachPlayer(player -> player.sendTitle(
-                (!hiderWins && isSeeker(player)) || (hiderWins && isHider(player)) ?
-                        "§a§lVictory!" : "§c§lLost!",
-                !hiderWins ?
-                        "§eSeekers won." : "§eHiders won.",
+                didPlayerWin(player, result) ?
+                        "§a§l" + TextBeautifier.beautify("Victory", false) + "!" :
+                        (result != GameResult.TIE ?
+                                "§c§l" + TextBeautifier.beautify("Lost", false) + "!" :
+                                "§e§l" + TextBeautifier.beautify("Tie", false) + "!"
+                        ),
+                result == GameResult.SEEKERS_WIN ?
+                        "§eSeekers won." : (result == GameResult.HIDERS_WIN ? "§eHiders won." : "§7Nobody won."),
                 0, 20 * 6, 0
         ));
 
@@ -686,6 +575,8 @@ public class WorldEater extends MiniGameController {
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 20L * random.nextInt(1, 4));
         }
+
+        softStop();
     }
 
     protected Location getCenterTopLocation() {
@@ -701,23 +592,6 @@ public class WorldEater extends MiniGameController {
             else break;
 
         return spawn.add(0, 2, 0);
-    }
-
-    private Player getRandomPlayer() {
-        return getRandomPlayer(false);
-    }
-
-    private Player getRandomPlayer(boolean notFrozen) {
-        if(!notFrozen)
-            return getPlayers().toArray(new Player[0])[(int) (getPlayers().size() * Math.random())];
-
-        ArrayList<Player> availablePlayers = new ArrayList<>(getPlayers());
-        availablePlayers.removeAll(frozenPlayers);
-
-        if(availablePlayers.size() == 0)
-            return getRandomPlayer();
-
-        return availablePlayers.toArray(new Player[0])[(int) (availablePlayers.size() * Math.random())];
     }
 
     private static boolean hasLiquidOnTop(World world, int x, int z) {
@@ -751,39 +625,6 @@ public class WorldEater extends MiniGameController {
         spawn.setY(getWorkingWorld().getHighestBlockYAt((int) spawn.getX(), (int) spawn.getZ()));
 
         getWorkingWorld().spawnEntity(getAppropriateSpawnLocation(spawn), type);
-    }
-
-    protected void seekerRespawn(Player seeker) {
-        Location respawnLocation = seeker.getLastDeathLocation();
-        if(respawnLocation != null && respawnLocation.getY() > getWorkingWorld().getMinHeight())
-            seeker.teleport(seeker.getLastDeathLocation()); // Return seeker to death location.
-
-        frozenPlayers.add(seeker);
-        seeker.setGameMode(GameMode.SPECTATOR);
-
-        seeker.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 10, 10, true, false));
-
-        for(int i = 10; i > 0; i--) {
-            int finalI = i;
-            addTask(new BukkitRunnable() {
-                @Override
-                public void run() {
-                    seeker.sendTitle("§c" + finalI, "§euntil you respawn...", 0, 20 * 2, 0);
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20L * (10 - i)));
-        }
-
-        addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                seeker.setGameMode(GameMode.SURVIVAL);
-                frozenPlayers.remove(seeker);
-
-                PlayerState.prepareNormal(seeker, false);
-
-                seeker.teleport(getSpawnLocation());
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * 10));
     }
 
     private static Scoreboard createGameScoreboard() {
@@ -843,5 +684,9 @@ public class WorldEater extends MiniGameController {
     public void forEachHider(Consumer<Player> hiderConsumer) {
         for(Player hider : hiders)
             hiderConsumer.accept(hider);
+    }
+
+    public void removeEvent(WorldEaterEvents.GameEvent event) {
+        events.remove(event);
     }
 }

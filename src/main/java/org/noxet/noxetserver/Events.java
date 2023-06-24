@@ -188,17 +188,19 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent e) {
-        migratingPlayers.remove(e.getPlayer());
-        Captcha.stopPlayerCaptcha(e.getPlayer());
-        TeleportAsk.abortPlayerRelatedRequests(e.getPlayer());
-        abortUnconfirmedPlayerRespawn(e.getPlayer());
-        MsgConversation.clearActiveConversationModes(e.getPlayer());
-        PlayerDataManager.clearCacheForUUID(e.getPlayer().getUniqueId());
-        CombatLogging.triggerLocationDisband(e.getPlayer());
+        Player player = e.getPlayer();
 
-        PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
+        migratingPlayers.remove(player);
+        Captcha.stopPlayerCaptcha(player);
+        TeleportAsk.abortPlayerRelatedRequests(player);
+        abortUnconfirmedPlayerRespawn(player);
+        MsgConversation.clearActiveConversationModes(player);
+        PlayerDataManager.clearCacheForUUID(player.getUniqueId());
+        CombatLogging.triggerLocationDisband(player);
 
-        Long timePlayed = playersTimePlayed.remove(e.getPlayer());
+        PlayerDataManager playerDataManager = new PlayerDataManager(player);
+
+        Long timePlayed = playersTimePlayed.remove(player);
 
         if(timePlayed != null)
             playerDataManager.addInt(PlayerDataManager.Attribute.SECONDS_PLAYED, (int) ((System.currentTimeMillis() - timePlayed) / 1000));
@@ -207,7 +209,7 @@ public class Events implements Listener {
 
         playerDataManager.save();
 
-        new Message("§f" + e.getPlayer().getDisplayName() + "§7 left Noxet.org.").broadcast();
+        new Message("§f" + player.getDisplayName() + "§7 left Noxet.org.").broadcast();
         e.setQuitMessage(null);
     }
 
