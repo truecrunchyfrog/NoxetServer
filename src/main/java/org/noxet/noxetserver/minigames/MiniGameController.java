@@ -39,8 +39,9 @@ public abstract class MiniGameController implements Listener {
     private final String gameId;
     private final GameDefinition game;
     private MiniGameState state;
-    private final Set<Player> players, spectators;
-    private final ConcatSet<Player> allPlayers;
+    private final Set<Player> players = new HashSet<>(),
+            spectators = new HashSet<>();
+    private final ConcatSet<Player> allPlayers = new ConcatSet<>(players, spectators);
     private final World workingWorld;
     private final MiniGameOptions options;
     private final PlayerFreezer freezer;
@@ -52,16 +53,12 @@ public abstract class MiniGameController implements Listener {
     /**
      * Any delayed BukkitTask related to this game should be added to tasks with the addTask() method, to make sure that they are canceled on stop.
      */
-    private List<BukkitTask> tasks;
+    private final List<BukkitTask> tasks = new ArrayList<>();
 
     public MiniGameController(GameDefinition game) {
         gameId = String.valueOf(new Random().nextInt((int) Math.pow(10, 5), (int) Math.pow(10, 6)));
         this.game = game;
         this.options = game.getOptions();
-
-        players = new HashSet<>();
-        spectators = new HashSet<>();
-        allPlayers = new ConcatSet<>(players, spectators);
 
         WorldCreator worldCreator = new WorldCreator(gameWorldPrefix + gameId);
 
@@ -425,6 +422,8 @@ public abstract class MiniGameController implements Listener {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        handlePostStop();
     }
 
     /**
