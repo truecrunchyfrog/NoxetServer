@@ -38,7 +38,7 @@ public abstract class MiniGameController implements Listener {
     }
 
     public enum DeathContract {
-        RESPAWN_DROP_INVENTORY, RESPAWN_KEEP_INVENTORY, SPECTATE
+        RESPAWN_DROP_INVENTORY, RESPAWN_KEEP_INVENTORY, RESPAWN_SAME_LOCATION_KEEP_INVENTORY, SPECTATE
     }
 
     private final String gameId;
@@ -140,17 +140,17 @@ public abstract class MiniGameController implements Listener {
     public abstract int handleSoftStop();
 
     /**
+     * Called when the game has stopped. Use to clean up necessary things, such as objectives, teams, etc.
+     * Things that should always happen upon stop, even during hard stops, should be placed here.
+     */
+    public abstract void handlePostStop();
+
+    /**
      * Called when a player dies.
      * @param player The player that died
      * @return What should happen with the player
      */
     public abstract DeathContract handleDeath(Player player);
-
-    /**
-     * Called when the game has stopped. Use to clean up necessary things, such as objectives, teams, etc.
-     * Things that should always happen upon stop, even during hard stops, should be placed here.
-     */
-    public abstract void handlePostStop();
 
     /**
      * Get the default spawn location for the game.
@@ -458,6 +458,19 @@ public abstract class MiniGameController implements Listener {
                     e.setKeepLevel(true);
                     e.getDrops().clear();
                     e.setDroppedExp(0);
+                case RESPAWN_SAME_LOCATION_KEEP_INVENTORY:
+                    Location oldSpawnLocation = e.getEntity().getBedSpawnLocation();
+
+                    Location deathLocation = e.getEntity().getLastDeathLocation();
+                    if(deathLocation != null && deathLocation.getY() > getWorkingWorld().getMinHeight())
+                        e.getEntity().setBedSpawnLocation(deathLocation, true);
+
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            e.getEntity().setBedSpawnLocation(oldSpawnLocation, true);
+                        }
+                    }.runTaskLater(NoxetServer.getPlugin(), 1);
                 case RESPAWN_DROP_INVENTORY:
                     new BukkitRunnable() {
                         @Override
