@@ -162,6 +162,22 @@ public class PlayerState {
         player.setFlying(true);
     }
 
+    /**
+     * Set a player in the "normal" mode (vulnerable, visible, cannot fly).
+     * @param player The player to set to normal mode
+     * @param inherit Whether to reset the player completely
+     */
+    public static void prepareNormal(Player player, boolean inherit) {
+        if(inherit)
+            prepareDefault(player);
+
+        player.setInvulnerable(false);
+        player.setInvisible(false);
+
+        player.setAllowFlight(false);
+        player.setFlying(false);
+    }
+
     public static void prepareHubState(Player player) {
         prepareDefault(player);
 

@@ -6,14 +6,17 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerBedEnterEvent;
-import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerPortalEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.*;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Consumer;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.ErrorMessage;
@@ -22,13 +25,11 @@ import org.noxet.noxetserver.messaging.MessagingContext;
 import org.noxet.noxetserver.messaging.channels.MessagingGameChannel;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.util.ConcatSet;
+import org.noxet.noxetserver.util.PlayerFreezer;
 import org.noxet.noxetserver.util.TextBeautifier;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 public abstract class MiniGameController implements Listener {
     public static final String gameWorldPrefix = "NOXET_GAME_WORLD_";
@@ -38,34 +39,34 @@ public abstract class MiniGameController implements Listener {
     }
 
     public enum DeathContract {
-        RESPAWN_DROP_INVENTORY, RESPAWN_KEEP_INVENTORY, SPECTATE
+        RESPAWN_DROP_INVENTORY, RESPAWN_KEEP_INVENTORY, RESPAWN_SAME_LOCATION_KEEP_INVENTORY, SPECTATE
     }
 
     private final String gameId;
     private final GameDefinition game;
     private MiniGameState state;
-    private final Set<Player> players, spectators;
-    private final ConcatSet<Player> allPlayers;
+    private final Set<Player> players = new HashSet<>(),
+            spectators = new HashSet<>();
+    private final ConcatSet<Player> allPlayers = new ConcatSet<>(players, spectators);
     private final World workingWorld;
     private final MiniGameOptions options;
+    private final PlayerFreezer freezer;
 
     private final MessagingContext messagingContext;
 
     private BukkitTask startTask;
 
+    private final Map<ItemStack, Consumer<Player>> actionBoundItems = new HashMap<>();
+
     /**
      * Any delayed BukkitTask related to this game should be added to tasks with the addTask() method, to make sure that they are canceled on stop.
      */
-    private List<BukkitTask> tasks;
+    private final List<BukkitTask> tasks = new ArrayList<>();
 
     public MiniGameController(GameDefinition game) {
         gameId = String.valueOf(new Random().nextInt((int) Math.pow(10, 5), (int) Math.pow(10, 6)));
         this.game = game;
         this.options = game.getOptions();
-
-        players = new HashSet<>();
-        spectators = new HashSet<>();
-        allPlayers = new ConcatSet<>(players, spectators);
 
         WorldCreator worldCreator = new WorldCreator(gameWorldPrefix + gameId);
 
@@ -79,6 +80,8 @@ public abstract class MiniGameController implements Listener {
         NoxetServer.getPlugin().getServer().getPluginManager().registerEvents(this, NoxetServer.getPlugin());
 
         MiniGameManager.registerGame(this);
+
+        freezer = new PlayerFreezer(1);
     }
 
     public String getGameId() {
@@ -134,10 +137,23 @@ public abstract class MiniGameController implements Listener {
     public abstract void handlePlayerLeave(Player player);
 
     /**
+     * Called when a player or spectator has been removed from the game.
+     * Used to clean up player from variables and such.
+     * @param player The player that was removed from the game
+     */
+    public abstract void handlePlayerRemoved(Player player);
+
+    /**
      * Called when the game is over, but still running.
      * @return The ticks to wait before stopping the game
      */
     public abstract int handleSoftStop();
+
+    /**
+     * Called when the game has stopped. Use to clean up necessary things, such as objectives, teams, etc.
+     * Things that should always happen upon stop, even during hard stops, should be placed here.
+     */
+    public abstract void handlePostStop();
 
     /**
      * Called when a player dies.
@@ -147,10 +163,18 @@ public abstract class MiniGameController implements Listener {
     public abstract DeathContract handleDeath(Player player);
 
     /**
-     * Called when the game has stopped. Use to clean up necessary things, such as objectives, teams, etc.
-     * Things that should always happen upon stop, even during hard stops, should be placed here.
+     * Called when a player's death item drops are selected.
+     * @implNote These drops will only append to the drops, and not replace them (for example, if the player does not have keep inventory, then their items will drop together with this)
+     * @param player The player who died
+     * @return The drops that will spawn where the player died
      */
-    public abstract void handlePostStop();
+    public abstract List<ItemStack> handlePlayerDrops(Player player);
+
+    /**
+     * Called when a player respawns.
+     * @param player The player that respawned
+     */
+    public abstract void handleRespawn(Player player);
 
     /**
      * Get the default spawn location for the game.
@@ -188,6 +212,8 @@ public abstract class MiniGameController implements Listener {
                 attemptStart();
             }
         }.runTaskLater(NoxetServer.getPlugin(), ticksBeforeAttempt);
+
+        addTask(startTask);
     }
 
     private void attemptStart() {
@@ -296,6 +322,7 @@ public abstract class MiniGameController implements Listener {
     }
 
     public void disconnectPlayerFromGame(Player player) {
+        handlePlayerRemoved(player);
         RealmManager.goToHub(player);
     }
 
@@ -392,7 +419,7 @@ public abstract class MiniGameController implements Listener {
      * Stops the game immediately. Unregisters this game instance, cancels tasks, unregisters event listener, removes players from world, unloads world, and deletes world.
      */
     public void stop() {
-        startTask.cancel();
+        freezer.empty();
 
         for(BukkitTask task : tasks)
             task.cancel();
@@ -411,6 +438,8 @@ public abstract class MiniGameController implements Listener {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        handlePostStop();
     }
 
     /**
@@ -458,6 +487,19 @@ public abstract class MiniGameController implements Listener {
                     e.setKeepLevel(true);
                     e.getDrops().clear();
                     e.setDroppedExp(0);
+                case RESPAWN_SAME_LOCATION_KEEP_INVENTORY:
+                    Location oldSpawnLocation = e.getEntity().getBedSpawnLocation();
+
+                    Location deathLocation = e.getEntity().getLastDeathLocation();
+                    if(deathLocation != null && deathLocation.getY() > getWorkingWorld().getMinHeight())
+                        e.getEntity().setBedSpawnLocation(deathLocation, true);
+
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            e.getEntity().setBedSpawnLocation(oldSpawnLocation, true);
+                        }
+                    }.runTaskLater(NoxetServer.getPlugin(), 1);
                 case RESPAWN_DROP_INVENTORY:
                     new BukkitRunnable() {
                         @Override
@@ -468,16 +510,63 @@ public abstract class MiniGameController implements Listener {
                     break;
                 case SPECTATE:
                     if(!addSpectator(e.getEntity()))
-                        removePlayer(e.getEntity()); // If player cannot spectate.
+                        removePlayer(e.getEntity()); // If player cannot spectate, just remove them from the game.
                     break;
             }
+
+            List<ItemStack> drops = handlePlayerDrops(e.getEntity());
+            if(drops != null)
+                e.getDrops().addAll(drops);
         }
+    }
+
+    @EventHandler
+    public void onPlayerRespawn(PlayerRespawnEvent e) {
+        if(isPlayer(e.getPlayer()))
+            handleRespawn(e.getPlayer());
     }
 
     @EventHandler
     public void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
         if(e.getFrom() == workingWorld)
             disbandPlayer(e.getPlayer());
+    }
+
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    private boolean canPlayerModifyWorld(Player player) {
+        return hasStarted() && !freezer.isPlayerFrozen(player);
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent e) {
+        if(e.getBlock().getWorld() == workingWorld && !canPlayerModifyWorld(e.getPlayer()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent e) {
+        if(e.getPlayer().getWorld() == workingWorld && !canPlayerModifyWorld(e.getPlayer()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onEntityPickupItem(EntityPickupItemEvent e) {
+        if(e.getItem().getWorld() == workingWorld && e.getEntity() instanceof Player && !canPlayerModifyWorld((Player) e.getEntity()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onEntityHurtEntity(EntityDamageByEntityEvent e) {
+        if(e.getDamager().getWorld() == workingWorld && e.getDamager() instanceof Player && !canPlayerModifyWorld((Player) e.getDamager()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent e) {
+        if(isPlayer(e.getPlayer()) && (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) && actionBoundItems.containsKey(e.getItem())) {
+            e.setCancelled(true);
+            actionBoundItems.remove(e.getItem()).accept(e.getPlayer());
+        }
     }
 
     public void sendGameMessage(Message message) {
@@ -499,5 +588,30 @@ public abstract class MiniGameController implements Listener {
 
     public void addTask(BukkitTask task) {
         tasks.add(task);
+    }
+
+    public PlayerFreezer getFreezer() {
+        return freezer;
+    }
+
+    public Player getRandomPlayer() {
+        return getRandomPlayer(false);
+    }
+
+    public Player getRandomPlayer(boolean notFrozen) {
+        Set<Player> availablePlayers = new HashSet<>(players);
+
+        if(notFrozen) {
+            availablePlayers.removeAll(freezer.getFrozenPlayers());
+
+            if(availablePlayers.size() == 0)
+                return getRandomPlayer();
+        }
+
+        return availablePlayers.toArray(new Player[0])[(int) (availablePlayers.size() * Math.random())];
+    }
+
+    public void bindActionToItem(ItemStack itemStack, Consumer<Player> action) {
+        actionBoundItems.put(itemStack, action);
     }
 }
