@@ -8,6 +8,7 @@ import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.generator.BiomeProvider;
 import org.bukkit.generator.WorldInfo;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -16,13 +17,16 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.*;
 import org.bukkit.util.Consumer;
 import org.noxet.noxetserver.NoxetServer;
+import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.inventory.WorldEaterTeamSelectionMenu;
 import org.noxet.noxetserver.messaging.ActionBarMessage;
+import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.minigames.GameDefinition;
 import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.util.FancyTimeConverter;
+import org.noxet.noxetserver.util.RegionBinder;
 import org.noxet.noxetserver.util.TextBeautifier;
 
 import java.io.File;
@@ -34,6 +38,7 @@ public class WorldEater extends MiniGameController {
     private Team seekersTeam;
     private Team hidersTeam;
     private Scoreboard scoreboard;
+    private final RegionBinder regionBinder = new RegionBinder(getCenterTopLocation(), 64, 120);
     private static final String cacheWorldName = "WORLDEATER_CACHE";
 
     /**
@@ -102,6 +107,42 @@ public class WorldEater extends MiniGameController {
     @Override
     public DeathContract handleDeath(Player player) {
         return isSeeker(player) ? DeathContract.SPECTATE : DeathContract.RESPAWN_SAME_LOCATION_KEEP_INVENTORY;
+    }
+
+    @Override
+    public List<ItemStack> handlePlayerDrops(Player deadPlayer) {
+        if(isSeeker(deadPlayer)) {
+            ItemStack item = ItemGenerator.generatePlayerSkull(
+                    deadPlayer,
+                    "§c§lGift of the Ghosts §8[ §eRight-click for invisibility §8]",
+                    Collections.singletonList("§eRight-click to become invisible for 20 seconds.")
+            );
+
+            bindActionToItem(item, affectedPlayer -> {
+                if(isHider(affectedPlayer)) {
+                    affectedPlayer.playSound(affectedPlayer, Sound.ENTITY_CAT_HISS, 1, 0.5f);
+                    affectedPlayer.sendTitle("§aInvisible", "§3You are now §ninvisible§3.", 10, 20 * 3, 10);
+                    new Message("§eYou are now invisible for §c20§e seconds.").send(affectedPlayer);
+
+                    affectedPlayer.setInvisible(true);
+                    addTask(new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            affectedPlayer.setInvisible(false);
+                            affectedPlayer.sendTitle("§c§lWAH!", "§eYou are no longer invisible.", 10, 20 * 3, 10);
+                            new Message("§eYou are visible again.").send(affectedPlayer);
+                        }
+                    }.runTaskLater(NoxetServer.getPlugin(), 20 * 20));
+                } else
+                    new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Only hiders can use this item!").send(affectedPlayer);
+
+                affectedPlayer.getInventory().remove(item);
+            });
+
+            return Collections.singletonList(item);
+        }
+
+        return null;
     }
 
     @Override

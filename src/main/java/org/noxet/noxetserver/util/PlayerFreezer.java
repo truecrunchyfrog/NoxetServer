@@ -2,18 +2,14 @@ package org.noxet.noxetserver.util;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
-import org.noxet.noxetserver.NoxetServer;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-public class PlayerFreezer {
+public class PlayerFreezer extends DynamicTimer {
     private final Map<Player, Location> freezerMap;
     private final int tickFrequency;
-    private BukkitTask freezeTimer;
 
     /**
      * Initializes a freezer instance with its own mapping.
@@ -62,31 +58,23 @@ public class PlayerFreezer {
         touchTimer();
     }
 
-    private void assignTimer() {
-        stopTimer();
-
-        freezeTimer = new BukkitRunnable() {
-            @Override
-            public void run() {
-                for(Map.Entry<Player, Location> freezeEntry : freezerMap.entrySet())
-                    if(freezeEntry.getKey().getLocation() != freezeEntry.getValue() || freezeEntry.getKey().getLocation().getDirection() != freezeEntry.getValue().getDirection())
-                        freezeEntry.getKey().teleport(freezeEntry.getValue());
-            }
-        }.runTaskTimer(NoxetServer.getPlugin(), 0, tickFrequency);
+    /**
+     * Check whether the player is in this freezer.
+     * @param player The player to check
+     * @return true if the player is in the freezer, otherwise false
+     */
+    public boolean isPlayerFrozen(Player player) {
+        return freezerMap.containsKey(player);
     }
 
-    private void stopTimer() {
-        if(freezeTimer != null) {
-            freezeTimer.cancel();
-            freezeTimer = null;
-        }
+    @Override
+    public boolean isTimerNecessary() {
+        return !freezerMap.isEmpty();
     }
 
-    public void touchTimer() {
-        if(freezerMap.isEmpty() && freezeTimer != null)
-            stopTimer(); // Stop running timer to save CPU.
-        else if(!freezerMap.isEmpty() && freezeTimer == null)
-            assignTimer(); // Start timer when someone should be frozen.
+    @Override
+    public int getTickFrequency() {
+        return tickFrequency;
     }
 
     /**
@@ -105,5 +93,12 @@ public class PlayerFreezer {
     public void empty() {
         freezerMap.clear();
         touchTimer();
+    }
+
+    @Override
+    public void run() {
+        for(Map.Entry<Player, Location> freezeEntry : freezerMap.entrySet())
+            if(freezeEntry.getKey().getLocation() != freezeEntry.getValue() || freezeEntry.getKey().getLocation().getDirection() != freezeEntry.getValue().getDirection())
+                freezeEntry.getKey().teleport(freezeEntry.getValue());
     }
 }

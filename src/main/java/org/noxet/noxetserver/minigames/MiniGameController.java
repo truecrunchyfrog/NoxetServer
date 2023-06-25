@@ -6,11 +6,17 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Consumer;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.RealmManager;
 import org.noxet.noxetserver.messaging.ErrorMessage;
@@ -49,6 +55,8 @@ public abstract class MiniGameController implements Listener {
     private final MessagingContext messagingContext;
 
     private BukkitTask startTask;
+
+    private final Map<ItemStack, Consumer<Player>> actionBoundItems = new HashMap<>();
 
     /**
      * Any delayed BukkitTask related to this game should be added to tasks with the addTask() method, to make sure that they are canceled on stop.
@@ -153,6 +161,14 @@ public abstract class MiniGameController implements Listener {
      * @return What should happen with the player
      */
     public abstract DeathContract handleDeath(Player player);
+
+    /**
+     * Called when a player's death item drops are selected.
+     * @implNote These drops will only append to the drops, and not replace them (for example, if the player does not have keep inventory, then their items will drop together with this)
+     * @param player The player who died
+     * @return The drops that will spawn where the player died
+     */
+    public abstract List<ItemStack> handlePlayerDrops(Player player);
 
     /**
      * Called when a player respawns.
@@ -494,9 +510,13 @@ public abstract class MiniGameController implements Listener {
                     break;
                 case SPECTATE:
                     if(!addSpectator(e.getEntity()))
-                        removePlayer(e.getEntity()); // If player cannot spectate.
+                        removePlayer(e.getEntity()); // If player cannot spectate, just remove them from the game.
                     break;
             }
+
+            List<ItemStack> drops = handlePlayerDrops(e.getEntity());
+            if(drops != null)
+                e.getDrops().addAll(drops);
         }
     }
 
@@ -510,6 +530,43 @@ public abstract class MiniGameController implements Listener {
     public void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
         if(e.getFrom() == workingWorld)
             disbandPlayer(e.getPlayer());
+    }
+
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    private boolean canPlayerModifyWorld(Player player) {
+        return hasStarted() && !freezer.isPlayerFrozen(player);
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent e) {
+        if(e.getBlock().getWorld() == workingWorld && !canPlayerModifyWorld(e.getPlayer()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent e) {
+        if(e.getPlayer().getWorld() == workingWorld && !canPlayerModifyWorld(e.getPlayer()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onEntityPickupItem(EntityPickupItemEvent e) {
+        if(e.getItem().getWorld() == workingWorld && e.getEntity() instanceof Player && !canPlayerModifyWorld((Player) e.getEntity()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onEntityHurtEntity(EntityDamageByEntityEvent e) {
+        if(e.getDamager().getWorld() == workingWorld && e.getDamager() instanceof Player && !canPlayerModifyWorld((Player) e.getDamager()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent e) {
+        if(isPlayer(e.getPlayer()) && (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) && actionBoundItems.containsKey(e.getItem())) {
+            e.setCancelled(true);
+            actionBoundItems.remove(e.getItem()).accept(e.getPlayer());
+        }
     }
 
     public void sendGameMessage(Message message) {
@@ -552,5 +609,9 @@ public abstract class MiniGameController implements Listener {
         }
 
         return availablePlayers.toArray(new Player[0])[(int) (availablePlayers.size() * Math.random())];
+    }
+
+    public void bindActionToItem(ItemStack itemStack, Consumer<Player> action) {
+        actionBoundItems.put(itemStack, action);
     }
 }
