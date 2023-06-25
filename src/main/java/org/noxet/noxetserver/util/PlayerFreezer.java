@@ -98,7 +98,7 @@ public class PlayerFreezer extends DynamicTimer {
     @Override
     public void run() {
         for(Map.Entry<Player, Location> freezeEntry : freezerMap.entrySet())
-            if(freezeEntry.getKey().getLocation() != freezeEntry.getValue() || freezeEntry.getKey().getLocation().getDirection() != freezeEntry.getValue().getDirection())
+            if(!freezeEntry.getKey().getLocation().toVector().subtract(freezeEntry.getValue().toVector()).isZero())
                 freezeEntry.getKey().teleport(freezeEntry.getValue());
     }
 }

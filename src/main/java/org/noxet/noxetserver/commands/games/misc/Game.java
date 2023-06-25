@@ -175,12 +175,12 @@ public class Game implements TabExecutor {
                     "Stop",
                     ChatColor.RED,
                     "Soft stop this game",
-                    "game stop " + game.getGameId()
+                    "game stop soft " + game.getGameId()
             ).addButton(
                     "Hard-stop",
                     ChatColor.DARK_RED,
                     "Hard stop this game (instant stop)",
-                    "game hard-stop " + game.getGameId()
+                    "game stop hard " + game.getGameId()
             ).send(commandSender);
 
             return true;

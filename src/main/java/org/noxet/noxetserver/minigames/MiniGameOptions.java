@@ -22,4 +22,6 @@ public interface MiniGameOptions {
     GameMode getDefaultGameMode();
 
     SpectatorContract getSpectatorContract();
+
+    MiniGameController initGame();
 }

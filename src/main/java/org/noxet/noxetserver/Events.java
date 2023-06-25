@@ -29,6 +29,7 @@ import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
 import org.noxet.noxetserver.menus.inventory.SocialMenu;
 import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.minigames.MiniGameController;
+import org.noxet.noxetserver.minigames.MiniGameManager;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.util.FancyTimeConverter;
 import org.noxet.noxetserver.util.TextBeautifier;
@@ -307,14 +308,28 @@ public class Events implements Listener {
             }
 
             Realm realm = getCurrentRealm(e.getPlayer());
+            MiniGameController game = null;
 
-            String channelName = realm != null ? realm.getDisplayName() : (NoxetServer.ServerWorld.HUB.getWorld().equals(e.getPlayer().getWorld()) ? "HUB" : null);
+            String channelName = null;
+
+            if(realm != null)
+                channelName = realm.getDisplayName();
+            else if(NoxetServer.ServerWorld.HUB.getWorld().equals(e.getPlayer().getWorld()))
+                channelName = "Hub";
+            else {
+                game = MiniGameManager.findPlayersGame(e.getPlayer());
+                if(game != null && game.hasStarted())
+                    channelName = "Game";
+            }
 
             Message message = new Message(
                     (channelName != null ? "§7" + TextBeautifier.beautify(channelName) + "§8⏵ " : "") + "§3" + e.getPlayer().getDisplayName() + "§8→ §f" + e.getMessage());
             message.setPrefix(null);
 
-            message.broadcast();
+            if(game == null)
+                message.broadcast();
+            else
+                game.sendGameMessage(message);
 
             /*if(realm != null)
                 message.send(realm);

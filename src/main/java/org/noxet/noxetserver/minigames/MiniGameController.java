@@ -48,7 +48,7 @@ public abstract class MiniGameController implements Listener {
     private final Set<Player> players = new HashSet<>(),
             spectators = new HashSet<>();
     private final ConcatSet<Player> allPlayers = new ConcatSet<>(players, spectators);
-    private final World workingWorld;
+    private World workingWorld;
     private final MiniGameOptions options;
     private final PlayerFreezer freezer;
 
@@ -66,14 +66,10 @@ public abstract class MiniGameController implements Listener {
     public MiniGameController(GameDefinition game) {
         gameId = String.valueOf(new Random().nextInt((int) Math.pow(10, 5), (int) Math.pow(10, 6)));
         this.game = game;
-        this.options = game.getOptions();
+        options = game.getOptions();
+        state = MiniGameState.STALLING;
 
-        WorldCreator worldCreator = new WorldCreator(gameWorldPrefix + gameId);
-
-        if(options.getWorldCreator() != null)
-            worldCreator.copy(options.getWorldCreator());
-
-        workingWorld = NoxetServer.getPlugin().getServer().createWorld(worldCreator);
+        workingWorld = null;
 
         messagingContext = new MessagingContext("§3" + TextBeautifier.beautify(options.getDisplayName(), false) + " ", new MessagingGameChannel(this));
 
@@ -101,6 +97,13 @@ public abstract class MiniGameController implements Listener {
             return;
 
         state = MiniGameState.PLAYING;
+
+        WorldCreator worldCreator = new WorldCreator(gameWorldPrefix + gameId);
+
+        if(options.getWorldCreator() != null)
+            worldCreator.copy(options.getWorldCreator());
+
+        workingWorld = NoxetServer.getPlugin().getServer().createWorld(worldCreator);
 
         handlePreStart();
 
@@ -193,13 +196,13 @@ public abstract class MiniGameController implements Listener {
 
         int ticksBeforeAttempt;
 
-        if(enoughPlayers()) {
+        if(!enoughPlayers()) { // Too few players.
             ticksBeforeAttempt = 20 * 30;
             sendGameMessage(new Message("§eNeed §7§n" + (options.getMinPlayers() - players.size()) + "§e more to start."));
-        } else if(!isFull()) {
+        } else if(!isFull()) { // Enough players, but more can join.
             ticksBeforeAttempt = 20 * 20;
             sendGameMessage(new Message("§eEnough players gathered!"));
-        } else {
+        } else { // Game is full.
             ticksBeforeAttempt = 20 * 5;
             sendGameMessage(new Message("§eGame is filled up!"));
         }
@@ -219,6 +222,7 @@ public abstract class MiniGameController implements Listener {
     private void attemptStart() {
         if(!enoughPlayers()) {
             sendGameMessage(new Message("§cNot enough players to start."));
+            stop();
             return;
         }
 
@@ -262,7 +266,7 @@ public abstract class MiniGameController implements Listener {
         if(hasStarted())
             preparePlayer(player);
 
-        sendGameMessage(new Message("§b" + player.getName() + "§9 joined the game. §7(§e" + players.size() + "§7/§6" + options.getMaxPlayers() + "§7)"));
+        sendGameMessage(new Message("§b" + player.getName() + "§3 joined the game. §7(§e" + players.size() + "§7/§e" + options.getMaxPlayers() + "§7)"));
 
         handlePlayerJoin(player);
 
@@ -419,6 +423,8 @@ public abstract class MiniGameController implements Listener {
      * Stops the game immediately. Unregisters this game instance, cancels tasks, unregisters event listener, removes players from world, unloads world, and deletes world.
      */
     public void stop() {
+        state = MiniGameState.ENDED;
+
         freezer.empty();
 
         for(BukkitTask task : tasks)
@@ -428,15 +434,17 @@ public abstract class MiniGameController implements Listener {
 
         HandlerList.unregisterAll(this); // Stop listening for events.
 
-        for(Player player : workingWorld.getPlayers()) // Kick all players from the world.
-            disconnectPlayerFromGame(player);
+        if(workingWorld != null) {
+            for(Player player : workingWorld.getPlayers()) // Kick all players from the world.
+                disconnectPlayerFromGame(player);
 
-        NoxetServer.getPlugin().getServer().unloadWorld(workingWorld, false); // Unload the game world.
+            NoxetServer.getPlugin().getServer().unloadWorld(workingWorld, false); // Unload the game world.
 
-        try {
-            FileUtils.deleteDirectory(workingWorld.getWorldFolder());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            try {
+                FileUtils.deleteDirectory(workingWorld.getWorldFolder());
+            } catch(IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         handlePostStop();
@@ -491,7 +499,7 @@ public abstract class MiniGameController implements Listener {
                     Location oldSpawnLocation = e.getEntity().getBedSpawnLocation();
 
                     Location deathLocation = e.getEntity().getLastDeathLocation();
-                    if(deathLocation != null && deathLocation.getY() > getWorkingWorld().getMinHeight())
+                    if(deathLocation != null && deathLocation.getY() > workingWorld.getMinHeight())
                         e.getEntity().setBedSpawnLocation(deathLocation, true);
 
                     new BukkitRunnable() {

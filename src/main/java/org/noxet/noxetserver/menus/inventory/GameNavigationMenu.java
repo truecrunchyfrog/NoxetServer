@@ -99,7 +99,7 @@ public class GameNavigationMenu extends InventoryMenu {
         if(coordinate.isAt(GameSlot.ANARCHY_ISLAND)) {
             RealmManager.migrateToRealm(player, RealmManager.Realm.ANARCHY);
         } else if(coordinate.isAt(GameSlot.WORLD_EATER)) {
-            player.performCommand("eatworld play");
+            player.performCommand("game play world-eater");
         } else if(coordinate.isAt(GameSlot.SMP)) {
             RealmManager.migrateToRealm(player, RealmManager.Realm.SMP);
         } else if(coordinate.isAt(GameSlot.CREEPER_SWEEPER)) {

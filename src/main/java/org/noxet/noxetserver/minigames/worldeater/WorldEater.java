@@ -38,7 +38,6 @@ public class WorldEater extends MiniGameController {
     private Team seekersTeam;
     private Team hidersTeam;
     private Scoreboard scoreboard;
-    private final RegionBinder regionBinder = new RegionBinder(getCenterTopLocation(), 64, 120);
     private static final String cacheWorldName = "WORLDEATER_CACHE";
 
     /**
@@ -46,13 +45,175 @@ public class WorldEater extends MiniGameController {
      */
     private final WorldEater controllerInstance = this;
 
+    private Chunk gameChunk;
+
     @Override
     public void handlePreStart() {
-        gameBuilder();
+        sendGameMessage(new Message("Preparing game..."));
+
+        World normalWorld;
+
+        sendGameMessage(new Message("Loading normal world..."));
+
+        WorldCreator normalWorldCreator = new WorldCreator(cacheWorldName);
+        normalWorldCreator.type(WorldType.NORMAL);
+        normalWorldCreator.generateStructures(true);
+        normalWorldCreator.biomeProvider(new BiomeProvider() {
+            @SuppressWarnings("all")
+            @Override
+            public Biome getBiome(WorldInfo worldInfo, int i, int i1, int i2) {
+                return Biome.DARK_FOREST;
+            }
+
+            @SuppressWarnings("all")
+            @Override
+            public List<Biome> getBiomes(WorldInfo worldInfo) {
+                List<Biome> result = new ArrayList<>();
+                result.add(Biome.DARK_FOREST);
+                return result;
+            }
+        });
+
+        normalWorld = normalWorldCreator.createWorld();
+        assert normalWorld != null;
+
+        sendGameMessage(new Message("Setting up void world..."));
+
+        getWorkingWorld().setPVP(false);
+
+        // Reset world
+
+        getWorkingWorld().setTime(0);
+        getWorkingWorld().setClearWeatherDuration(20 * 60 * 30);
+
+        // Clone chunk
+
+        Random random = new Random();
+
+        int chunkX = 0,
+                chunkY = 0,
+                chunkTries = 0;
+        List<Integer> chunkCoordinate = new ArrayList<>();
+        Chunk normalChunk = null;
+
+        File badChunksFile = new File(NoxetServer.getPlugin().getPluginDirectory(), "worldEaterBadChunks.yml");
+        YamlConfiguration badChunksConfig = YamlConfiguration.loadConfiguration(badChunksFile);
+
+        @SuppressWarnings("unchecked")
+        List<List<Integer>> badChunks = (List<List<Integer>>) badChunksConfig.getList("chunks");
+
+        if(badChunks == null)
+            badChunks = new ArrayList<>();
+
+        sendGameMessage(new Message("Finding a good chunk..."));
+
+        while(true) {
+            if(chunkTries > 150) {
+                sendGameMessage(new Message("Too many attempts! Gave up trying to find a good chunk."));
+                break;
+            }
+
+            chunkCoordinate.clear();
+            chunkCoordinate.add(chunkX);
+            chunkCoordinate.add(chunkY);
+
+            boolean registeredBadChunk = false;
+
+            for(List<Integer> badChunkCoordinate : badChunks)
+                if(badChunkCoordinate.equals(chunkCoordinate)) {
+                    registeredBadChunk = true;
+                    break;
+                }
+
+            if(registeredBadChunk || isChunkFlooded(normalWorld.getChunkAt(chunkX, chunkY))) {
+                badChunks.add(new ArrayList<>(chunkCoordinate));
+
+                chunkX = random.nextInt(0, 100);
+                chunkY = random.nextInt(0, 100);
+                chunkTries++;
+            } else {
+                normalChunk = normalWorld.getChunkAt(chunkX, chunkY);
+                break;
+            }
+        }
+
+        badChunks.add(chunkCoordinate);
+
+        badChunksConfig.set("chunks", badChunks);
+
+        try {
+            badChunksConfig.save(badChunksFile);
+        } catch(IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        gameChunk = getWorkingWorld().getChunkAt(0, 0);
+
+        assert normalChunk != null;
+
+        for(int x = 0; x < 16; x++)
+            for(int z = 0; z < 16; z++)
+                for(int y = getWorkingWorld().getMinHeight(); y < getWorkingWorld().getMaxHeight(); y++) {
+                    Material sourceMaterial = normalChunk.getBlock(x, y, z).getType();
+                    if(!sourceMaterial.isAir())
+                        gameChunk.getBlock(x, y, z).setType(sourceMaterial);
+                }
+
+        for(int i = 0; i < 4; i++)
+            spawnEntityInNaturalHabitat(EntityType.COW);
+
+        for(int i = 0; i < 3; i++)
+            spawnEntityInNaturalHabitat(EntityType.SHEEP);
+
+        for(int i = 0; i < 2; i++)
+            spawnEntityInNaturalHabitat(EntityType.CHICKEN);
     }
 
     @Override
     public void handleStart() {
+        new RegionBinder(getCenterTopLocation(), 64, 120);
+
+        scoreboard = createGameScoreboard();
+
+        seekersTeam = scoreboard.registerNewTeam("seekers");
+        hidersTeam = scoreboard.registerNewTeam("hiders");
+
+        seekersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
+        seekersTeam.setCanSeeFriendlyInvisibles(false);
+        seekersTeam.setAllowFriendlyFire(false);
+        seekersTeam.setPrefix("§4§l[ §c§lSEEKER §4§l] ");
+        seekersTeam.setColor(ChatColor.RED);
+
+        hidersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
+        hidersTeam.setCanSeeFriendlyInvisibles(false);
+        hidersTeam.setAllowFriendlyFire(false);
+        hidersTeam.setPrefix("§2§l[ §a§lHIDER §2§l] ");
+        hidersTeam.setColor(ChatColor.GREEN);
+
+        WorldEaterTeamSelectionMenu teamSelectionMenu = new WorldEaterTeamSelectionMenu(this, 40, menu -> {
+            hiders.addAll(menu.getHiders());
+
+            if(hiders.isEmpty()) {
+                sendGameMessage(new Message("No one wanted to play as a hider! Picking a random hider."));
+                hiders.add(getRandomPlayer());
+            } else if(getPlayers().size() == hiders.size()) {
+                sendGameMessage(new Message("No one wanted to play as a seeker! Picking a random seeker."));
+                hiders.remove(getRandomPlayer());
+            }
+
+            gamePlay();
+        });
+
+        forEachPlayer(player -> {
+            player.teleport(getSpawnLocation());
+            PlayerState.prepareIdle(player, true);
+
+            teamSelectionMenu.openInventory(player);
+
+            player.setScoreboard(scoreboard);
+        });
+
+        getFreezer().bulkFreeze(getPlayers());
     }
 
     @Override
@@ -193,178 +354,7 @@ public class WorldEater extends MiniGameController {
         events = new ArrayList<>();
     }
 
-    private void gameBuilder() {
-        sendGameMessage(new Message("Preparing game..."));
-
-        World normalWorld;
-
-        sendGameMessage(new Message("Loading normal world..."));
-
-        WorldCreator normalWorldCreator = new WorldCreator(cacheWorldName);
-        normalWorldCreator.type(WorldType.NORMAL);
-        normalWorldCreator.generateStructures(true);
-        normalWorldCreator.biomeProvider(new BiomeProvider() {
-            @SuppressWarnings("all")
-            @Override
-            public Biome getBiome(WorldInfo worldInfo, int i, int i1, int i2) {
-                return Biome.DARK_FOREST;
-            }
-
-            @SuppressWarnings("all")
-            @Override
-            public List<Biome> getBiomes(WorldInfo worldInfo) {
-                List<Biome> result = new ArrayList<>();
-                result.add(Biome.DARK_FOREST);
-                return result;
-            }
-        });
-
-        normalWorld = normalWorldCreator.createWorld();
-        assert normalWorld != null;
-
-        sendGameMessage(new Message("Setting up void world..."));
-
-        getWorkingWorld().setPVP(false);
-
-        // Reset world
-
-        getWorkingWorld().setTime(0);
-        getWorkingWorld().setClearWeatherDuration(20 * 60 * 30);
-
-        // Clone chunk
-
-        Random random = new Random();
-
-        int chunkX = 0,
-                chunkY = 0,
-                chunkTries = 0;
-        List<Integer> chunkCoordinate = new ArrayList<>();
-        Chunk normalChunk = null;
-
-        File badChunksFile = new File(NoxetServer.getPlugin().getPluginDirectory(), "worldEaterBadChunks.yml");
-        YamlConfiguration badChunksConfig = YamlConfiguration.loadConfiguration(badChunksFile);
-
-        @SuppressWarnings("unchecked")
-        List<List<Integer>> badChunks = (List<List<Integer>>) badChunksConfig.getList("chunks");
-
-        if(badChunks == null)
-            badChunks = new ArrayList<>();
-
-        sendGameMessage(new Message("Finding a good chunk..."));
-
-        while(true) {
-            if(chunkTries > 150) {
-                sendGameMessage(new Message("Too many attempts! Gave up trying to find a good chunk."));
-                break;
-            }
-
-            chunkCoordinate.clear();
-            chunkCoordinate.add(chunkX);
-            chunkCoordinate.add(chunkY);
-
-            boolean registeredBadChunk = false;
-
-            for(List<Integer> badChunkCoordinate : badChunks)
-                if(badChunkCoordinate.equals(chunkCoordinate)) {
-                    registeredBadChunk = true;
-                    break;
-                }
-
-            if(registeredBadChunk || isChunkFlooded(normalWorld.getChunkAt(chunkX, chunkY))) {
-                badChunks.add(new ArrayList<>(chunkCoordinate));
-
-                chunkX = random.nextInt(0, 100);
-                chunkY = random.nextInt(0, 100);
-                chunkTries++;
-            } else {
-                normalChunk = normalWorld.getChunkAt(chunkX, chunkY);
-                break;
-            }
-        }
-
-        badChunks.add(chunkCoordinate);
-
-        badChunksConfig.set("chunks", badChunks);
-
-        try {
-            badChunksConfig.save(badChunksFile);
-        } catch(IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        Chunk chunk = getWorkingWorld().getChunkAt(0, 0);
-
-        assert normalChunk != null;
-
-        for(int x = 0; x < 16; x++)
-            for(int z = 0; z < 16; z++)
-                for(int y = getWorkingWorld().getMinHeight(); y < getWorkingWorld().getMaxHeight(); y++) {
-                    Material sourceMaterial = normalChunk.getBlock(x, y, z).getType();
-                    if(!sourceMaterial.isAir())
-                        chunk.getBlock(x, y, z).setType(sourceMaterial);
-                }
-
-        for(int i = 0; i < 4; i++)
-            spawnEntityInNaturalHabitat(EntityType.COW);
-
-        for(int i = 0; i < 3; i++)
-            spawnEntityInNaturalHabitat(EntityType.SHEEP);
-
-        for(int i = 0; i < 2; i++)
-            spawnEntityInNaturalHabitat(EntityType.CHICKEN);
-
-        Scoreboard mainScoreboard = Objects.requireNonNull(Bukkit.getScoreboardManager()).getMainScoreboard();
-
-        seekersTeam = mainScoreboard.getTeam("seekers");
-        hidersTeam = mainScoreboard.getTeam("hiders");
-
-        if(seekersTeam == null)
-            seekersTeam = mainScoreboard.registerNewTeam("seekers");
-
-        if(hidersTeam == null)
-            hidersTeam = mainScoreboard.registerNewTeam("hiders");
-
-        seekersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
-        seekersTeam.setCanSeeFriendlyInvisibles(false);
-        seekersTeam.setAllowFriendlyFire(false);
-        seekersTeam.setPrefix("§4§l[ §c§lSEEKER §4§l] ");
-        seekersTeam.setColor(ChatColor.RED);
-
-        hidersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
-        hidersTeam.setCanSeeFriendlyInvisibles(false);
-        hidersTeam.setAllowFriendlyFire(false);
-        hidersTeam.setPrefix("§2§l[ §a§lHIDER §2§l] ");
-        hidersTeam.setColor(ChatColor.GREEN);
-
-        scoreboard = createGameScoreboard();
-
-        WorldEaterTeamSelectionMenu teamSelectionMenu = new WorldEaterTeamSelectionMenu(this, 40, menu -> {
-            hiders.addAll(menu.getHiders());
-
-            if(hiders.isEmpty()) {
-                sendGameMessage(new Message("No one wanted to play as a hider! Picking a random hider."));
-                hiders.add(getRandomPlayer());
-            } else if(getPlayers().size() == hiders.size()) {
-                sendGameMessage(new Message("No one wanted to play as a seeker! Picking a random seeker."));
-                hiders.remove(getRandomPlayer());
-            }
-
-            gamePlay(chunk);
-        });
-
-        forEachPlayer(player -> {
-            player.teleport(getSpawnLocation());
-            PlayerState.prepareIdle(player, true);
-
-            teamSelectionMenu.openInventory(player);
-
-            player.setScoreboard(scoreboard);
-        });
-
-        getFreezer().bulkFreeze(getPlayers());
-    }
-
-    private void gamePlay(Chunk chunk) {
+    private void gamePlay() {
         sendGameMessage(new Message("§aHiders are..."));
 
         forEachPlayer(player -> PlayerState.prepareIdle(player, true));
@@ -432,7 +422,7 @@ public class WorldEater extends MiniGameController {
                     addTask(new BukkitRunnable() {
                         @Override
                         public void run() {
-                            String timeLeftString = FancyTimeConverter.deltaSecondsToFancyTime(finalI);
+                            String timeLeftString = FancyTimeConverter.deltaSecondsToFancyTime(finalI, true);
 
                             if(finalI % 2 == 0)
                                 playGameSound(Sound.BLOCK_POINTED_DRIPSTONE_FALL, 0.6f, 2);
@@ -496,7 +486,7 @@ public class WorldEater extends MiniGameController {
 
                                     for(int x = 0; x < 16; x++)
                                         for(int z = 0; z < 16; z++)
-                                            getWorkingWorld().setBlockData(chunk.getBlock(x, finalY, z).getLocation(), Material.AIR.createBlockData());
+                                            getWorkingWorld().setBlockData(gameChunk.getBlock(x, finalY, z).getLocation(), Material.AIR.createBlockData());
                                 }
                             }.runTaskLater(NoxetServer.getPlugin(), progress));
                         }

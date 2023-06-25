@@ -17,7 +17,6 @@ import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.util.InventoryCoordinate;
 import org.noxet.noxetserver.util.InventoryCoordinateUtil;
 
-@SuppressWarnings("ALL")
 public abstract class InventoryMenu implements InventoryHolder, Listener {
     private final Inventory inventory;
     private final boolean forceOpen;

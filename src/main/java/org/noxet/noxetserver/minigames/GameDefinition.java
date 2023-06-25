@@ -6,11 +6,10 @@ import org.bukkit.WorldCreator;
 import org.bukkit.generator.ChunkGenerator;
 import org.noxet.noxetserver.minigames.worldeater.WorldEater;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Random;
 
 public enum GameDefinition {
-    WORLD_EATER(WorldEater.class, new MiniGameOptions() {
+    WORLD_EATER(new MiniGameOptions() {
         @Override
         public String getId() {
             return "world-eater";
@@ -23,7 +22,7 @@ public enum GameDefinition {
 
         @Override
         public int getMinPlayers() {
-            return 2;
+            return /*todo 2*/1;
         }
 
         @Override
@@ -50,6 +49,11 @@ public enum GameDefinition {
         public SpectatorContract getSpectatorContract() {
             return null;
         }
+
+        @Override
+        public MiniGameController initGame() {
+            return new WorldEater();
+        }
     });
 
     public static final WorldCreator voidWorldCreator = new WorldCreator("void").generator(new ChunkGenerator() {
@@ -61,10 +65,8 @@ public enum GameDefinition {
     });
 
     private final MiniGameOptions options;
-    private final Class<? extends MiniGameController> clazz;
 
-    GameDefinition(Class<? extends MiniGameController> clazz, MiniGameOptions options) {
-        this.clazz = clazz;
+    GameDefinition(MiniGameOptions options) {
         this.options = options;
     }
 
@@ -73,10 +75,6 @@ public enum GameDefinition {
     }
 
     public MiniGameController createGame() {
-        try {
-            return clazz.getDeclaredConstructor().newInstance();
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
+        return options.initGame();
     }
 }
