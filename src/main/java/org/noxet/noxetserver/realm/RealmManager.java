@@ -1,4 +1,4 @@
-package org.noxet.noxetserver;
+package org.noxet.noxetserver.realm;
 
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
@@ -10,6 +10,9 @@ import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.noxet.noxetserver.combatlogging.CombatLoggingStorageManager;
+import org.noxet.noxetserver.Events;
+import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.messaging.ActionBarMessage;
@@ -165,7 +168,18 @@ public class RealmManager {
         }
     }
 
-    protected static final Set<Player> migratingPlayers = new HashSet<>();
+    private static final Set<Player> migratingPlayers = new HashSet<>();
+
+    public static void setPlayerMigrationStatus(Player player, boolean migrating) {
+        if(migrating)
+            migratingPlayers.add(player);
+        else
+            migratingPlayers.remove(player);
+    }
+
+    public static boolean isPlayerMigrating(Player player) {
+        return migratingPlayers.contains(player);
+    }
 
     /**
      * Gets the realm that the world belongs to.
@@ -195,7 +209,7 @@ public class RealmManager {
      * @param toRealm The realm to move the player to
      */
     public static void migrateToRealm(Player player, Realm toRealm) {
-        if(migratingPlayers.contains(player))
+        if(isPlayerMigrating(player))
             return;
 
         // Save state in current realm:
@@ -221,12 +235,12 @@ public class RealmManager {
 
         // Migrate to realm:
 
-        migratingPlayers.add(player);
+        setPlayerMigrationStatus(player, true);
 
         new BukkitRunnable() {
             @Override
             public void run() {
-                migratingPlayers.remove(player);
+                setPlayerMigrationStatus(player, false);
             }
         }.runTaskLater(NoxetServer.getPlugin(), 60); // 3 seconds of migration margin.
 
@@ -243,7 +257,7 @@ public class RealmManager {
             PlayerState.restoreState(player, PlayerStateType.GLOBAL); // Regular world. Load global state.
         }
 
-        migratingPlayers.remove(player);
+        setPlayerMigrationStatus(player, false);
 
         Events.updatePlayerListName(player);
 
@@ -292,14 +306,13 @@ public class RealmManager {
      * @param player The player to send to hub
      */
     public static void goToHub(Player player) {
+        PlayerState.prepareHubState(player);
         player.teleport(getMainSpawn());
 
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_FLUTE, 1, 0.5f);
         player.sendTitle("§b§l" + TextBeautifier.beautify("no") + "§3§l" + TextBeautifier.beautify("x") + "§b§l" + TextBeautifier.beautify("et"), "§eWelcome to the Noxet.org Network.", 0, 60, 5);
 
         player.spawnParticle(Particle.EXPLOSION_HUGE, player.getLocation().add(player.getLocation().getDirection().multiply(2)).add(0, 1, 0), 10);
-
-        PlayerState.prepareHubState(player);
     }
 
     public static boolean hasPlayerUnderstoodAnarchy(Player player) {

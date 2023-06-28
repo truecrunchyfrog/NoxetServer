@@ -3,7 +3,7 @@ package org.noxet.noxetserver.menus.inventory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.util.Consumer;
-import org.noxet.noxetserver.Captcha;
+import org.noxet.noxetserver.util.Captcha;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.util.TextBeautifier;
 import org.noxet.noxetserver.util.InventoryCoordinate;

@@ -157,6 +157,7 @@ public class PlayerState {
 
         player.setInvulnerable(true);
         player.setInvisible(true);
+        player.setCollidable(false);
 
         player.setAllowFlight(true);
         player.setFlying(true);
@@ -173,6 +174,7 @@ public class PlayerState {
 
         player.setInvulnerable(false);
         player.setInvisible(false);
+        player.setCollidable(true);
 
         player.setAllowFlight(false);
         player.setFlying(false);

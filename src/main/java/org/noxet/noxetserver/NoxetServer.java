@@ -7,6 +7,7 @@ import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.noxet.noxetserver.commands.CommandRegistration;
 import org.noxet.noxetserver.messaging.Motd;
+import org.noxet.noxetserver.realm.RealmManager;
 
 import java.io.File;
 import java.util.Random;

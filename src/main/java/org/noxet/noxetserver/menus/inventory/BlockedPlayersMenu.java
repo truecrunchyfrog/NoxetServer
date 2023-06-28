@@ -4,7 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.UsernameStorageManager;
+import org.noxet.noxetserver.util.UsernameStorageManager;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.chat.ChatPromptMenu;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;

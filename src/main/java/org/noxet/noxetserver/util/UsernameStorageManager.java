@@ -1,6 +1,7 @@
-package org.noxet.noxetserver;
+package org.noxet.noxetserver.util;
 
 import org.bukkit.OfflinePlayer;
+import org.noxet.noxetserver.NoxetServer;
 
 import java.util.UUID;
 

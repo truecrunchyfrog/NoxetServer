@@ -1,10 +1,12 @@
 package org.noxet.noxetserver.minigames;
 
-import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.WarningMessage;
+import org.noxet.noxetserver.minigames.party.Party;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class MiniGameManager {
@@ -24,9 +26,11 @@ public class MiniGameManager {
 
     public static Set<MiniGameController> findGames(GameDefinition gameDefinition) {
         Set<MiniGameController> foundGames = new HashSet<>();
+
         for(MiniGameController eachGame : registeredGames)
             if(eachGame.getGame() == gameDefinition)
                 foundGames.add(eachGame);
+
         return foundGames;
     }
 
@@ -39,6 +43,7 @@ public class MiniGameManager {
         for(MiniGameController eachGame : registeredGames)
             if(eachGame.isPlayer(player))
                 return eachGame;
+
         return null;
     }
 
@@ -51,6 +56,7 @@ public class MiniGameManager {
         for(MiniGameController eachGame : registeredGames)
             if(eachGame.isSpectator(player))
                 return eachGame;
+
         return null;
     }
 
@@ -70,18 +76,6 @@ public class MiniGameManager {
         MiniGameController playersGame = findPlayersGame(player);
 
         return playersGame != null && !playersGame.hasEnded();
-    }
-
-    /**
-     * Find the game that is running on a world. Players in a game may not actually be in the game's world (when game is stalling), so be careful with this.
-     * @param world The world to search for
-     * @return The game instance that has the world if found, otherwise null
-     */
-    public static MiniGameController findWorldsGame(World world) {
-        for(MiniGameController eachGame : registeredGames)
-            if(eachGame.getWorkingWorld() == world)
-                return eachGame;
-        return null;
     }
 
     public static boolean joinGame(Player player, GameDefinition game) {
@@ -105,10 +99,38 @@ public class MiniGameManager {
         return selectedGame.addPlayer(player);
     }
 
+    public static boolean partyJoinGame(Party party, GameDefinition game) {
+        Set<MiniGameController> games = findGames(game);
+
+        for(MiniGameController eachGame : games)
+            if(eachGame.getOptions().getMaxPlayers() - eachGame.getPlayers().size() >= party.getMembers().size()) {
+                eachGame.addParty(party);
+                return true;
+            }
+
+        return false;
+    }
+
+    public static void partyPlayGame(Party party, GameDefinition game) {
+        if(game.getOptions().getMaxPlayers() < party.getMembers().size()) {
+            party.sendPartyMessage(new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Tried to join a game of " + game.getOptions().getDisplayName() + ", but there are too many players in this party. The game can only allow " + game.getOptions().getMaxPlayers() + " players, but there are " + party.getMembers().size() + " players in this party."));
+            return;
+        }
+
+        if(!MiniGameManager.partyJoinGame(party, game))
+            Objects.requireNonNull(MiniGameManager.createNewGame(game)).addParty(party);
+    }
+
+    public static void playGame(Player player, GameDefinition game) {
+        if(!MiniGameManager.joinGame(player, game))
+            Objects.requireNonNull(MiniGameManager.createNewGame(game)).addPlayer(player);
+    }
+
     public static MiniGameController getGameFromId(String id) {
         for(MiniGameController eachGame : registeredGames)
             if(eachGame.getGameId().equals(id))
                 return eachGame;
+
         return null;
     }
 
@@ -119,5 +141,14 @@ public class MiniGameManager {
         }
 
         return game.createGame();
+    }
+
+    public static int countPlayersInGame(GameDefinition game) {
+        int count = 0;
+
+        for(MiniGameController eachMiniGame : findGames(game))
+            count += eachMiniGame.getPlayers().size();
+
+        return count;
     }
 }

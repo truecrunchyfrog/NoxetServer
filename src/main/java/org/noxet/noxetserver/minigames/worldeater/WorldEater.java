@@ -15,7 +15,6 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.*;
-import org.bukkit.util.Consumer;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.inventory.WorldEaterTeamSelectionMenu;
@@ -27,6 +26,7 @@ import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.util.FancyTimeConverter;
 import org.noxet.noxetserver.util.RegionBinder;
+import org.noxet.noxetserver.util.TeamSet;
 import org.noxet.noxetserver.util.TextBeautifier;
 
 import java.io.File;
@@ -34,10 +34,10 @@ import java.io.IOException;
 import java.util.*;
 
 public class WorldEater extends MiniGameController {
-    private final Set<Player> hiders;
-    private Team seekersTeam;
-    private Team hidersTeam;
+    private Team seekersTeam, hidersTeam;
+    private final TeamSet teamSet = new TeamSet(getPlayers(), WorldEaterTeams.SEEKER, WorldEaterTeams.HIDER);
     private Scoreboard scoreboard;
+    private GameResult result;
     private static final String cacheWorldName = "WORLDEATER_CACHE";
 
     /**
@@ -45,28 +45,22 @@ public class WorldEater extends MiniGameController {
      */
     private final WorldEater controllerInstance = this;
 
-    private Chunk gameChunk;
-
     @Override
     public void handlePreStart() {
-        sendGameMessage(new Message("Preparing game..."));
-
         World normalWorld;
-
-        sendGameMessage(new Message("Loading normal world..."));
 
         WorldCreator normalWorldCreator = new WorldCreator(cacheWorldName);
         normalWorldCreator.type(WorldType.NORMAL);
         normalWorldCreator.generateStructures(true);
         normalWorldCreator.biomeProvider(new BiomeProvider() {
-            @SuppressWarnings("all")
             @Override
+            @SuppressWarnings("all")
             public Biome getBiome(WorldInfo worldInfo, int i, int i1, int i2) {
                 return Biome.DARK_FOREST;
             }
 
-            @SuppressWarnings("all")
             @Override
+            @SuppressWarnings("all")
             public List<Biome> getBiomes(WorldInfo worldInfo) {
                 List<Biome> result = new ArrayList<>();
                 result.add(Biome.DARK_FOREST);
@@ -77,26 +71,19 @@ public class WorldEater extends MiniGameController {
         normalWorld = normalWorldCreator.createWorld();
         assert normalWorld != null;
 
-        sendGameMessage(new Message("Setting up void world..."));
-
-        getWorkingWorld().setPVP(false);
-
-        // Reset world
-
-        getWorkingWorld().setTime(0);
-        getWorkingWorld().setClearWeatherDuration(20 * 60 * 30);
+        setPvpRule(false);
 
         // Clone chunk
 
         Random random = new Random();
 
         int chunkX = 0,
-                chunkY = 0,
-                chunkTries = 0;
+            chunkY = 0,
+            chunkTries = 0;
         List<Integer> chunkCoordinate = new ArrayList<>();
         Chunk normalChunk = null;
 
-        File badChunksFile = new File(NoxetServer.getPlugin().getPluginDirectory(), "worldEaterBadChunks.yml");
+        File badChunksFile = new File(NoxetServer.getPlugin().getPluginDirectory(), "world-eater-bad-chunks.yml");
         YamlConfiguration badChunksConfig = YamlConfiguration.loadConfiguration(badChunksFile);
 
         @SuppressWarnings("unchecked")
@@ -105,8 +92,6 @@ public class WorldEater extends MiniGameController {
         if(badChunks == null)
             badChunks = new ArrayList<>();
 
-        sendGameMessage(new Message("Finding a good chunk..."));
-
         while(true) {
             if(chunkTries > 150) {
                 sendGameMessage(new Message("Too many attempts! Gave up trying to find a good chunk."));
@@ -114,8 +99,7 @@ public class WorldEater extends MiniGameController {
             }
 
             chunkCoordinate.clear();
-            chunkCoordinate.add(chunkX);
-            chunkCoordinate.add(chunkY);
+            chunkCoordinate.addAll(Arrays.asList(chunkX, chunkY));
 
             boolean registeredBadChunk = false;
 
@@ -128,8 +112,8 @@ public class WorldEater extends MiniGameController {
             if(registeredBadChunk || isChunkFlooded(normalWorld.getChunkAt(chunkX, chunkY))) {
                 badChunks.add(new ArrayList<>(chunkCoordinate));
 
-                chunkX = random.nextInt(0, 100);
-                chunkY = random.nextInt(0, 100);
+                chunkX = random.nextInt(-1000, 1000);
+                chunkY = random.nextInt(-1000, 1000);
                 chunkTries++;
             } else {
                 normalChunk = normalWorld.getChunkAt(chunkX, chunkY);
@@ -147,16 +131,14 @@ public class WorldEater extends MiniGameController {
             throw new RuntimeException(e);
         }
 
-        gameChunk = getWorkingWorld().getChunkAt(0, 0);
-
         assert normalChunk != null;
 
         for(int x = 0; x < 16; x++)
             for(int z = 0; z < 16; z++)
-                for(int y = getWorkingWorld().getMinHeight(); y < getWorkingWorld().getMaxHeight(); y++) {
+                for(int y = getMiniGameWorld().getMinHeight(); y < getMiniGameWorld().getMaxHeight(); y++) {
                     Material sourceMaterial = normalChunk.getBlock(x, y, z).getType();
                     if(!sourceMaterial.isAir())
-                        gameChunk.getBlock(x, y, z).setType(sourceMaterial);
+                        getCenterChunk().getBlock(x, y, z).setType(sourceMaterial);
                 }
 
         for(int i = 0; i < 4; i++)
@@ -171,7 +153,7 @@ public class WorldEater extends MiniGameController {
 
     @Override
     public void handleStart() {
-        new RegionBinder(getCenterTopLocation(), 64, 120);
+        new RegionBinder(getCenterTopLocation(), getPlayersAndSpectators(), 64, 120);
 
         scoreboard = createGameScoreboard();
 
@@ -181,24 +163,25 @@ public class WorldEater extends MiniGameController {
         seekersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
         seekersTeam.setCanSeeFriendlyInvisibles(false);
         seekersTeam.setAllowFriendlyFire(false);
-        seekersTeam.setPrefix("§4§l[ §c§lSEEKER §4§l] ");
+        seekersTeam.setPrefix(WorldEaterTeams.SEEKER.getFormattedDisplayName());
         seekersTeam.setColor(ChatColor.RED);
 
         hidersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
         hidersTeam.setCanSeeFriendlyInvisibles(false);
         hidersTeam.setAllowFriendlyFire(false);
-        hidersTeam.setPrefix("§2§l[ §a§lHIDER §2§l] ");
+        hidersTeam.setPrefix(WorldEaterTeams.HIDER.getFormattedDisplayName());
         hidersTeam.setColor(ChatColor.GREEN);
 
         WorldEaterTeamSelectionMenu teamSelectionMenu = new WorldEaterTeamSelectionMenu(this, 40, menu -> {
-            hiders.addAll(menu.getHiders());
+            teamSet.putManyPlayersOnTeam(menu.getHiders(), WorldEaterTeams.HIDER);
+            teamSet.putManyPlayersOnTeam(menu.getSeekers(), WorldEaterTeams.SEEKER);
 
-            if(hiders.isEmpty()) {
+            if(teamSet.isTeamEmpty(WorldEaterTeams.HIDER)) {
                 sendGameMessage(new Message("No one wanted to play as a hider! Picking a random hider."));
-                hiders.add(getRandomPlayer());
-            } else if(getPlayers().size() == hiders.size()) {
+                teamSet.putPlayerOnTeam(getRandomPlayer(), WorldEaterTeams.HIDER);
+            } else if(teamSet.isTeamEmpty(WorldEaterTeams.SEEKER)) {
                 sendGameMessage(new Message("No one wanted to play as a seeker! Picking a random seeker."));
-                hiders.remove(getRandomPlayer());
+                teamSet.putPlayerOnTeam(getRandomPlayer(), WorldEaterTeams.SEEKER);
             }
 
             gamePlay();
@@ -207,6 +190,7 @@ public class WorldEater extends MiniGameController {
         forEachPlayer(player -> {
             player.teleport(getSpawnLocation());
             PlayerState.prepareIdle(player, true);
+            player.setGameMode(GameMode.SPECTATOR);
 
             teamSelectionMenu.openInventory(player);
 
@@ -223,31 +207,99 @@ public class WorldEater extends MiniGameController {
 
     @Override
     public void handlePlayerLeave(Player player) {
-        if(isPlaying()) {
-            if(isHider(player)) { // Hider left.
-                hiders.remove(player);
+        if(!isPlaying())
+            return;
 
-                if(hiders.isEmpty()) { // No hider remains.
-                    sendGameMessage(new Message("§cThere is no hider remaining, so the game is over."));
-                    finish(GameResult.TIE);
-                }
-            } else if(getPlayers().size() == hiders.size()) { // Only hiders remain.
-                sendGameMessage(new Message("§cThere is no seeker remaining, so the game is over."));
-                finish(GameResult.TIE);
-            } else if(getPlayers().size() == 1) { // Only 1 player remain.
-                sendGameMessage(new Message("§cEverybody else quit. The game is over. :("));
-                finish(GameResult.TIE);
-            }
+        if(teamSet.isTeamEmpty(WorldEaterTeams.HIDER)) { // Last hider left.
+            sendGameMessage(new Message("§cThere is no hider remaining, so the game is over."));
+            finish(GameResult.TIE);
+        } else if(teamSet.isTeamEmpty(WorldEaterTeams.SEEKER)) { // Only hiders remain.
+            sendGameMessage(new Message("§cThere is no seeker remaining, so the game is over."));
+            finish(GameResult.TIE);
+        } else if(getPlayers().size() == 1) { // Only 1 player remain.
+            sendGameMessage(new Message("§cEverybody else quit. The game is over. :("));
+            finish(GameResult.TIE);
         }
     }
 
     @Override
     public void handlePlayerRemoved(Player player) {
         getFreezer().unfreeze(player);
+
+        teamSet.refreshPlayers();
     }
 
     @Override
     public int handleSoftStop() {
+        playGameSound(Sound.BLOCK_BELL_USE, 3, 3);
+
+        String header, subHeader;
+
+        switch(result) {
+            case SEEKERS_WIN:
+                header = "§c§l" + TextBeautifier.beautify("Seekers", false);
+                subHeader = "§7won the game";
+                break;
+            case HIDERS_WIN:
+                header = "§a§l" + TextBeautifier.beautify("Hiders", false);
+                subHeader = "§7won the game";
+                break;
+            default:
+                header = "§e§l" + TextBeautifier.beautify("Tie", false);
+                subHeader = "§7Nobody won the game.";
+        }
+
+        forEachPlayer(player -> player.sendTitle(
+                didPlayerWin(player, result) ?
+                        "§a§l" + TextBeautifier.beautify("Victory", false) + "!" :
+                        (result != GameResult.TIE ?
+                                "§c§l" + TextBeautifier.beautify("Lost", false) + "!" :
+                                "§e§l" + TextBeautifier.beautify("Tie", false) + "!"
+                        ),
+                result == GameResult.SEEKERS_WIN ?
+                        "§eSeekers won." : (result == GameResult.HIDERS_WIN ? "§eHiders won." : "§7Nobody won."),
+                0, 20 * 6, 0
+        ));
+
+        forEachSpectator(spectator -> spectator.sendTitle(
+                header,
+                subHeader,
+                0, 20 * 6, 0
+        ));
+
+        sendGameMessage(new Message(header + " " + subHeader));
+
+        Random random = new Random();
+        for(int i = 0; i < 10; i++) {
+            FireworkEffect effect = FireworkEffect.builder().flicker(false).trail(false).with(FireworkEffect.Type.STAR).withColor(Color.fromRGB(
+                    random.nextInt(256),
+                    random.nextInt(256),
+                    random.nextInt(256)
+            )).build();
+
+            Location fireworkLocation = getCenterTopLocation().add(
+                    random.nextInt(-16, 16),
+                    0,
+                    random.nextInt(-16, 16)
+            );
+
+            fireworkLocation.setY(getMiniGameWorld().getHighestBlockYAt(fireworkLocation) + random.nextInt(2, 10));
+
+            Firework firework = getMiniGameWorld().spawn(fireworkLocation, Firework.class);
+
+            FireworkMeta fireworkMeta = firework.getFireworkMeta();
+            fireworkMeta.clearEffects();
+            fireworkMeta.addEffect(effect);
+
+            firework.setFireworkMeta(fireworkMeta);
+
+            addTask(new BukkitRunnable() {
+                public void run() {
+                    firework.detonate();
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 20L * random.nextInt(1, 6)));
+        }
+
         return 20 * 15;
     }
 
@@ -267,12 +319,12 @@ public class WorldEater extends MiniGameController {
 
     @Override
     public DeathContract handleDeath(Player player) {
-        return isSeeker(player) ? DeathContract.SPECTATE : DeathContract.RESPAWN_SAME_LOCATION_KEEP_INVENTORY;
+        return teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER) ? DeathContract.SPECTATE : DeathContract.RESPAWN_SAME_LOCATION_KEEP_INVENTORY;
     }
 
     @Override
     public List<ItemStack> handlePlayerDrops(Player deadPlayer) {
-        if(isSeeker(deadPlayer)) {
+        if(teamSet.isPlayerOnTeam(deadPlayer, WorldEaterTeams.SEEKER)) {
             ItemStack item = ItemGenerator.generatePlayerSkull(
                     deadPlayer,
                     "§c§lGift of the Ghosts §8[ §eRight-click for invisibility §8]",
@@ -280,7 +332,7 @@ public class WorldEater extends MiniGameController {
             );
 
             bindActionToItem(item, affectedPlayer -> {
-                if(isHider(affectedPlayer)) {
+                if(teamSet.isPlayerOnTeam(affectedPlayer, WorldEaterTeams.HIDER)) {
                     affectedPlayer.playSound(affectedPlayer, Sound.ENTITY_CAT_HISS, 1, 0.5f);
                     affectedPlayer.sendTitle("§aInvisible", "§3You are now §ninvisible§3.", 10, 20 * 3, 10);
                     new Message("§eYou are now invisible for §c20§e seconds.").send(affectedPlayer);
@@ -308,7 +360,7 @@ public class WorldEater extends MiniGameController {
 
     @Override
     public void handleRespawn(Player player) {
-        if(!isSeeker(player))
+        if(teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER))
             return;
 
         getFreezer().freeze(player);
@@ -345,13 +397,10 @@ public class WorldEater extends MiniGameController {
     }
 
     private int timeLeft;
-    private final List<WorldEaterEvents.GameEvent> events;
+    private final List<WorldEaterEvents.GameEvent> events = new ArrayList<>();
 
     public WorldEater() {
         super(GameDefinition.WORLD_EATER);
-
-        hiders = new HashSet<>();
-        events = new ArrayList<>();
     }
 
     private void gamePlay() {
@@ -359,10 +408,10 @@ public class WorldEater extends MiniGameController {
 
         forEachPlayer(player -> PlayerState.prepareIdle(player, true));
 
-        forEachSeeker(seeker -> seeker.sendTitle("§c§lSEEKER", "§eFind and eliminate the hiders.", 0, 20 * 5, 0));
-        forEachHider(hider -> {
+        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> seeker.sendTitle("§c§lSEEKER", "§eFind and eliminate the hiders.", 0, 20 * 5, 0));
+        teamSet.forEach(WorldEaterTeams.HIDER, hider -> {
             hider.sendTitle("§a§lHIDER", "§eEndure the seekers attempts to kill you.", 0, 20 * 5, 0);
-            sendGameMessage(new Message(" - §a§l" + hider.getName()));
+            sendGameMessage(new Message(" - §b" + hider.getName()));
         });
 
         sendGameMessage(new Message("§eGet ready! Game starts in §c5§e seconds..."));
@@ -376,7 +425,7 @@ public class WorldEater extends MiniGameController {
 
                 final ArrayList<BukkitTask> seekerCircleTasks = new ArrayList<>();
 
-                forEachSeeker(seeker -> {
+                teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> {
                     PlayerState.prepareIdle(seeker, true);
 
                     Location center = getCenterTopLocation().add(0, 20, 0);
@@ -405,7 +454,7 @@ public class WorldEater extends MiniGameController {
                     seekersTeam.addEntry(seeker.getName());
                 });
 
-                forEachHider(hider -> {
+                teamSet.forEach(WorldEaterTeams.HIDER, hider -> {
                     preparePlayer(hider);
 
                     hider.playSound(hider, Sound.BLOCK_NOTE_BLOCK_BASS, 1, 0.5f);
@@ -430,8 +479,8 @@ public class WorldEater extends MiniGameController {
                             if(finalI % 10 == 0)
                                 sendGameMessage(new Message("§eSeekers are released in " + timeLeftString + "."));
 
-                            forEachSeeker(seeker -> seeker.sendTitle(timeLeftString, "§euntil released...", 0, 20 * 2, 0));
-                            forEachHider(hider -> new ActionBarMessage("§8§l[ §" + (finalI % 2 == 0 ? "4" : "f") + "§l! §8§l] §bReleasing seekers in " + timeLeftString).send(hider));
+                            teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> seeker.sendTitle(timeLeftString, "§euntil released...", 0, 20 * 2, 0));
+                            teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§8§l[ §" + (finalI % 2 == 0 ? "4" : "f") + "§l! §8§l] §bReleasing seekers in " + timeLeftString).send(hider));
                         }
                     }.runTaskLater(NoxetServer.getPlugin(), 20L * (secondsToRelease - i)));
                 }
@@ -446,16 +495,16 @@ public class WorldEater extends MiniGameController {
 
                         sendGameMessage(new Message("§c§lSEEKERS HAVE BEEN RELEASED!"));
 
-                        getWorkingWorld().setPVP(true);
+                        setPvpRule(true);
 
                         playGameSound(Sound.BLOCK_ANVIL_LAND, 2, 2);
 
-                        forEachSeeker(seeker -> {
+                        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> {
                             preparePlayer(seeker);
                             seeker.resetTitle();
                         });
 
-                        forEachHider(hider -> new ActionBarMessage("§c§lSEEKERS RELEASED!").send(hider));
+                        teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§c§lSEEKERS RELEASED!").send(hider));
 
                         for(int i = 0; i < 4; i++)
                             spawnEntityInNaturalHabitat(EntityType.COW);
@@ -472,13 +521,13 @@ public class WorldEater extends MiniGameController {
 
                         for(int x = 0; x < 16; x++)
                             for(int z = 0; z < 16; z++)
-                                startY = Math.max(startY, getWorkingWorld().getHighestBlockYAt(x, z));
+                                startY = Math.max(startY, getMiniGameWorld().getHighestBlockYAt(x, z));
 
                         long progress = 0;
 
                         for(int y = startY; y > -50; y--) {
                             int finalY = y;
-                            progress += 20L * 30 * Math.pow(0.983D, 1 + startY - y);
+                            progress += 20L * 30 * Math.pow(0.983d, 1 + startY - y);
                             addTask(new BukkitRunnable() {
                                 @Override
                                 public void run() {
@@ -486,7 +535,7 @@ public class WorldEater extends MiniGameController {
 
                                     for(int x = 0; x < 16; x++)
                                         for(int z = 0; z < 16; z++)
-                                            getWorkingWorld().setBlockData(gameChunk.getBlock(x, finalY, z).getLocation(), Material.AIR.createBlockData());
+                                            getMiniGameWorld().setBlockData(getCenterChunk().getBlock(x, finalY, z).getLocation(), Material.AIR.createBlockData());
                                 }
                             }.runTaskLater(NoxetServer.getPlugin(), progress));
                         }
@@ -518,10 +567,6 @@ public class WorldEater extends MiniGameController {
                                             case 12:
                                                 events.add(WorldEaterEvents.GameEvent.DRILLING);
                                                 WorldEaterEvents.drilling(controllerInstance);
-                                                break;
-                                            case 10:
-                                                events.add(WorldEaterEvents.GameEvent.SHRINKING_WORLD_BORDER);
-                                                WorldEaterEvents.shrinkingWorldBorder(controllerInstance);
                                                 break;
                                             case 5:
                                                 events.add(WorldEaterEvents.GameEvent.EXPLODING_HORSES);
@@ -558,64 +603,24 @@ public class WorldEater extends MiniGameController {
     }
 
     public boolean didPlayerWin(Player player, GameResult result) {
-        return (isSeeker(player) && result == GameResult.SEEKERS_WIN) || (isHider(player) && result == GameResult.HIDERS_WIN);
+        return (teamSet.isPlayerOnTeam(player, WorldEaterTeams.SEEKER) && result == GameResult.SEEKERS_WIN) || (teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER) && result == GameResult.HIDERS_WIN);
     }
 
     private void finish(GameResult result) {
-        playGameSound(Sound.BLOCK_BELL_USE, 3, 3);
-
-        if(result != GameResult.TIE)
-            sendGameMessage(new Message((result == GameResult.SEEKERS_WIN ? "Seekers" : "Hiders") + " won the game!"));
-        else
-            sendGameMessage(new Message("Tie! Nobody won the game."));
-
-        forEachPlayer(player -> player.sendTitle(
-                didPlayerWin(player, result) ?
-                        "§a§l" + TextBeautifier.beautify("Victory", false) + "!" :
-                        (result != GameResult.TIE ?
-                                "§c§l" + TextBeautifier.beautify("Lost", false) + "!" :
-                                "§e§l" + TextBeautifier.beautify("Tie", false) + "!"
-                        ),
-                result == GameResult.SEEKERS_WIN ?
-                        "§eSeekers won." : (result == GameResult.HIDERS_WIN ? "§eHiders won." : "§7Nobody won."),
-                0, 20 * 6, 0
-        ));
-
-        sendGameMessage(new Message("§aThe game has ended. Thanks for playing."));
-
-        Random random = new Random();
-        for(int i = 0; i < 10; i++) {
-            double x = random.nextInt(-16, 16), z = random.nextInt(-16, 16);
-            FireworkEffect effect = FireworkEffect.builder().flicker(false).trail(false).with(FireworkEffect.Type.STAR).withColor(Color.fromRGB(
-                    random.nextInt(256),
-                    random.nextInt(256),
-                    random.nextInt(256)
-            )).build();
-
-            Firework firework = getWorkingWorld().spawn(new Location(getWorkingWorld(), x, getWorkingWorld().getHighestBlockYAt((int) x, (int) z) + random.nextInt(2, 10), z), Firework.class);
-
-            FireworkMeta fireworkMeta = firework.getFireworkMeta();
-            fireworkMeta.clearEffects();
-            fireworkMeta.addEffect(effect);
-
-            firework.setFireworkMeta(fireworkMeta);
-
-            new BukkitRunnable() {
-                public void run() {
-                    firework.detonate();
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20L * random.nextInt(1, 4));
-        }
-
+        this.result = result;
         softStop();
     }
 
     protected Location getCenterTopLocation() {
-        return new Location(getWorkingWorld(), 8, getWorkingWorld().getHighestBlockYAt(8, 8), 8);
+        Location center = getCenterChunk().getBlock(8, 0, 8).getLocation();
+        center.setY(getMiniGameWorld().getHighestBlockYAt(center));
+        return center;
     }
 
     protected Location getAppropriateSpawnLocation(Location spawn) {
-        while(true)
+        int i = 0;
+
+        while(i++ < 100)
             if(spawn.getBlock().getType().isAir() || spawn.getBlock().getType().toString().endsWith("_LEAVES") || spawn.getBlock().getType().toString().endsWith("_MUSHROOM"))
                 spawn.subtract(0, 1, 0); // Go down 1 block if air or leaf block.
             else if(spawn.getBlock().getType().toString().endsWith("_LOG"))
@@ -647,15 +652,16 @@ public class WorldEater extends MiniGameController {
     }
 
     private void spawnEntityInNaturalHabitat(EntityType type) {
-        Location spawn = getSpawnLocation();
-
         Random random = new Random();
 
-        spawn.setX(random.nextInt(3, 14));
-        spawn.setZ(random.nextInt(3, 14));
-        spawn.setY(getWorkingWorld().getHighestBlockYAt((int) spawn.getX(), (int) spawn.getZ()));
+        Location spawn = getCenterChunk().getBlock(
+                random.nextInt(3, 14),
+                0,
+                random.nextInt(3, 14)
+        ).getLocation();
+        spawn.setY(getMiniGameWorld().getHighestBlockYAt(spawn));
 
-        getWorkingWorld().spawnEntity(getAppropriateSpawnLocation(spawn), type);
+        getMiniGameWorld().spawnEntity(getAppropriateSpawnLocation(spawn), type);
     }
 
     private static Scoreboard createGameScoreboard() {
@@ -680,8 +686,8 @@ public class WorldEater extends MiniGameController {
         setObjectiveLines(scoreboard.getObjectives().toArray(new Objective[0])[0], new String[] {
                 "§eTime remaining: " + getFancyTimeLeft(timeLeft),
                 "§e" + getPlayers().size() + " playing:",
-                "§c" + (getPlayers().size() - hiders.size()) + "§e seeking",
-                "§a" + hiders.size() + "§e hiding",
+                "§c" + teamSet.countTeamPlayers(WorldEaterTeams.SEEKER) + "§e seeking",
+                "§a" + teamSet.countTeamPlayers(WorldEaterTeams.HIDER) + "§e hiding",
                 "§7---",
                 "§7" + getSpectators().size() + "§8 spectating",
                 "§7---",
@@ -693,31 +699,11 @@ public class WorldEater extends MiniGameController {
         return (countdown >= 60 ? "§c" + (countdown / 60) + "§em " : "") + "§c" + countdown % 60 + "§es";
     }
 
-    public boolean isSeeker(Player player) {
-        return isPlayer(player) && !isHider(player);
-    }
-
-    public boolean isHider(Player player) {
-        return hiders.contains(player);
-    }
-
-    public void forEachPlayer(Consumer<Player> playerConsumer) {
-        for(Player player : getPlayers())
-            playerConsumer.accept(player);
-    }
-
-    public void forEachSeeker(Consumer<Player> seekerConsumer) {
-        for(Player player : getPlayers())
-            if(!isHider(player))
-                seekerConsumer.accept(player);
-    }
-
-    public void forEachHider(Consumer<Player> hiderConsumer) {
-        for(Player hider : hiders)
-            hiderConsumer.accept(hider);
-    }
-
     public void removeEvent(WorldEaterEvents.GameEvent event) {
         events.remove(event);
+    }
+
+    public TeamSet getTeamSet() {
+        return teamSet;
     }
 }

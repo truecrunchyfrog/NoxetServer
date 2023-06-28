@@ -6,7 +6,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.InventoryView;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 
 public class EnderChest implements CommandExecutor {

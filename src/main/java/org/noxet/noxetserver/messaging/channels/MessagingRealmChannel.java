@@ -1,7 +1,7 @@
 package org.noxet.noxetserver.messaging.channels;
 
 import org.bukkit.command.CommandSender;
-import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.realm.RealmManager;
 
 import java.util.HashSet;
 import java.util.Set;

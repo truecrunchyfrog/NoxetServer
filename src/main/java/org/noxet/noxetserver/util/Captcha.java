@@ -1,15 +1,15 @@
-package org.noxet.noxetserver;
+package org.noxet.noxetserver.util;
 
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.menus.inventory.CaptchaSelectionMenu;
 import org.noxet.noxetserver.messaging.ClearChat;
 import org.noxet.noxetserver.messaging.Message;
-import org.noxet.noxetserver.util.PlayerFreezer;
-import org.noxet.noxetserver.util.TextBeautifier;
+import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.playerstate.PlayerState;
 
@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static org.noxet.noxetserver.RealmManager.goToHub;
+import static org.noxet.noxetserver.realm.RealmManager.goToHub;
 
 public class Captcha {
 
@@ -101,7 +101,7 @@ public class Captcha {
     }
 
     public void init() {
-        RealmManager.migratingPlayers.add(player); // Prevent migration manager from interacting with player.
+        RealmManager.setPlayerMigrationStatus(player, true); // Prevent migration manager from interacting with player.
 
         PlayerState.prepareDefault(player);
 
@@ -256,7 +256,7 @@ public class Captcha {
         for(BukkitTask bukkitTask : bukkitTasks)
             bukkitTask.cancel();
 
-        RealmManager.migratingPlayers.remove(player);
+        RealmManager.setPlayerMigrationStatus(player, false);
 
         getWorld().setBlockData(assignedLocation.clone().subtract(0, 1, 0), Material.AIR.createBlockData()); // Remove standing block.
     }

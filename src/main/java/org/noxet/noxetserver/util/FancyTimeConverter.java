@@ -22,7 +22,7 @@ public class FancyTimeConverter {
         if(days == 0 && minutes > 0)
             stringBuilder.append(minutes).append("m ");
 
-        if(days == 0 && hours == 0 && (secondSpecific || minutes == 0))
+        if(days == 0 && hours == 0 && (secondSpecific || minutes == 0) && seconds > 0)
             stringBuilder.append(seconds).append("s ");
 
         stringBuilder.deleteCharAt(stringBuilder.length() - 1);

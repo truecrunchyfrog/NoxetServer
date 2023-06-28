@@ -12,7 +12,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.util.TeleportUtil;
@@ -20,7 +20,7 @@ import org.noxet.noxetserver.util.TeleportUtil;
 import java.text.DecimalFormat;
 import java.util.*;
 
-import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
+import static org.noxet.noxetserver.realm.RealmManager.getCurrentRealm;
 
 @SuppressWarnings("ALL")
 public class Wild implements CommandExecutor {

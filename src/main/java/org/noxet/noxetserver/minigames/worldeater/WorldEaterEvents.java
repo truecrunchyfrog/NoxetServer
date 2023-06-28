@@ -13,6 +13,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.messaging.Message;
+import org.noxet.noxetserver.minigames.MiniGameController;
 
 import java.util.Random;
 
@@ -21,7 +22,6 @@ public class WorldEaterEvents {
         METEOR_RAIN("Meteor rain"),
         VISIBLE_HIDERS("Hiders are exposed"),
         DRILLING("Drilling"),
-        SHRINKING_WORLD_BORDER("World border is shrinking"),
         EXPLODING_HORSES("Exploding horses are incoming"),
         EVERYONE_VISIBLE("Everyone are visible");
 
@@ -53,7 +53,7 @@ public class WorldEaterEvents {
                     Location meteorStart = targetLocation.clone();
                     meteorStart.add(random.nextInt(-50, 50), random.nextInt(50, 100), random.nextInt(-50, 50));
 
-                    Fireball meteor = worldEater.getWorkingWorld().spawn(meteorStart, Fireball.class);
+                    Fireball meteor = MiniGameController.getMiniGameWorld().spawn(meteorStart, Fireball.class);
 
                     meteor.setIsIncendiary(true);
                     meteor.setYield(8);
@@ -71,7 +71,7 @@ public class WorldEaterEvents {
         worldEater.playGameSound(Sound.ITEM_GOAT_HORN_SOUND_7, 1, 0.8f);
         worldEater.sendGameMessage(new Message("§c§lALERT! §eHiders are now visible for 10 seconds!"));
 
-        worldEater.forEachHider(hider -> {
+        worldEater.getTeamSet().forEach(WorldEaterTeams.HIDER, hider -> {
             hider.sendTitle("§c§lEXPOSED!", "§eYour location is now visible.", 5, 20 * 10, 5);
             hider.addPotionEffect(
                     new PotionEffect(
@@ -100,14 +100,19 @@ public class WorldEaterEvents {
             worldEater.addTask(new BukkitRunnable() {
                 @Override
                 public void run() {
-                    Location drillLocation = new Location(worldEater.getWorkingWorld(), random.nextInt(0, 16), 0, random.nextInt(0, 16));
-                    int yMax = worldEater.getWorkingWorld().getMaxHeight(), yMin = worldEater.getWorkingWorld().getMinHeight();
+                    Location drillLocation = worldEater.getCenterChunk().getBlock(
+                            random.nextInt(0, 16),
+                            0,
+                            random.nextInt(0, 16)
+                    ).getLocation();
+
+                    int yMax = MiniGameController.getMiniGameWorld().getMaxHeight(), yMin = MiniGameController.getMiniGameWorld().getMinHeight();
 
                     for(int y = yMin; y < yMax; y++) {
                         Location drillBlock = drillLocation.clone();
                         drillBlock.setY(y);
 
-                        worldEater.getWorkingWorld().spawnParticle(Particle.SWEEP_ATTACK, drillBlock, 3);
+                        MiniGameController.getMiniGameWorld().spawnParticle(Particle.SWEEP_ATTACK, drillBlock, 3);
                         int finalY = y;
                         boolean isLast2 = isLast && y == yMin + 1;
 
@@ -115,9 +120,9 @@ public class WorldEaterEvents {
                             @Override
                             public void run() {
                                 if(finalY % 2 == 0)
-                                    worldEater.getWorkingWorld().playSound(drillBlock, Sound.BLOCK_BAMBOO_BREAK, 1, 2f);
+                                    MiniGameController.getMiniGameWorld().playSound(drillBlock, Sound.BLOCK_BAMBOO_BREAK, 1, 2f);
 
-                                worldEater.getWorkingWorld().spawnParticle(Particle.SWEEP_ATTACK, drillBlock, 5);
+                                MiniGameController.getMiniGameWorld().spawnParticle(Particle.SWEEP_ATTACK, drillBlock, 5);
                                 drillBlock.getBlock().setBlockData(Material.AIR.createBlockData(), false);
 
                                 if(isLast2)
@@ -128,25 +133,6 @@ public class WorldEaterEvents {
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 20 * 15 * (i + 1)));
         }
-    }
-
-    public static void shrinkingWorldBorder(WorldEater worldEater) {
-        worldEater.playGameSound(Sound.ITEM_GOAT_HORN_SOUND_6, 1, 2);
-        worldEater.sendGameMessage(new Message("§eThe world border will shrink in §c30§e seconds!"));
-
-        worldEater.addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                worldEater.playGameSound(Sound.ITEM_GOAT_HORN_SOUND_6, 1, 0.5f);
-
-                worldEater.getWorkingWorld().getWorldBorder().setSize(32);
-                worldEater.getWorkingWorld().getWorldBorder().setWarningTime(20);
-                worldEater.getWorkingWorld().getWorldBorder().setCenter(worldEater.getSpawnLocation());
-                worldEater.sendGameMessage(new Message("§eWorld border has shrunk!"));
-
-                worldEater.removeEvent(WorldEaterEvents.GameEvent.SHRINKING_WORLD_BORDER);
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * 30));
     }
 
     public static void explodingHorses(WorldEater worldEater) {
@@ -166,7 +152,7 @@ public class WorldEaterEvents {
                         Player unluckyPlayer = worldEater.getRandomPlayer();
                         unluckyPlayer.playSound(unluckyPlayer, Sound.ENTITY_HORSE_ANGRY, 6, 6);
 
-                        Horse horse = (Horse) worldEater.getWorkingWorld().spawnEntity(unluckyPlayer.getLocation(), EntityType.HORSE);
+                        Horse horse = (Horse) MiniGameController.getMiniGameWorld().spawnEntity(unluckyPlayer.getLocation(), EntityType.HORSE);
 
                         horse.setVisualFire(true);
                         horse.setHealth(0.5);
@@ -175,9 +161,9 @@ public class WorldEaterEvents {
                             @Override
                             public void run() {
                                 if(!horse.isDead()) {
-                                    worldEater.getWorkingWorld().playSound(horse.getLocation(), Sound.ENTITY_GHAST_SCREAM, 1, 0.5f);
+                                    MiniGameController.getMiniGameWorld().playSound(horse.getLocation(), Sound.ENTITY_GHAST_SCREAM, 1, 0.5f);
                                     horse.remove();
-                                    worldEater.getWorkingWorld().createExplosion(horse.getLocation(), 12);
+                                    MiniGameController.getMiniGameWorld().createExplosion(horse.getLocation(), 12);
                                 }
 
                                 if(isLast)

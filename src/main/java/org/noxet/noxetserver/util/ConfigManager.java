@@ -1,6 +1,7 @@
-package org.noxet.noxetserver;
+package org.noxet.noxetserver.util;
 
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.noxet.noxetserver.NoxetServer;
 
 import java.io.File;
 import java.io.IOException;

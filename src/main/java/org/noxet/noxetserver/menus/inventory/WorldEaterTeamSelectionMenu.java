@@ -47,7 +47,7 @@ public class WorldEaterTeamSelectionMenu extends InventoryMenu {
         timer = new BukkitRunnable() {
             @Override
             public void run() {
-                if(--timeLeft == 0 || (seekers.size() == 0 && hiders.size() == 0))
+                if(--timeLeft == 0 || ((seekers.size() == 0 && hiders.size() == 0) || game.hasEnded()))
                     stop();
                 updateInventory();
             }

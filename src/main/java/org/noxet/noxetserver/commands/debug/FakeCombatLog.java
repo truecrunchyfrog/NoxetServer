@@ -4,7 +4,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.CombatLogging;
+import org.noxet.noxetserver.combatlogging.CombatLogging;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 
 public class FakeCombatLog implements CommandExecutor {

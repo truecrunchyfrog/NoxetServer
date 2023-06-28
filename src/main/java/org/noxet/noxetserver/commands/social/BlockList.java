@@ -5,7 +5,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.UsernameStorageManager;
+import org.noxet.noxetserver.util.UsernameStorageManager;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;

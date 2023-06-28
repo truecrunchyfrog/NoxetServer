@@ -6,7 +6,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.UsernameStorageManager;
+import org.noxet.noxetserver.util.UsernameStorageManager;
 import org.noxet.noxetserver.menus.inventory.FriendsMenu;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.Message;

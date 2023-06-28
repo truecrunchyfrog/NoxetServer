@@ -37,6 +37,7 @@ public class PSPManager {
             new PSPInvulnerable(),
             new PSPLastDeathLocation(),
             new PSPLocation(),
+            new PSPPlayerTime(),
             new PSPOffHand(),
             new PSPPotionEffects(),
             new PSPRemainingAir(),

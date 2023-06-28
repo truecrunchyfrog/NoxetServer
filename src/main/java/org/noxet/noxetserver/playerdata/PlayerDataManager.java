@@ -37,7 +37,8 @@ public class PlayerDataManager {
         SHOW_FRIEND_HOMES(new PDTBoolean()),
         CREEPER_SWEEPER_WINS(new PDTInteger()),
         CREEPER_SWEEPER_LOSSES(new PDTInteger()),
-        CREEPER_SWEEPER_TOTAL_WIN_PLAYTIME(new PDTLong());
+        CREEPER_SWEEPER_TOTAL_WIN_PLAYTIME(new PDTLong()),
+        DISALLOW_INCOMING_PARTY_INVITES(new PDTBoolean());
 
         private final PlayerDataType<?> type;
 

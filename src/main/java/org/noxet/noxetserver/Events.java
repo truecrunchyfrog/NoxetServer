@@ -20,6 +20,8 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import org.noxet.noxetserver.combatlogging.CombatLogging;
+import org.noxet.noxetserver.combatlogging.CombatLoggingStorageManager;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
 import org.noxet.noxetserver.commands.social.MsgConversation;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
@@ -31,13 +33,16 @@ import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.minigames.MiniGameManager;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
+import org.noxet.noxetserver.realm.RealmManager;
+import org.noxet.noxetserver.util.Captcha;
 import org.noxet.noxetserver.util.FancyTimeConverter;
 import org.noxet.noxetserver.util.TextBeautifier;
+import org.noxet.noxetserver.util.UsernameStorageManager;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
 import java.util.*;
 
-import static org.noxet.noxetserver.RealmManager.*;
+import static org.noxet.noxetserver.realm.RealmManager.*;
 
 public class Events implements Listener {
     public enum TemporaryCommand {
@@ -191,7 +196,7 @@ public class Events implements Listener {
     public void onPlayerQuit(PlayerQuitEvent e) {
         Player player = e.getPlayer();
 
-        migratingPlayers.remove(player);
+        setPlayerMigrationStatus(player, false);
         Captcha.stopPlayerCaptcha(player);
         TeleportAsk.abortPlayerRelatedRequests(player);
         abortUnconfirmedPlayerRespawn(player);
@@ -226,7 +231,7 @@ public class Events implements Listener {
 
         Player player = e.getEntity();
 
-        migratingPlayers.add(player);
+        setPlayerMigrationStatus(player, true);
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(NoxetServer.getPlugin(), () -> {
             player.sendTitle("§4☠", "§cYou died...", 40, 60, 20);
@@ -250,18 +255,21 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerSpawnLocation(PlayerSpawnLocationEvent e) {
-        if(e.getSpawnLocation().getWorld() != null && (e.getSpawnLocation().getWorld().getName().equals("world") || e.getSpawnLocation().getWorld().getName().startsWith(MiniGameController.gameWorldPrefix)))
+        if(e.getSpawnLocation().getWorld() != null && RealmManager.getRealmFromWorld(e.getSpawnLocation().getWorld()) == null)
             e.setSpawnLocation(RealmManager.getMainSpawn());
     }
 
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent e) {
-        setTemporaryInvulnerability(e.getPlayer());
+        if(RealmManager.getCurrentRealm(e.getPlayer()) != null)
+            setTemporaryInvulnerability(e.getPlayer());
+        else if(MiniGameManager.isPlayerBusyInGame(e.getPlayer()))
+            return;
 
         new BukkitRunnable() {
             @Override
             public void run() {
-                migratingPlayers.remove(e.getPlayer());
+                setPlayerMigrationStatus(e.getPlayer(), true);
             }
         }.runTaskLater(NoxetServer.getPlugin(), 20);
 
@@ -606,6 +614,12 @@ public class Events implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent e) {
         if(e.getWhoClicked().getWorld() == NoxetServer.ServerWorld.HUB.getWorld() || invulnerablePlayers.contains((Player) e.getWhoClicked()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onPlayerSwapHandItems(PlayerSwapHandItemsEvent e) {
+        if(e.getPlayer().getWorld() == NoxetServer.ServerWorld.HUB.getWorld() || invulnerablePlayers.contains(e.getPlayer()))
             e.setCancelled(true);
     }
 
