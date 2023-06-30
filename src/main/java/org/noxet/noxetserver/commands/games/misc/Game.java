@@ -13,6 +13,7 @@ import org.noxet.noxetserver.messaging.SuccessMessage;
 import org.noxet.noxetserver.minigames.GameDefinition;
 import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.minigames.MiniGameManager;
+import org.noxet.noxetserver.minigames.party.Party;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,6 +70,11 @@ public class Game implements TabExecutor {
 
             Player player = (Player) commandSender;
 
+            if(Party.isPlayerMemberOfParty(player)) {
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are in a party, and cannot join games alone.").send(player);
+                return true;
+            }
+
             if(strings.length < 2) {
                 new ErrorMessage(ErrorMessage.ErrorType.ARGUMENT, "Missing argument: ID of game to join.").send(player);
                 return true;
@@ -105,6 +111,8 @@ public class Game implements TabExecutor {
             }
 
             game.disbandPlayer(player); // Try to remove both as player and spectator.
+
+            new Message("§cYou left the game.").send(player);
 
             return true;
         } else if(strings[0].equalsIgnoreCase("spectate")) {

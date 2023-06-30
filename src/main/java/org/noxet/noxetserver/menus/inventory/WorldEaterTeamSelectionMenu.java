@@ -100,7 +100,7 @@ public class WorldEaterTeamSelectionMenu extends InventoryMenu {
             ), ++x, 1);
 
         setSlotItem(ItemGenerator.generateItem(
-                Material.CLOCK,
+                timeLeft % 2 == 0 ? Material.CLOCK : Material.LIGHT_GRAY_STAINED_GLASS_PANE,
                 timeLeft,
                 "§c" + timeLeft + "§es",
                 Arrays.asList("§euntil start.", "§aReady up to skip waiting.")

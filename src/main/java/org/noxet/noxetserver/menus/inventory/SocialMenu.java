@@ -18,6 +18,7 @@ public class SocialMenu extends InventoryMenu {
 
     public enum SocialSlot implements InventoryCoordinate {
         FRIENDS(2, 1),
+        PARTY(4, 1),
         BLOCKED(6, 1);
 
         private final int x, y;
@@ -46,6 +47,11 @@ public class SocialMenu extends InventoryMenu {
         );
 
         setSlotItem(
+                ItemGenerator.generateItem(Material.LEAD, "§6Party", Collections.singletonList("§eManage your party.")),
+                SocialSlot.PARTY
+        );
+
+        setSlotItem(
                 ItemGenerator.generateItem(Material.BEDROCK, "§cBlocked Players", Collections.singletonList("§eView players you have blocked.")),
                 SocialSlot.BLOCKED
         );
@@ -55,6 +61,8 @@ public class SocialMenu extends InventoryMenu {
     protected boolean onSlotClick(Player player, InventoryCoordinate coordinate, ClickType clickType) {
         if(coordinate.isAt(SocialSlot.FRIENDS)) {
             new FriendsMenu(player).openInventory(player);
+        } else if(coordinate.isAt(SocialSlot.PARTY)) {
+            new PartyMenu(player).openInventory(player);
         } else if(coordinate.isAt(SocialSlot.BLOCKED)) {
             new BlockedPlayersMenu(player).openInventory(player);
         } else return false;

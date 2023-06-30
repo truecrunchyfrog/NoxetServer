@@ -404,7 +404,7 @@ public class WorldEater extends MiniGameController {
     }
 
     private void gamePlay() {
-        sendGameMessage(new Message("§aHiders are..."));
+        sendGameMessage(new Message("§eThe §ahiders§e are..."));
 
         forEachPlayer(player -> PlayerState.prepareIdle(player, true));
 
@@ -413,6 +413,8 @@ public class WorldEater extends MiniGameController {
             hider.sendTitle("§a§lHIDER", "§eEndure the seekers attempts to kill you.", 0, 20 * 5, 0);
             sendGameMessage(new Message(" - §b" + hider.getName()));
         });
+
+        sendGameMessage(new Message("§eThe rest are §cseekers§e."));
 
         sendGameMessage(new Message("§eGet ready! Game starts in §c5§e seconds..."));
 

@@ -47,7 +47,7 @@ public class Unblock implements TabExecutor {
 
         playerDataManager.removeFromStringList(PlayerDataManager.Attribute.BLOCKED_PLAYERS, uuidToUnblock.toString()).save();
 
-        new SuccessMessage(unblockName + " is no longer blocked. They player can now message, friend request and TPA you.").send(player);
+        new SuccessMessage(unblockName + " is no longer blocked. They can now message, friend request and TPA you.").send(player);
 
         return true;
     }

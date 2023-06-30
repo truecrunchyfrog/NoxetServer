@@ -32,6 +32,7 @@ import org.noxet.noxetserver.menus.inventory.SocialMenu;
 import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.minigames.MiniGameManager;
+import org.noxet.noxetserver.minigames.party.Party;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.util.Captcha;
@@ -203,6 +204,7 @@ public class Events implements Listener {
         MsgConversation.clearActiveConversationModes(player);
         PlayerDataManager.clearCacheForUUID(player.getUniqueId());
         CombatLogging.triggerLocationDisband(player);
+        Party.abandonPlayer(player);
 
         PlayerDataManager playerDataManager = new PlayerDataManager(player);
 

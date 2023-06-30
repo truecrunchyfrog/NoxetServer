@@ -1,12 +1,12 @@
 package org.noxet.noxetserver.minigames;
 
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.WarningMessage;
 import org.noxet.noxetserver.minigames.party.Party;
 
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 
 public class MiniGameManager {
@@ -78,7 +78,19 @@ public class MiniGameManager {
         return playersGame != null && !playersGame.hasEnded();
     }
 
-    public static boolean joinGame(Player player, GameDefinition game) {
+    public static void playGame(Player player, GameDefinition game) {
+        Party party = Party.getPartyFromMember(player);
+
+        if(party != null) {
+            if(!party.isOwner(player)) {
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are in a party. Only the party owner can join games for the party.\nYou can leave the party to play by yourself, or have the owner transfer the ownership to you to start games yourself.").send(player);
+                return;
+            }
+
+            partyPlayGame(party, game);
+            return;
+        }
+
         Set<MiniGameController> games = findGames(game);
 
         MiniGameController selectedGame = null;
@@ -94,21 +106,11 @@ public class MiniGameManager {
                 selectedGame = eachGame;
 
         if(selectedGame == null)
-            return false;
+            selectedGame = createNewGame(game);
 
-        return selectedGame.addPlayer(player);
-    }
+        assert selectedGame != null;
 
-    public static boolean partyJoinGame(Party party, GameDefinition game) {
-        Set<MiniGameController> games = findGames(game);
-
-        for(MiniGameController eachGame : games)
-            if(eachGame.getOptions().getMaxPlayers() - eachGame.getPlayers().size() >= party.getMembers().size()) {
-                eachGame.addParty(party);
-                return true;
-            }
-
-        return false;
+        selectedGame.addPlayer(player);
     }
 
     public static void partyPlayGame(Party party, GameDefinition game) {
@@ -117,13 +119,35 @@ public class MiniGameManager {
             return;
         }
 
-        if(!MiniGameManager.partyJoinGame(party, game))
-            Objects.requireNonNull(MiniGameManager.createNewGame(game)).addParty(party);
-    }
+        if(!party.isPartyReadyForGame()) {
+            new WarningMessage("Cannot join game, because all members may not be ready.")
+                    .addButton(
+                            "Kick busy players (" + party.getBusyMembers().size() + ") from party",
+                            ChatColor.RED,
+                            "Kick all the players who are already in games from the party",
+                            "party kick-busy"
+                    )
+                    .send(party.getOwner());
 
-    public static void playGame(Player player, GameDefinition game) {
-        if(!MiniGameManager.joinGame(player, game))
-            Objects.requireNonNull(MiniGameManager.createNewGame(game)).addPlayer(player);
+            return;
+        }
+
+        Set<MiniGameController> games = findGames(game);
+
+        MiniGameController selectedGame = null;
+
+        for(MiniGameController eachGame : games)
+            if(eachGame.getOptions().getMaxPlayers() - eachGame.getPlayers().size() >= party.getMembers().size()) {
+                selectedGame = eachGame;
+                break;
+            }
+
+        if(selectedGame == null)
+            selectedGame = createNewGame(game);
+
+        assert selectedGame != null;
+
+        selectedGame.addParty(party);
     }
 
     public static MiniGameController getGameFromId(String id) {

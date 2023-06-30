@@ -1,10 +1,12 @@
 package org.noxet.noxetserver.minigames.party;
 
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.messaging.MessagingContext;
 import org.noxet.noxetserver.messaging.channels.MessagingPartyChannel;
+import org.noxet.noxetserver.minigames.MiniGameManager;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.util.TextBeautifier;
 
@@ -23,11 +25,11 @@ public class Party {
     public Party(Player owner) {
         this.owner = owner;
 
-        messagingContext = new MessagingContext("§e§l" + TextBeautifier.beautify("Party"), new MessagingPartyChannel(this));
-
-        sendPartyMessage(new Message("§eParty created! Use §d/party invite §5<player>§e to invite a player to the party."));
+        messagingContext = new MessagingContext("§e§l" + TextBeautifier.beautify("Party") + " ", new MessagingPartyChannel(this));
 
         addMember(owner);
+
+        sendPartyMessage(new Message("§eParty created! Use §d/party invite §5<player>§e to invite a player to the party."));
     }
 
     public void addMember(Player newMember) {
@@ -87,9 +89,22 @@ public class Party {
             return;
         }
 
-        if(invitedPlayers.add(player))
+        if(invitedPlayers.add(player)) {
+            new Message("§eYou have been invited to " + owner + "'s party.\n")
+                    .addButton(
+                            "Accept",
+                            ChatColor.GREEN,
+                            "Join this party",
+                            "party accept " + owner.getName()
+                    )
+                    .addButton(
+                            "Deny",
+                            ChatColor.RED,
+                            "Deny this invitation",
+                            "party deny " + owner.getName()
+                    ).send(player);
             new Message("§eInvited " + player.getName() + " to the party.").send(owner);
-        else
+        } else
             new ErrorMessage(ErrorMessage.ErrorType.COMMON, "This player has already been invited to the party.").send(owner);
     }
 
@@ -112,6 +127,10 @@ public class Party {
 
         new Message("§aYou denied the invite from " + owner.getName() + ".").send(player);
         new Message("§c" + player.getName() + " refused your invite.").send(owner);
+    }
+
+    public boolean isPlayerInvited(Player player) {
+        return invitedPlayers.contains(player);
     }
 
     /**
@@ -144,6 +163,11 @@ public class Party {
             return;
         }
 
+        if(isOwner(newOwner)) {
+            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are already the owner!").send(owner);
+            return;
+        }
+
         sendPartyMessage(new Message("§eThe party is now owned by " + newOwner.getName() + " (previously " + newOwner.getName() + ")."));
         new Message("§aYou are now the owner of this party.").send(newOwner);
 
@@ -165,5 +189,34 @@ public class Party {
     public static Party getOwnersParty(Player owner) {
         Party playersParty = getPartyFromMember(owner);
         return playersParty.isOwner(owner) ? playersParty : null;
+    }
+
+    public Set<Player> getBusyMembers() {
+        Set<Player> busyMembers = new HashSet<>();
+
+        for(Player member : members)
+            if(member != owner && MiniGameManager.isPlayerBusyInGame(member))
+                busyMembers.add(member);
+
+        return busyMembers;
+    }
+
+    /**
+     * Check whether the party can summon all members to a game (checks if players are busy already, to prevent).
+     * @return Whether a game can be joined
+     */
+    public boolean isPartyReadyForGame() {
+        return getBusyMembers().isEmpty();
+    }
+
+    public void kickBusyPlayers() {
+        for(Player busyMember : getBusyMembers())
+            kickMember(busyMember);
+    }
+
+    public static void abandonPlayer(Player player) {
+        Party party = getPartyFromMember(player);
+        if(party != null)
+            party.removeMember(player);
     }
 }

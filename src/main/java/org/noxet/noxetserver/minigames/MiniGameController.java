@@ -50,7 +50,7 @@ public abstract class MiniGameController implements Listener {
     private final Set<Player> players = new HashSet<>(),
             spectators = new HashSet<>();
     private final ConcatSet<Player> allPlayers = new ConcatSet<>(players, spectators);
-    private final MiniGameOptions options = getGame().getOptions();
+    private final MiniGameOptions options;
     private final PlayerFreezer freezer;
 
     private final MessagingContext messagingContext;
@@ -72,6 +72,7 @@ public abstract class MiniGameController implements Listener {
     public MiniGameController(GameDefinition game) {
         gameId = String.valueOf(new Random().nextInt((int) Math.pow(10, 5), (int) Math.pow(10, 6)));
         this.game = game;
+        options = game.getOptions();
         state = MiniGameState.STALLING;
 
         messagingContext = new MessagingContext("§3§l" + TextBeautifier.beautify(options.getDisplayName()) + "§7 :: ", new MessagingGameChannel(this));
@@ -360,7 +361,8 @@ public abstract class MiniGameController implements Listener {
 
     public void disconnectPlayerFromGame(Player player) {
         handlePlayerRemoved(player);
-        RealmManager.goToHub(player);
+        if(hasStarted())
+            RealmManager.goToHub(player);
     }
 
     public boolean isPlayer(Player player) {
