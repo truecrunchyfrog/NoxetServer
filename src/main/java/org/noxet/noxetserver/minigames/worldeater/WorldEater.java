@@ -160,15 +160,17 @@ public class WorldEater extends MiniGameController {
         seekersTeam = scoreboard.registerNewTeam("seekers");
         hidersTeam = scoreboard.registerNewTeam("hiders");
 
-        seekersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
-        seekersTeam.setCanSeeFriendlyInvisibles(false);
-        seekersTeam.setAllowFriendlyFire(false);
+        List<Team> teams = Arrays.asList(seekersTeam, hidersTeam);
+
+        for(Team team : teams) {
+            seekersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
+            seekersTeam.setCanSeeFriendlyInvisibles(false);
+            seekersTeam.setAllowFriendlyFire(false);
+        }
+
         seekersTeam.setPrefix(WorldEaterTeams.SEEKER.getFormattedDisplayName());
         seekersTeam.setColor(ChatColor.RED);
 
-        hidersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
-        hidersTeam.setCanSeeFriendlyInvisibles(false);
-        hidersTeam.setAllowFriendlyFire(false);
         hidersTeam.setPrefix(WorldEaterTeams.HIDER.getFormattedDisplayName());
         hidersTeam.setColor(ChatColor.GREEN);
 
@@ -184,7 +186,7 @@ public class WorldEater extends MiniGameController {
                 teamSet.putPlayerOnTeam(getRandomPlayer(), WorldEaterTeams.SEEKER);
             }
 
-            gamePlay();
+            phaseTeamsPicked();
         });
 
         forEachPlayer(player -> {
@@ -403,7 +405,7 @@ public class WorldEater extends MiniGameController {
         super(GameDefinition.WORLD_EATER);
     }
 
-    private void gamePlay() {
+    private void phaseTeamsPicked() {
         sendGameMessage(new Message("§eThe §ahiders§e are..."));
 
         forEachPlayer(player -> PlayerState.prepareIdle(player, true));
@@ -421,183 +423,188 @@ public class WorldEater extends MiniGameController {
         addTask(new BukkitRunnable() {
             @Override
             public void run() {
-                getFreezer().empty();
-
-                sendGameMessage(new Message("§eHiders are given a head start."));
-
-                final ArrayList<BukkitTask> seekerCircleTasks = new ArrayList<>();
-
-                teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> {
-                    PlayerState.prepareIdle(seeker, true);
-
-                    Location center = getCenterTopLocation().add(0, 20, 0);
-
-                    double speed = 0.1;
-
-                    final double[] angle = {0};
-
-                    BukkitTask moveTask = Bukkit.getScheduler().runTaskTimer(NoxetServer.getPlugin(), () -> {
-                        if(!seeker.isFlying())
-                            seeker.setFlying(true);
-
-                        double radians = Math.toRadians(angle[0]);
-
-                        center.setYaw((float) Math.toDegrees(Math.atan2(-Math.cos(radians), Math.sin(radians))));
-                        center.setPitch(90);
-                        seeker.teleport(center);
-
-                        angle[0] += speed;
-                        angle[0] %= 360;
-                    }, 0, 1);
-
-                    addTask(moveTask);
-                    seekerCircleTasks.add(moveTask);
-
-                    seekersTeam.addEntry(seeker.getName());
-                });
-
-                teamSet.forEach(WorldEaterTeams.HIDER, hider -> {
-                    preparePlayer(hider);
-
-                    hider.playSound(hider, Sound.BLOCK_NOTE_BLOCK_BASS, 1, 0.5f);
-                    hider.sendTitle("§c§lHURRY UP!", "§ePrepare and reach §3shelter§e fast!", 5, 20 * 5, 10);
-
-                    hidersTeam.addEntry(hider.getName());
-                });
-
-
-                int secondsToRelease = 2 * 60;
-
-                for(int i = secondsToRelease; i > 0; i--) {
-                    int finalI = i;
-                    addTask(new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            String timeLeftString = FancyTimeConverter.deltaSecondsToFancyTime(finalI, true);
-
-                            if(finalI % 2 == 0)
-                                playGameSound(Sound.BLOCK_POINTED_DRIPSTONE_FALL, 0.6f, 2);
-
-                            if(finalI % 10 == 0)
-                                sendGameMessage(new Message("§eSeekers are released in " + timeLeftString + "."));
-
-                            teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> seeker.sendTitle(timeLeftString, "§euntil released...", 0, 20 * 2, 0));
-                            teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§8§l[ §" + (finalI % 2 == 0 ? "4" : "f") + "§l! §8§l] §bReleasing seekers in " + timeLeftString).send(hider));
-                        }
-                    }.runTaskLater(NoxetServer.getPlugin(), 20L * (secondsToRelease - i)));
-                }
-
-                addTask(new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        for(BukkitTask task : seekerCircleTasks)
-                            task.cancel();
-
-                        getFreezer().empty();
-
-                        sendGameMessage(new Message("§c§lSEEKERS HAVE BEEN RELEASED!"));
-
-                        setPvpRule(true);
-
-                        playGameSound(Sound.BLOCK_ANVIL_LAND, 2, 2);
-
-                        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> {
-                            preparePlayer(seeker);
-                            seeker.resetTitle();
-                        });
-
-                        teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§c§lSEEKERS RELEASED!").send(hider));
-
-                        for(int i = 0; i < 4; i++)
-                            spawnEntityInNaturalHabitat(EntityType.COW);
-
-                        for(int i = 0; i < 3; i++)
-                            spawnEntityInNaturalHabitat(EntityType.SHEEP);
-
-                        for(int i = 0; i < 2; i++)
-                            spawnEntityInNaturalHabitat(EntityType.CHICKEN);
-
-                        sendGameMessage(new Message("§c(!) Starting from the top of the island to the bottom, each layer of blocks will be removed at an exponential rate."));
-
-                        int startY = 0;
-
-                        for(int x = 0; x < 16; x++)
-                            for(int z = 0; z < 16; z++)
-                                startY = Math.max(startY, getMiniGameWorld().getHighestBlockYAt(x, z));
-
-                        long progress = 0;
-
-                        for(int y = startY; y > -50; y--) {
-                            int finalY = y;
-                            progress += 20L * 30 * Math.pow(0.983d, 1 + startY - y);
-                            addTask(new BukkitRunnable() {
-                                @Override
-                                public void run() {
-                                    playGameSound(Sound.BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_OFF, 1, 1);
-
-                                    for(int x = 0; x < 16; x++)
-                                        for(int z = 0; z < 16; z++)
-                                            getMiniGameWorld().setBlockData(getCenterChunk().getBlock(x, finalY, z).getLocation(), Material.AIR.createBlockData());
-                                }
-                            }.runTaskLater(NoxetServer.getPlugin(), progress));
-                        }
-
-                        sendGameMessage(new Message("§eIf the hiders survive until the game is over, they win. Otherwise the seekers win."));
-
-                        timeLeft = 30 * 60;
-
-                        for(int i = timeLeft / 60; i >= 0; i--) {
-                            int finalI = i;
-                            addTask(new BukkitRunnable() {
-                                @Override
-                                public void run() {
-                                    if(finalI > 0) {
-                                        if(finalI % 5 == 0 || finalI < 10)
-                                            sendGameMessage(new Message("§eThe game has §c" + finalI + "§e minutes remaining."));
-
-                                        switch(finalI) { // Timed events
-                                            case 20:
-                                                events.add(WorldEaterEvents.GameEvent.METEOR_RAIN);
-                                                WorldEaterEvents.meteorRain(controllerInstance);
-                                                break;
-                                            case 22:
-                                            case 15:
-                                            case 8:
-                                                events.add(WorldEaterEvents.GameEvent.VISIBLE_HIDERS);
-                                                WorldEaterEvents.visibleHiders(controllerInstance);
-                                                break;
-                                            case 12:
-                                                events.add(WorldEaterEvents.GameEvent.DRILLING);
-                                                WorldEaterEvents.drilling(controllerInstance);
-                                                break;
-                                            case 5:
-                                                events.add(WorldEaterEvents.GameEvent.EXPLODING_HORSES);
-                                                WorldEaterEvents.explodingHorses(controllerInstance);
-                                                break;
-                                            case 1:
-                                                events.add(WorldEaterEvents.GameEvent.EVERYONE_VISIBLE);
-                                                WorldEaterEvents.everyoneVisible(controllerInstance);
-                                                break;
-                                        }
-                                    } else {
-                                        sendGameMessage(new Message("§aTime has gone out! Hiders win."));
-                                        finish(GameResult.HIDERS_WIN);
-                                    }
-                                }
-                            }.runTaskLater(NoxetServer.getPlugin(), 20L * 60 * (timeLeft - i)));
-                        }
-
-                        addTask(new BukkitRunnable() {
-                            @Override
-                            public void run() {
-                                updateScoreboard();
-                                timeLeft--;
-                            }
-                        }.runTaskTimer(NoxetServer.getPlugin(), 40, 20));
-                    }
-                }.runTaskLater(NoxetServer.getPlugin(), 20 * secondsToRelease));
+                phaseHeadStart();
             }
         }.runTaskLater(NoxetServer.getPlugin(), 20 * 5));
+    }
+
+    private void phaseHeadStart() {
+        getFreezer().empty();
+
+        sendGameMessage(new Message("§eHiders are given a head start."));
+
+        final ArrayList<BukkitTask> seekerCircleTasks = new ArrayList<>();
+
+        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> {
+            PlayerState.prepareIdle(seeker, true);
+
+            Location center = getCenterTopLocation().add(0, 20, 0);
+
+            double speed = 0.1;
+
+            final double[] angle = {0};
+
+            BukkitTask moveTask = Bukkit.getScheduler().runTaskTimer(NoxetServer.getPlugin(), () -> {
+                if(!seeker.isFlying())
+                    seeker.setFlying(true);
+
+                double radians = Math.toRadians(angle[0]);
+
+                center.setYaw((float) Math.toDegrees(Math.atan2(-Math.cos(radians), Math.sin(radians))));
+                center.setPitch(90);
+                seeker.teleport(center);
+
+                angle[0] += speed;
+                angle[0] %= 360;
+            }, 0, 2);
+
+            addTask(moveTask);
+            seekerCircleTasks.add(moveTask);
+
+            seekersTeam.addEntry(seeker.getName());
+        });
+
+        teamSet.forEach(WorldEaterTeams.HIDER, hider -> {
+            preparePlayer(hider);
+
+            hider.playSound(hider, Sound.BLOCK_NOTE_BLOCK_BASS, 1, 0.5f);
+            hider.sendTitle("§c§lHURRY UP!", "§ePrepare and reach §3shelter§e fast!", 5, 20 * 5, 10);
+
+            hidersTeam.addEntry(hider.getName());
+        });
+
+
+        int secondsToRelease = 2 * 60;
+
+        for(int i = secondsToRelease; i > 0; i--) {
+            int finalI = i;
+            addTask(new BukkitRunnable() {
+                @Override
+                public void run() {
+                    String timeLeftString = FancyTimeConverter.deltaSecondsToFancyTime(finalI, true);
+
+                    if(finalI % 2 == 0)
+                        playGameSound(Sound.BLOCK_POINTED_DRIPSTONE_FALL, 0.6f, 2);
+
+                    if(finalI % 10 == 0)
+                        sendGameMessage(new Message("§eSeekers are released in " + timeLeftString + "."));
+
+                    teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> seeker.sendTitle(timeLeftString, "§euntil released...", 0, 20 * 2, 0));
+                    teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§8§l[ §" + (finalI % 2 == 0 ? "4" : "f") + "§l! §8§l] §bReleasing seekers in " + timeLeftString).send(hider));
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), 20L * (secondsToRelease - i)));
+        }
+
+        addTask(new BukkitRunnable() {
+            @Override
+            public void run() {
+                phaseSeekersReleased(seekerCircleTasks);
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 20 * secondsToRelease));
+    }
+
+    private void phaseSeekersReleased(List<BukkitTask> seekerCircleTasks) {
+        for(BukkitTask task : seekerCircleTasks)
+            task.cancel();
+
+        getFreezer().empty();
+
+        sendGameMessage(new Message("§c§lSEEKERS HAVE BEEN RELEASED!"));
+
+        setPvpRule(true);
+
+        playGameSound(Sound.BLOCK_ANVIL_LAND, 2, 2);
+
+        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> {
+            preparePlayer(seeker);
+            seeker.resetTitle();
+        });
+
+        teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§c§lSEEKERS RELEASED!").send(hider));
+
+        for(int i = 0; i < 4; i++)
+            spawnEntityInNaturalHabitat(EntityType.COW);
+
+        for(int i = 0; i < 3; i++)
+            spawnEntityInNaturalHabitat(EntityType.SHEEP);
+
+        for(int i = 0; i < 2; i++)
+            spawnEntityInNaturalHabitat(EntityType.CHICKEN);
+
+        sendGameMessage(new Message("§c(!) Starting from the top of the island to the bottom, each layer of blocks will be removed at an exponential rate."));
+
+        int startY = 0;
+
+        for(int x = 0; x < 16; x++)
+            for(int z = 0; z < 16; z++)
+                startY = Math.max(startY, getMiniGameWorld().getHighestBlockYAt(x, z));
+
+        long progress = 0;
+
+        for(int y = startY; y > getMiniGameWorld().getMinHeight() + 10; y--) {
+            int finalY = y;
+            progress += 20L * 30 * Math.pow(0.983d, 1 + startY - y);
+            addTask(new BukkitRunnable() {
+                @Override
+                public void run() {
+                    playGameSound(Sound.BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_OFF, 1, 1);
+
+                    for(int x = 0; x < 16; x++)
+                        for(int z = 0; z < 16; z++)
+                            getMiniGameWorld().setBlockData(getCenterChunk().getBlock(x, finalY, z).getLocation(), Material.AIR.createBlockData());
+                }
+            }.runTaskLater(NoxetServer.getPlugin(), progress));
+        }
+
+        sendGameMessage(new Message("§eIf the hiders survive until the game is over, they win. Otherwise the seekers win."));
+
+        timeLeft = 30 * 60;
+
+        addTask(new BukkitRunnable() {
+            @Override
+            public void run() {
+                updateScoreboard();
+                timeLeft--;
+
+                if(timeLeft % 60 == 0) {
+                    int minutesLeft = timeLeft / 60;
+
+                    if(minutesLeft != 0 && (minutesLeft % 5 == 0 || minutesLeft < 10))
+                        sendGameMessage(new Message("§eThe game has §c" + minutesLeft + "§e minutes remaining."));
+
+                    switch(minutesLeft) { // Timed events
+                        case 20:
+                            events.add(WorldEaterEvents.GameEvent.METEOR_RAIN);
+                            WorldEaterEvents.meteorRain(controllerInstance);
+                            break;
+                        case 22:
+                        case 15:
+                        case 8:
+                            events.add(WorldEaterEvents.GameEvent.VISIBLE_HIDERS);
+                            WorldEaterEvents.visibleHiders(controllerInstance);
+                            break;
+                        case 12:
+                            events.add(WorldEaterEvents.GameEvent.DRILLING);
+                            WorldEaterEvents.drilling(controllerInstance);
+                            break;
+                        case 5:
+                            events.add(WorldEaterEvents.GameEvent.EXPLODING_HORSES);
+                            WorldEaterEvents.explodingHorses(controllerInstance);
+                            break;
+                        case 1:
+                            events.add(WorldEaterEvents.GameEvent.EVERYONE_VISIBLE);
+                            WorldEaterEvents.everyoneVisible(controllerInstance);
+                            break;
+                    }
+                }
+
+                if(timeLeft == 0) {
+                    sendGameMessage(new Message("§aTime has gone out! Hiders win."));
+                    finish(GameResult.HIDERS_WIN);
+                    cancel(); // Prevent time from getting negative.
+                }
+            }
+        }.runTaskTimer(NoxetServer.getPlugin(), 40, 20));
     }
 
     public enum GameResult {
@@ -676,8 +683,9 @@ public class WorldEater extends MiniGameController {
     }
 
     private static void setObjectiveLines(Objective objective, String[] lines) {
-        for(String score : Objects.requireNonNull(objective.getScoreboard()).getEntries())
-            objective.getScoreboard().resetScores(score);
+        //for(String score : Objects.requireNonNull(objective.getScoreboard()).getEntries())
+        //    objective.getScoreboard().resetScores(score);
+        // todo check if this fixes it?
 
         int i = 0;
         for(String line : lines)
