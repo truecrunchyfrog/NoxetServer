@@ -37,7 +37,8 @@ public class WorldEater extends MiniGameController {
     private Team seekersTeam, hidersTeam;
     private final TeamSet teamSet = new TeamSet(getPlayers(), WorldEaterTeams.SEEKER, WorldEaterTeams.HIDER);
     private Scoreboard scoreboard;
-    private GameResult result;
+    private Objective objective;
+    private GameResult result = GameResult.TIE;
     private static final String cacheWorldName = "WORLDEATER_CACHE";
 
     /**
@@ -155,25 +156,6 @@ public class WorldEater extends MiniGameController {
     public void handleStart() {
         new RegionBinder(getCenterTopLocation(), getPlayersAndSpectators(), 64, 120);
 
-        scoreboard = createGameScoreboard();
-
-        seekersTeam = scoreboard.registerNewTeam("seekers");
-        hidersTeam = scoreboard.registerNewTeam("hiders");
-
-        List<Team> teams = Arrays.asList(seekersTeam, hidersTeam);
-
-        for(Team team : teams) {
-            seekersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
-            seekersTeam.setCanSeeFriendlyInvisibles(false);
-            seekersTeam.setAllowFriendlyFire(false);
-        }
-
-        seekersTeam.setPrefix(WorldEaterTeams.SEEKER.getFormattedDisplayName());
-        seekersTeam.setColor(ChatColor.RED);
-
-        hidersTeam.setPrefix(WorldEaterTeams.HIDER.getFormattedDisplayName());
-        hidersTeam.setColor(ChatColor.GREEN);
-
         WorldEaterTeamSelectionMenu teamSelectionMenu = new WorldEaterTeamSelectionMenu(this, 40, menu -> {
             teamSet.putManyPlayersOnTeam(menu.getHiders(), WorldEaterTeams.HIDER);
             teamSet.putManyPlayersOnTeam(menu.getSeekers(), WorldEaterTeams.SEEKER);
@@ -195,8 +177,6 @@ public class WorldEater extends MiniGameController {
             player.setGameMode(GameMode.SPECTATOR);
 
             teamSelectionMenu.openInventory(player);
-
-            player.setScoreboard(scoreboard);
         });
 
         getFreezer().bulkFreeze(getPlayers());
@@ -406,12 +386,42 @@ public class WorldEater extends MiniGameController {
     }
 
     private void phaseTeamsPicked() {
+        scoreboard = Objects.requireNonNull(Bukkit.getScoreboardManager()).getNewScoreboard();
+
+        objective = scoreboard.registerNewObjective("game_stats", Criteria.DUMMY, "§6§lWORLD§2§lEATER");
+        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+        seekersTeam = scoreboard.registerNewTeam("seekers");
+        hidersTeam = scoreboard.registerNewTeam("hiders");
+
+        List<Team> teams = Arrays.asList(seekersTeam, hidersTeam);
+
+        for(Team team : teams) {
+            team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
+            team.setCanSeeFriendlyInvisibles(false);
+            team.setAllowFriendlyFire(false);
+        }
+
+        seekersTeam.setPrefix(WorldEaterTeams.SEEKER.getFormattedDisplayName());
+        seekersTeam.setColor(ChatColor.RED);
+
+        hidersTeam.setPrefix(WorldEaterTeams.HIDER.getFormattedDisplayName());
+        hidersTeam.setColor(ChatColor.GREEN);
+
         sendGameMessage(new Message("§eThe §ahiders§e are..."));
 
-        forEachPlayer(player -> PlayerState.prepareIdle(player, true));
+        forEachPlayer(player -> {
+            player.setScoreboard(scoreboard);
+            PlayerState.prepareIdle(player, true);
+        });
 
-        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> seeker.sendTitle("§c§lSEEKER", "§eFind and eliminate the hiders.", 0, 20 * 5, 0));
+        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> {
+            seekersTeam.addEntry(seeker.getName());
+            seeker.sendTitle("§c§lSEEKER", "§eFind and eliminate the hiders.", 0, 20 * 5, 0);
+        });
+
         teamSet.forEach(WorldEaterTeams.HIDER, hider -> {
+            hidersTeam.addEntry(hider.getName());
             hider.sendTitle("§a§lHIDER", "§eEndure the seekers attempts to kill you.", 0, 20 * 5, 0);
             sendGameMessage(new Message(" - §b" + hider.getName()));
         });
@@ -473,8 +483,7 @@ public class WorldEater extends MiniGameController {
             hidersTeam.addEntry(hider.getName());
         });
 
-
-        int secondsToRelease = 2 * 60;
+        int secondsToRelease = 5; //2 * 60; todo
 
         for(int i = secondsToRelease; i > 0; i--) {
             int finalI = i;
@@ -563,6 +572,7 @@ public class WorldEater extends MiniGameController {
         addTask(new BukkitRunnable() {
             @Override
             public void run() {
+                sendGameMessage(new Message("tick!"));
                 updateScoreboard();
                 timeLeft--;
 
@@ -673,15 +683,6 @@ public class WorldEater extends MiniGameController {
         getMiniGameWorld().spawnEntity(getAppropriateSpawnLocation(spawn), type);
     }
 
-    private static Scoreboard createGameScoreboard() {
-        Scoreboard scoreboard = Objects.requireNonNull(Bukkit.getScoreboardManager()).getNewScoreboard();
-
-        Objective objective = scoreboard.registerNewObjective("worldeater_scoreboard", Criteria.DUMMY, "§6§lWORLD§2§lEATER");
-        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-
-        return scoreboard;
-    }
-
     private static void setObjectiveLines(Objective objective, String[] lines) {
         //for(String score : Objects.requireNonNull(objective.getScoreboard()).getEntries())
         //    objective.getScoreboard().resetScores(score);
@@ -693,7 +694,7 @@ public class WorldEater extends MiniGameController {
     }
 
     private void updateScoreboard() {
-        setObjectiveLines(scoreboard.getObjectives().toArray(new Objective[0])[0], new String[] {
+        setObjectiveLines(objective, new String[] {
                 "§eTime remaining: " + getFancyTimeLeft(timeLeft),
                 "§e" + getPlayers().size() + " playing:",
                 "§c" + teamSet.countTeamPlayers(WorldEaterTeams.SEEKER) + "§e seeking",
