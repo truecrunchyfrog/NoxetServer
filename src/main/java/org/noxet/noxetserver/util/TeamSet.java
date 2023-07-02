@@ -109,8 +109,18 @@ public class TeamSet {
         updateTeamEntriesAndPlayerScoreboards();
     }
 
+    private static void setObjectiveLines(Objective objective, String[] lines) {
+        for(String score : Objects.requireNonNull(objective.getScoreboard()).getEntries())
+            objective.getScoreboard().resetScores(score);
+
+        int i = 0;
+        for(String line : lines)
+            objective.getScore(line).setScore(lines.length - i++);
+    }
+
     public void updateScoreboard() {
         // todo code here
+        setObjectiveLines(objective);
     }
 
     public void unregister() {
