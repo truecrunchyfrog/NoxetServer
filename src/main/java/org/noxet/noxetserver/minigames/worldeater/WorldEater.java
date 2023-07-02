@@ -34,10 +34,7 @@ import java.io.IOException;
 import java.util.*;
 
 public class WorldEater extends MiniGameController {
-    private Team seekersTeam, hidersTeam;
     private final TeamSet teamSet = new TeamSet(getPlayers(), WorldEaterTeams.SEEKER, WorldEaterTeams.HIDER);
-    private Scoreboard scoreboard;
-    private Objective objective;
     private GameResult result = GameResult.TIE;
     private static final String cacheWorldName = "WORLDEATER_CACHE";
 
@@ -287,16 +284,7 @@ public class WorldEater extends MiniGameController {
 
     @Override
     public void handlePostStop() {
-        if(scoreboard != null)
-            scoreboard.getObjectives().forEach(Objective::unregister);
-
-        if(seekersTeam != null)
-            for(String entry : seekersTeam.getEntries())
-                seekersTeam.removeEntry(entry);
-
-        if(hidersTeam != null)
-            for(String entry : hidersTeam.getEntries())
-                hidersTeam.removeEntry(entry);
+        teamSet.unregister();
     }
 
     @Override
@@ -386,28 +374,6 @@ public class WorldEater extends MiniGameController {
     }
 
     private void phaseTeamsPicked() {
-        scoreboard = Objects.requireNonNull(Bukkit.getScoreboardManager()).getNewScoreboard();
-
-        objective = scoreboard.registerNewObjective("game_stats", Criteria.DUMMY, "§6§lWORLD§2§lEATER");
-        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-
-        seekersTeam = scoreboard.registerNewTeam("seekers");
-        hidersTeam = scoreboard.registerNewTeam("hiders");
-
-        List<Team> teams = Arrays.asList(seekersTeam, hidersTeam);
-
-        for(Team team : teams) {
-            team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
-            team.setCanSeeFriendlyInvisibles(false);
-            team.setAllowFriendlyFire(false);
-        }
-
-        seekersTeam.setPrefix(WorldEaterTeams.SEEKER.getFormattedDisplayName());
-        seekersTeam.setColor(ChatColor.RED);
-
-        hidersTeam.setPrefix(WorldEaterTeams.HIDER.getFormattedDisplayName());
-        hidersTeam.setColor(ChatColor.GREEN);
-
         sendGameMessage(new Message("§eThe §ahiders§e are..."));
 
         forEachPlayer(player -> {
@@ -572,7 +538,6 @@ public class WorldEater extends MiniGameController {
         addTask(new BukkitRunnable() {
             @Override
             public void run() {
-                sendGameMessage(new Message("tick!"));
                 updateScoreboard();
                 timeLeft--;
 

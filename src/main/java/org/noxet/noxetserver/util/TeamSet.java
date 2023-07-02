@@ -1,11 +1,19 @@
 package org.noxet.noxetserver.util;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.scoreboard.Criteria;
+import org.bukkit.scoreboard.DisplaySlot;
+import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.util.Consumer;
 
 import java.util.*;
 
 public class TeamSet {
+    private final Scoreboard scoreboard;
+    private final Objective objective;
+
     private final List<Team> teams;
     private final Set<Player> playerSet;
     private final Map<Player, Team> assignedPlayerTeams;
@@ -14,6 +22,29 @@ public class TeamSet {
         this.playerSet = playerSet;
         this.teams = Arrays.asList(teams);
         assignedPlayerTeams = new HashMap<>();
+
+        scoreboard = Objects.requireNonNull(Bukkit.getScoreboardManager()).getNewScoreboard();
+
+        objective = scoreboard.registerNewObjective("game_stats", Criteria.DUMMY, "§6§lWORLD§2§lEATER");
+        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+        for(Team team : teams) {
+            org.bukkit.scoreboard.Team scoreboardTeam = scoreboard.registerNewTeam(team.getTeamId());
+
+            scoreboardTeam.setOption(org.bukkit.scoreboard.Team.Option.NAME_TAG_VISIBILITY, org.bukkit.scoreboard.Team.OptionStatus.FOR_OTHER_TEAMS);
+            scoreboardTeam.setCanSeeFriendlyInvisibles(false);
+            scoreboardTeam.setAllowFriendlyFire(false);
+
+            scoreboardTeam.setPrefix(team.getFormattedDisplayName());
+            scoreboardTeam.setColor(team.getColor());
+        }
+    }
+
+    private void updateTeamEntriesAndPlayerScoreboards() {
+        for(Map.Entry<Player, Team> entry : assignedPlayerTeams.entrySet()) {
+            scoreboard.getTeam(entry.getValue().getTeamId()).addEntry(entry.getKey().getName());
+            entry.getKey().setScoreboard(scoreboard);
+        }
     }
 
     public Team getPlayersTeam(Player player) {
@@ -35,6 +66,8 @@ public class TeamSet {
             throw new IllegalArgumentException("Player " + player + " does not exist in the referenced player set.");
 
         assignedPlayerTeams.put(player, team);
+
+        updateTeamEntriesAndPlayerScoreboards();
     }
 
     public void putManyPlayersOnTeam(Set<Player> players, Team team) {
@@ -72,5 +105,17 @@ public class TeamSet {
      */
     public void refreshPlayers() {
         assignedPlayerTeams.keySet().retainAll(playerSet);
+
+        updateTeamEntriesAndPlayerScoreboards();
+    }
+
+    public void updateScoreboard() {
+        // todo code here
+    }
+
+    public void unregister() {
+        objective.unregister();
+        for(org.bukkit.scoreboard.Team team : scoreboard.getTeams())
+            team.unregister();
     }
 }

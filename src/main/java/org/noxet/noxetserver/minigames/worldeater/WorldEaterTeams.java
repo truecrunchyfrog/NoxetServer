@@ -1,23 +1,36 @@
 package org.noxet.noxetserver.minigames.worldeater;
 
+import org.bukkit.ChatColor;
 import org.noxet.noxetserver.util.Team;
 
 public enum WorldEaterTeams implements Team {
     SEEKER(
+            "seekers",
             "Seeker",
-            "§4§l[ SEEKER ]"
+            "§4§l[ SEEKER ]",
+            ChatColor.RED
     ),
 
     HIDER(
+            "hiders",
             "Hider",
-            "§2§l[ HIDER ]"
+            "§2§l[ HIDER ]",
+            ChatColor.GREEN
     );
 
-    private final String displayName, formattedDisplayName;
+    private final String teamId, displayName, formattedDisplayName;
+    private final ChatColor color;
 
-    WorldEaterTeams(String displayName, String formattedDisplayName) {
+    WorldEaterTeams(String teamId, String displayName, String formattedDisplayName, ChatColor color) {
+        this.teamId = teamId;
         this.displayName = displayName;
         this.formattedDisplayName = formattedDisplayName;
+        this.color = color;
+    }
+
+    @Override
+    public String getTeamId() {
+        return teamId;
     }
 
     @Override
@@ -28,5 +41,10 @@ public enum WorldEaterTeams implements Team {
     @Override
     public String getFormattedDisplayName() {
         return formattedDisplayName;
+    }
+
+    @Override
+    public ChatColor getColor() {
+        return color;
     }
 }
