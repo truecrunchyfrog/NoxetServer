@@ -71,6 +71,26 @@ public class PartyCommand implements TabExecutor {
             party.invitePlayer(playerToInvite);
 
             return true;
+        } else if(strings[0].equalsIgnoreCase("chat")) {
+            Party party = Party.getPartyFromMember(player);
+
+            if(party == null) {
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are not in a party.").send(player);
+                return true;
+            }
+
+            List<String> messageArguments = new ArrayList<>(Arrays.asList(strings));
+            messageArguments.remove(0);
+
+            StringBuilder message = new StringBuilder();
+
+            int i = 0;
+            for(String arg : messageArguments)
+                message.append(i++ != 0 ? " " : "").append(arg);
+
+            party.sendChatMessage(player, message.toString());
+
+            return true;
         } else if(strings[0].equalsIgnoreCase("accept")) {
             if(strings.length < 2) {
                 new ErrorMessage(ErrorMessage.ErrorType.ARGUMENT, "Missing argument: invitation to accept.").send(player);
@@ -310,7 +330,7 @@ public class PartyCommand implements TabExecutor {
         Player player = (Player) commandSender;
 
         if(strings.length == 1) {
-            completions.addAll(Arrays.asList("create", "invite", "kick", "transfer", "leave", "list", "disband", "kick-busy", "toggle-invites"));
+            completions.addAll(Arrays.asList("create", "invite", "chat", "accept", "deny", "kick", "transfer", "leave", "list", "disband", "kick-busy", "toggle-invites"));
         } else if(strings.length == 2) {
             switch(strings[0].toLowerCase()) {
                 case "invite":

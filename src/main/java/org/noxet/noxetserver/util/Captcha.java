@@ -13,9 +13,7 @@ import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.playerstate.PlayerState;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import static org.noxet.noxetserver.realm.RealmManager.goToHub;
 
@@ -74,7 +72,7 @@ public class Captcha {
         }
     }
 
-    private static final List<Captcha> captchaInstances = new ArrayList<>();
+    private static final Map<Player, Captcha> captchaInstances = new HashMap<>();
     private static final PlayerFreezer freezer = new PlayerFreezer(20);
 
     private final Player player;
@@ -88,7 +86,7 @@ public class Captcha {
 
     public Captcha(Player player) {
         stopPlayerCaptcha(player); // Stop any already existing captcha.
-        captchaInstances.add(this);
+        captchaInstances.put(player, this);
 
         this.player = player;
 
@@ -103,7 +101,7 @@ public class Captcha {
     public void init() {
         RealmManager.setPlayerMigrationStatus(player, true); // Prevent migration manager from interacting with player.
 
-        PlayerState.prepareDefault(player);
+        PlayerState.prepareIdle(player, true);
 
         getWorld().setBlockData(assignedLocation.clone().subtract(0, 1, 0), Material.BARRIER.createBlockData()); // Place standing block.
 
@@ -249,7 +247,7 @@ public class Captcha {
     }
 
     public void stop() {
-        captchaInstances.remove(this);
+        captchaInstances.remove(player);
 
         freezer.unfreeze(player);
 
@@ -276,14 +274,11 @@ public class Captcha {
     }
 
     public static Captcha getPlayerCaptcha(Player player) {
-        for(Captcha captcha : captchaInstances)
-            if(captcha.getPlayer() == player)
-                return captcha;
-        return null;
+        return captchaInstances.get(player);
     }
 
     public static boolean isPlayerDoingCaptcha(Player player) {
-        return getPlayerCaptcha(player) != null;
+        return captchaInstances.containsKey(player);
     }
 
     /**

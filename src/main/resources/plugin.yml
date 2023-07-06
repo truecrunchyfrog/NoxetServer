@@ -121,6 +121,6 @@ commands:
     usage: /game <play|join|leave|spectate|info|list|stop|debug-create> [mini-game|ID|soft|hard]
   party:
     description: Manage a party of players
-    usage: /party <create|invite|accept|deny|kick|transfer|leave|list|disband|kick-busy|toggle-invites> [player]
+    usage: /party <create|invite|chat|accept|deny|kick|transfer|leave|list|disband|kick-busy|toggle-invites> [player|message]
     aliases:
       - p

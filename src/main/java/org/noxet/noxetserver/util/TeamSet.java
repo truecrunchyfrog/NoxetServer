@@ -42,8 +42,8 @@ public class TeamSet {
 
     private void updateTeamEntriesAndPlayerScoreboards() {
         for(Map.Entry<Player, Team> entry : assignedPlayerTeams.entrySet()) {
-            scoreboard.getTeam(entry.getValue().getTeamId()).addEntry(entry.getKey().getName());
             entry.getKey().setScoreboard(scoreboard);
+            Objects.requireNonNull(scoreboard.getTeam(entry.getValue().getTeamId())).addEntry(entry.getKey().getName());
         }
     }
 
@@ -109,18 +109,17 @@ public class TeamSet {
         updateTeamEntriesAndPlayerScoreboards();
     }
 
-    private static void setObjectiveLines(Objective objective, String[] lines) {
-        for(String score : Objects.requireNonNull(objective.getScoreboard()).getEntries())
-            objective.getScoreboard().resetScores(score);
+    private void setObjectiveLines(String[] lines) {
+        for(String score : scoreboard.getEntries())
+            scoreboard.resetScores(score);
 
         int i = 0;
         for(String line : lines)
             objective.getScore(line).setScore(lines.length - i++);
     }
 
-    public void updateScoreboard() {
-        // todo code here
-        setObjectiveLines(objective);
+    public void updateScoreboard(String[] lines) {
+        setObjectiveLines(lines);
     }
 
     public void unregister() {

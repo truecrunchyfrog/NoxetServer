@@ -133,20 +133,16 @@ public final class NoxetServer extends JavaPlugin {
         return dir;
     }
     
-    private static String getLogPrefix() {
-        return "< Noxet > ";
-    }
-
     public static void logInfo(String message) {
-        getPlugin().getLogger().info(getLogPrefix() + message);
+        getPlugin().getLogger().info(message);
     }
 
     public static void logWarning(String message) {
-        getPlugin().getLogger().warning(getLogPrefix() + message);
+        getPlugin().getLogger().warning(message);
     }
 
     public static void logSevere(String message) {
-        getPlugin().getLogger().severe(getLogPrefix() + message);
+        getPlugin().getLogger().severe(message);
     }
 
     public static boolean isWorldPreserved(World world) {

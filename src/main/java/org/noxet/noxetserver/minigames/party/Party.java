@@ -214,6 +214,10 @@ public class Party {
             kickMember(busyMember);
     }
 
+    public void sendChatMessage(Player member, String message) {
+        sendPartyMessage(new Message((isOwner(member) ? "§9§l" + TextBeautifier.beautify("owner") + " " : "") + "§f" + member.getDisplayName() + "§9→ §b" + message));
+    }
+
     public static void abandonPlayer(Player player) {
         Party party = getPartyFromMember(player);
         if(party != null)

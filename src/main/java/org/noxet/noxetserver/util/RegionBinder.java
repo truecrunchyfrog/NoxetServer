@@ -31,7 +31,7 @@ public class RegionBinder extends DynamicTimer {
     }
 
     @Override
-    public void run() {
+    public void timerCall() {
         for(Player player : playerSet) {
             Location mobile = player.getLocation();
             Location delta = center.clone().subtract(mobile);

@@ -96,7 +96,7 @@ public class MiniGameManager {
         MiniGameController selectedGame = null;
 
         for(MiniGameController eachGame : games)
-            if(!eachGame.isFull() && (selectedGame == null ||
+            if(!eachGame.isFull() && (!eachGame.hasStarted() || (eachGame.isPlaying() && eachGame.getOptions().allowPlayerDropIns())) && (selectedGame == null ||
                     (
                             (selectedGame.enoughPlayers() &&
                             !eachGame.enoughPlayers()) || // Prioritize this game, with not enough players.

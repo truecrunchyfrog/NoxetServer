@@ -454,12 +454,17 @@ public abstract class MiniGameController implements Listener {
 
         int ticks = Math.min(handleSoftStop(), 20 * 60);
 
-        sendGameMessage(
-                new Message("§a§lTHE GAME IS OVER!\n")
-                        .addButton("Play again", ChatColor.GREEN, "Join another queue for this game", "game play " + game.getOptions().getId())
-                        .addButton("Different game", ChatColor.DARK_AQUA, "Find another game to play", "games")
-                        .addButton("Lobby", ChatColor.RED, "Head back to hub", "game leave")
-        );
+        addTask(new BukkitRunnable() {
+            @Override
+            public void run() {
+                sendGameMessage(
+                        new Message("§a§lTHE GAME IS OVER!\n")
+                                .addButton("Play again", ChatColor.GREEN, "Join another queue for this game", "game play " + game.getOptions().getId())
+                                .addButton("Different game", ChatColor.DARK_AQUA, "Find another game to play", "games")
+                                .addButton("Lobby", ChatColor.RED, "Head back to hub", "game leave")
+                );
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), 30));
 
         addTask(new BukkitRunnable() {
             @Override

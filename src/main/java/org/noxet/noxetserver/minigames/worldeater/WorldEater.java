@@ -14,7 +14,6 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.scoreboard.*;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.inventory.WorldEaterTeamSelectionMenu;
@@ -24,10 +23,7 @@ import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.minigames.GameDefinition;
 import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.playerstate.PlayerState;
-import org.noxet.noxetserver.util.FancyTimeConverter;
-import org.noxet.noxetserver.util.RegionBinder;
-import org.noxet.noxetserver.util.TeamSet;
-import org.noxet.noxetserver.util.TextBeautifier;
+import org.noxet.noxetserver.util.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,11 +33,6 @@ public class WorldEater extends MiniGameController {
     private final TeamSet teamSet = new TeamSet(getPlayers(), WorldEaterTeams.SEEKER, WorldEaterTeams.HIDER);
     private GameResult result = GameResult.TIE;
     private static final String cacheWorldName = "WORLDEATER_CACHE";
-
-    /**
-     * Used for accessing the game instance from other scopes.
-     */
-    private final WorldEater controllerInstance = this;
 
     @Override
     public void handlePreStart() {
@@ -367,7 +358,8 @@ public class WorldEater extends MiniGameController {
     }
 
     private int timeLeft;
-    private final List<WorldEaterEvents.GameEvent> events = new ArrayList<>();
+    private final Map<Integer, WorldEaterEvents.GameEvent> preparedEvents = new HashMap<>();
+    private final List<WorldEaterEvents.GameEvent> currentEvents = new ArrayList<>();
 
     public WorldEater() {
         super(GameDefinition.WORLD_EATER);
@@ -376,18 +368,11 @@ public class WorldEater extends MiniGameController {
     private void phaseTeamsPicked() {
         sendGameMessage(new Message("§eThe §ahiders§e are..."));
 
-        forEachPlayer(player -> {
-            player.setScoreboard(scoreboard);
-            PlayerState.prepareIdle(player, true);
-        });
+        forEachPlayer(player -> PlayerState.prepareIdle(player, true));
 
-        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> {
-            seekersTeam.addEntry(seeker.getName());
-            seeker.sendTitle("§c§lSEEKER", "§eFind and eliminate the hiders.", 0, 20 * 5, 0);
-        });
+        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> seeker.sendTitle("§c§lSEEKER", "§eFind and eliminate the hiders.", 0, 20 * 5, 0));
 
         teamSet.forEach(WorldEaterTeams.HIDER, hider -> {
-            hidersTeam.addEntry(hider.getName());
             hider.sendTitle("§a§lHIDER", "§eEndure the seekers attempts to kill you.", 0, 20 * 5, 0);
             sendGameMessage(new Message(" - §b" + hider.getName()));
         });
@@ -436,8 +421,6 @@ public class WorldEater extends MiniGameController {
 
             addTask(moveTask);
             seekerCircleTasks.add(moveTask);
-
-            seekersTeam.addEntry(seeker.getName());
         });
 
         teamSet.forEach(WorldEaterTeams.HIDER, hider -> {
@@ -445,8 +428,6 @@ public class WorldEater extends MiniGameController {
 
             hider.playSound(hider, Sound.BLOCK_NOTE_BLOCK_BASS, 1, 0.5f);
             hider.sendTitle("§c§lHURRY UP!", "§ePrepare and reach §3shelter§e fast!", 5, 20 * 5, 10);
-
-            hidersTeam.addEntry(hider.getName());
         });
 
         int secondsToRelease = 5; //2 * 60; todo
@@ -535,42 +516,41 @@ public class WorldEater extends MiniGameController {
 
         timeLeft = 30 * 60;
 
+        prepareEvent(WorldEaterEvents.GameEvent.STALKER_CHICKEN, 30);
+
+        prepareEvent(WorldEaterEvents.GameEvent.METEOR_RAIN, 20);
+
+        prepareEvent(WorldEaterEvents.GameEvent.VISIBLE_HIDERS, 22);
+        prepareEvent(WorldEaterEvents.GameEvent.VISIBLE_HIDERS, 15);
+        prepareEvent(WorldEaterEvents.GameEvent.VISIBLE_HIDERS, 8);
+
+        prepareEvent(WorldEaterEvents.GameEvent.DRILLING, 12);
+
+        prepareEvent(WorldEaterEvents.GameEvent.EXPLODING_HORSES, 5);
+
+        prepareEvent(WorldEaterEvents.GameEvent.EVERYONE_VISIBLE, 1);
+
         addTask(new BukkitRunnable() {
             @Override
             public void run() {
-                updateScoreboard();
-                timeLeft--;
+                teamSet.updateScoreboard(new String[] {
+                        "§c" + FancyTimeConverter.deltaSecondsToFancyTime(timeLeft) + "§e remaining",
+                        "§7---",
+                        "§4\uD83D\uDDE1§c Seeking: §e" + teamSet.countTeamPlayers(WorldEaterTeams.SEEKER),
+                        "§2\uD83C\uDF56§a Hiding: §e" + teamSet.countTeamPlayers(WorldEaterTeams.HIDER),
+                        "§r§7---",
+                        "§7" + getSpectators().size() + "§8 spectating",
+                        "§r§r§7---",
+                        currentEvents.size() == 0 ? "§7No current event" : "§9§lEVENT: §b" + currentEvents.get(0).getEventName()
+                });
 
                 if(timeLeft % 60 == 0) {
-                    int minutesLeft = timeLeft / 60;
+                    int minutesRemaining = timeLeft / 60;
 
-                    if(minutesLeft != 0 && (minutesLeft % 5 == 0 || minutesLeft < 10))
-                        sendGameMessage(new Message("§eThe game has §c" + minutesLeft + "§e minutes remaining."));
+                    if(minutesRemaining != 0 && (minutesRemaining % 5 == 0 || minutesRemaining < 10))
+                        sendGameMessage(new Message("§eThe game has §c" + minutesRemaining + "§e minutes remaining."));
 
-                    switch(minutesLeft) { // Timed events
-                        case 20:
-                            events.add(WorldEaterEvents.GameEvent.METEOR_RAIN);
-                            WorldEaterEvents.meteorRain(controllerInstance);
-                            break;
-                        case 22:
-                        case 15:
-                        case 8:
-                            events.add(WorldEaterEvents.GameEvent.VISIBLE_HIDERS);
-                            WorldEaterEvents.visibleHiders(controllerInstance);
-                            break;
-                        case 12:
-                            events.add(WorldEaterEvents.GameEvent.DRILLING);
-                            WorldEaterEvents.drilling(controllerInstance);
-                            break;
-                        case 5:
-                            events.add(WorldEaterEvents.GameEvent.EXPLODING_HORSES);
-                            WorldEaterEvents.explodingHorses(controllerInstance);
-                            break;
-                        case 1:
-                            events.add(WorldEaterEvents.GameEvent.EVERYONE_VISIBLE);
-                            WorldEaterEvents.everyoneVisible(controllerInstance);
-                            break;
-                    }
+                    dispatchEvents(minutesRemaining);
                 }
 
                 if(timeLeft == 0) {
@@ -578,8 +558,24 @@ public class WorldEater extends MiniGameController {
                     finish(GameResult.HIDERS_WIN);
                     cancel(); // Prevent time from getting negative.
                 }
+
+                timeLeft--;
             }
         }.runTaskTimer(NoxetServer.getPlugin(), 40, 20));
+    }
+
+    private void prepareEvent(WorldEaterEvents.GameEvent event, int minutesRemaining) {
+        preparedEvents.put(minutesRemaining, event);
+    }
+
+    private void dispatchEvents(int minutesRemaining) {
+        WorldEaterEvents.GameEvent eventHere = preparedEvents.get(minutesRemaining);
+
+        if(eventHere == null)
+            return;
+
+        currentEvents.add(eventHere);
+        eventHere.getEventConsumer().accept(this, new Promise(() -> currentEvents.remove(eventHere), 20 * 60 * 10));
     }
 
     public enum GameResult {
@@ -646,37 +642,6 @@ public class WorldEater extends MiniGameController {
         spawn.setY(getMiniGameWorld().getHighestBlockYAt(spawn));
 
         getMiniGameWorld().spawnEntity(getAppropriateSpawnLocation(spawn), type);
-    }
-
-    private static void setObjectiveLines(Objective objective, String[] lines) {
-        //for(String score : Objects.requireNonNull(objective.getScoreboard()).getEntries())
-        //    objective.getScoreboard().resetScores(score);
-        // todo check if this fixes it?
-
-        int i = 0;
-        for(String line : lines)
-            objective.getScore(line).setScore(lines.length - i++);
-    }
-
-    private void updateScoreboard() {
-        setObjectiveLines(objective, new String[] {
-                "§eTime remaining: " + getFancyTimeLeft(timeLeft),
-                "§e" + getPlayers().size() + " playing:",
-                "§c" + teamSet.countTeamPlayers(WorldEaterTeams.SEEKER) + "§e seeking",
-                "§a" + teamSet.countTeamPlayers(WorldEaterTeams.HIDER) + "§e hiding",
-                "§7---",
-                "§7" + getSpectators().size() + "§8 spectating",
-                "§7---",
-                events.size() == 0 ? "§7No event" : events.get(0).eventName
-        });
-    }
-
-    private static String getFancyTimeLeft(int countdown) {
-        return (countdown >= 60 ? "§c" + (countdown / 60) + "§em " : "") + "§c" + countdown % 60 + "§es";
-    }
-
-    public void removeEvent(WorldEaterEvents.GameEvent event) {
-        events.remove(event);
     }
 
     public TeamSet getTeamSet() {

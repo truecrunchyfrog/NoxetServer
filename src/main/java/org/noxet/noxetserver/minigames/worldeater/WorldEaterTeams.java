@@ -7,14 +7,14 @@ public enum WorldEaterTeams implements Team {
     SEEKER(
             "seekers",
             "Seeker",
-            "§4§l[ SEEKER ]",
+            "§4§lSEEKER",
             ChatColor.RED
     ),
 
     HIDER(
             "hiders",
             "Hider",
-            "§2§l[ HIDER ]",
+            "§2§lHIDER",
             ChatColor.GREEN
     );
 
@@ -40,7 +40,7 @@ public enum WorldEaterTeams implements Team {
 
     @Override
     public String getFormattedDisplayName() {
-        return formattedDisplayName;
+        return formattedDisplayName + " ";
     }
 
     @Override

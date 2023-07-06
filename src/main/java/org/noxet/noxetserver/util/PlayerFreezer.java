@@ -77,6 +77,13 @@ public class PlayerFreezer extends DynamicTimer {
         return tickFrequency;
     }
 
+    @Override
+    public void timerCall() {
+        for(Map.Entry<Player, Location> freezeEntry : freezerMap.entrySet())
+            if(!freezeEntry.getKey().getLocation().toVector().subtract(freezeEntry.getValue().toVector()).isZero())
+                freezeEntry.getKey().teleport(freezeEntry.getValue());
+    }
+
     /**
      * Gets a set of the frozen players. Useful for when excluding frozen players from an event or similar.
      * @return A set of the currently frozen players in this freezer instance
@@ -93,12 +100,5 @@ public class PlayerFreezer extends DynamicTimer {
     public void empty() {
         freezerMap.clear();
         touchTimer();
-    }
-
-    @Override
-    public void run() {
-        for(Map.Entry<Player, Location> freezeEntry : freezerMap.entrySet())
-            if(!freezeEntry.getKey().getLocation().toVector().subtract(freezeEntry.getValue().toVector()).isZero())
-                freezeEntry.getKey().teleport(freezeEntry.getValue());
     }
 }
