@@ -2,10 +2,7 @@ package org.noxet.noxetserver.util;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.scoreboard.Criteria;
-import org.bukkit.scoreboard.DisplaySlot;
-import org.bukkit.scoreboard.Objective;
-import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.*;
 import org.bukkit.util.Consumer;
 
 import java.util.*;
@@ -109,16 +106,25 @@ public class TeamSet {
         updateTeamEntriesAndPlayerScoreboards();
     }
 
-    private void setObjectiveLines(String[] lines) {
+    private void setObjectiveLines(String... lines) {
         for(String score : scoreboard.getEntries())
             scoreboard.resetScores(score);
 
         int i = 0;
-        for(String line : lines)
-            objective.getScore(line).setScore(lines.length - i++);
+        for(String line : lines) {
+            Score score;
+
+            StringBuilder lineBuilder = new StringBuilder(line);
+            do {
+                lineBuilder.insert(0, "§r");
+                score = objective.getScore(lineBuilder.toString()); // Duplicate scores are not possible in scoreboards, so we use the reset code (§r) to bypass this.
+            } while(score.isScoreSet());
+
+            score.setScore(lines.length - i++);
+        }
     }
 
-    public void updateScoreboard(String[] lines) {
+    public void updateScoreboard(String... lines) {
         setObjectiveLines(lines);
     }
 

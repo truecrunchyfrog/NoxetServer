@@ -302,7 +302,7 @@ public class Events implements Listener {
             if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE)) {
                 new Message(
                         "§eHello, " + e.getPlayer().getName() + "!\n" +
-                            "Please read a message from us before you can chat.\n"
+                                "Please read a message from us before you can chat.\n"
                 ).addButton(
                         "Read",
                         ChatColor.GREEN,
@@ -322,29 +322,28 @@ public class Events implements Listener {
 
             String channelName = null;
 
-            if(realm != null)
+            if(realm != null) {
                 channelName = realm.getDisplayName();
-            else if(NoxetServer.ServerWorld.HUB.getWorld().equals(e.getPlayer().getWorld()))
+            } else if(NoxetServer.ServerWorld.HUB.getWorld().equals(e.getPlayer().getWorld())) {
                 channelName = "Hub";
-            else {
-                game = MiniGameManager.findPlayersGame(e.getPlayer());
+            } else {
+                game = MiniGameManager.findPlayersOrSpectatorsGame(e.getPlayer());
                 if(game != null && game.hasStarted())
-                    channelName = "Game";
+                    channelName = game.isPlayer(e.getPlayer()) ? "Game" : "Game Spectator";
+                else if(game != null)
+                    game = null;
             }
 
             Message message = new Message(
                     (channelName != null ? "§7" + TextBeautifier.beautify(channelName) + "§8⏵ " : "") + "§3" + e.getPlayer().getDisplayName() + "§8→ §f" + e.getMessage());
             message.setPrefix(null);
 
-            if(game == null)
-                message.broadcast();
+            if(game != null)
+                game.sendGameMessage(message); // In game? Send message to the game.
+            else if(realm != null)
+                message.send(realm); // In a realm? Send message to the realm.
             else
-                game.sendGameMessage(message);
-
-            /*if(realm != null)
-                message.send(realm);
-            else
-                message.send(NoxetServer.ServerWorld.HUB.getWorld());*/
+                message.send(e.getPlayer().getWorld()); // Not in a game or realm? Send only to the player's world.
         }
     }
 
@@ -661,11 +660,21 @@ public class Events implements Listener {
 
     @EventHandler
     public void onEntityPortal(EntityPortalEvent e) {
+        if(MiniGameController.isGameWorld(e.getFrom().getWorld())) {
+            e.setCancelled(true);
+            return;
+        }
+
         handlePortalTeleport(e.getFrom(), e.getTo());
     }
 
     @EventHandler
     public void onPlayerPortal(PlayerPortalEvent e) {
+        if(MiniGameController.isGameWorld(e.getFrom().getWorld())) {
+            e.setCancelled(true);
+            return;
+        }
+
         handlePortalTeleport(e.getFrom(), e.getTo());
     }
 

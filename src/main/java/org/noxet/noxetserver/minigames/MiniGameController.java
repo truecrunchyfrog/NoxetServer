@@ -12,7 +12,6 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.generator.ChunkGenerator;
@@ -21,14 +20,14 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Consumer;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.minigames.party.Party;
-import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.messaging.ActionBarMessage;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.messaging.MessagingContext;
 import org.noxet.noxetserver.messaging.channels.MessagingGameChannel;
+import org.noxet.noxetserver.minigames.party.Party;
 import org.noxet.noxetserver.playerstate.PlayerState;
+import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.util.ConcatSet;
 import org.noxet.noxetserver.util.PlayerFreezer;
 import org.noxet.noxetserver.util.TextBeautifier;
@@ -454,17 +453,12 @@ public abstract class MiniGameController implements Listener {
 
         int ticks = Math.min(handleSoftStop(), 20 * 60);
 
-        addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                sendGameMessage(
-                        new Message("§a§lTHE GAME IS OVER!\n")
-                                .addButton("Play again", ChatColor.GREEN, "Join another queue for this game", "game play " + game.getOptions().getId())
-                                .addButton("Different game", ChatColor.DARK_AQUA, "Find another game to play", "games")
-                                .addButton("Lobby", ChatColor.RED, "Head back to hub", "game leave")
-                );
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 30));
+        sendGameMessage(
+                new Message("§a§lTHE GAME IS OVER!\n")
+                        .addButton("Play again", ChatColor.GREEN, "Join another queue for this game", "game play " + game.getOptions().getId())
+                        .addButton("Different game", ChatColor.DARK_AQUA, "Find another game to play", "games")
+                        .addButton("Lobby", ChatColor.RED, "Head back to hub", "game leave")
+        );
 
         addTask(new BukkitRunnable() {
             @Override
@@ -504,20 +498,6 @@ public abstract class MiniGameController implements Listener {
     public void disbandPlayer(Player player) {
         removePlayer(player);
         removeSpectator(player);
-    }
-
-    @EventHandler
-    public void onEntityPortal(EntityPortalEvent e) {
-        // Prevent entities' usage of portals.
-        if(isGameWorld(e.getFrom().getWorld()))
-            e.setCancelled(true);
-    }
-
-    @EventHandler
-    public void onPlayerPortal(PlayerPortalEvent e) {
-        // Prevent players' usage of portals.
-        if(isGameWorld(e.getFrom().getWorld()))
-            e.setCancelled(true);
     }
 
     @EventHandler

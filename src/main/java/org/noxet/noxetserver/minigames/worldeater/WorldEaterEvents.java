@@ -18,12 +18,12 @@ import java.util.function.BiConsumer;
 
 public class WorldEaterEvents {
     public enum GameEvent {
-        STALKER_CHICKEN("Stalker chicken", WorldEaterEvents::stalkerChicken),
+        STALKER("Stalker", WorldEaterEvents::stalker),
         METEOR_RAIN("Meteor rain", WorldEaterEvents::meteorRain),
-        VISIBLE_HIDERS("Hiders are exposed", WorldEaterEvents::visibleHiders),
+        VISIBLE_HIDERS("Exposed hiders", WorldEaterEvents::visibleHiders),
         DRILLING("Drilling", WorldEaterEvents::drilling),
-        EXPLODING_HORSES("Exploding horses are incoming", WorldEaterEvents::explodingHorses),
-        EVERYONE_VISIBLE("Everyone are visible", WorldEaterEvents::everyoneVisible);
+        EXPLODING_HORSES("Exploding horses", WorldEaterEvents::explodingHorses),
+        EVERYONE_VISIBLE("Everyone exposed", WorldEaterEvents::everyoneVisible);
 
         private final String eventName;
 
@@ -43,7 +43,7 @@ public class WorldEaterEvents {
         }
     }
 
-    public static void stalkerChicken(WorldEater worldEater, Promise promise) {
+    public static void stalker(WorldEater worldEater, Promise promise) {
         worldEater.playGameSound(Sound.ENTITY_CHICKEN_AMBIENT, 1, 2);
         worldEater.sendGameMessage(new Message("§e§lSTALKER CHICKEN! §fA chicken has spawned. It is glowing, so you can see it from anywhere.\nThe chicken will follow its nearest player.\nThe chicken cannot be eliminated.\nIt will disappear in 1 minute."));
 
@@ -51,17 +51,18 @@ public class WorldEaterEvents {
 
         chicken.setGlowing(true);
         chicken.setInvulnerable(true);
+        chicken.setVisualFire(true);
 
         chicken.setLootTable(null);
 
         worldEater.addTask(new BukkitRunnable() {
             @Override
             public void run() {
-                if(chicken.getTicksLived() > 20 * 60) {
+                if(chicken.getTicksLived() > 20 * 60 || chicken.isDead()) {
                     chicken.remove();
                     cancel();
                     promise.report();
-                    worldEater.sendGameMessage(new Message("§eThe chicken left the game."));
+                    worldEater.sendGameMessage(new Message("§eThe stalker left the game."));
                     return;
                 }
 
@@ -77,10 +78,16 @@ public class WorldEaterEvents {
                 if(nearestPlayer != chicken.getTarget()) {
                     nearestPlayer.playSound(nearestPlayer, Sound.ITEM_ARMOR_EQUIP_NETHERITE, 1, 0.5f);
                     chicken.setTarget(nearestPlayer);
-                    worldEater.sendGameMessage(new Message("§cThe chicken is now stalking " + nearestPlayer.getName() + "."));
+                    worldEater.sendGameMessage(new Message("§cThe chicken is stalking " + nearestPlayer.getName() + "."));
                 }
 
-                MiniGameController.getMiniGameWorld().spawnParticle(Particle.NOTE, chicken.getLocation().add(0, 1, 0), 5);
+
+                if(!chicken.hasLineOfSight(nearestPlayer))
+                    MiniGameController.getMiniGameWorld().createExplosion(chicken.getLocation().add(nearestPlayer.getLocation().subtract(chicken.getLocation()).toVector().normalize().multiply(3)), 3, false);
+
+                chicken.setVelocity(nearestPlayer.getLocation().subtract(chicken.getLocation()).toVector().normalize().multiply(2));
+
+                MiniGameController.getMiniGameWorld().spawnParticle(Particle.NOTE, chicken.getLocation().add(0, 3, 0), 5);
             }
         }.runTaskTimer(NoxetServer.getPlugin(), 60, 30));
     }

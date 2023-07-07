@@ -2,10 +2,13 @@ package org.noxet.noxetserver.minigames.worldeater;
 
 import org.bukkit.*;
 import org.bukkit.block.Biome;
+import org.bukkit.block.Block;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.generator.BiomeProvider;
 import org.bukkit.generator.WorldInfo;
 import org.bukkit.inventory.ItemStack;
@@ -33,6 +36,8 @@ public class WorldEater extends MiniGameController {
     private final TeamSet teamSet = new TeamSet(getPlayers(), WorldEaterTeams.SEEKER, WorldEaterTeams.HIDER);
     private GameResult result = GameResult.TIE;
     private static final String cacheWorldName = "WORLDEATER_CACHE";
+    private int startY, nextLayer, layerRemoveSpeed;
+    private long nextLayerDisappearsAt;
 
     @Override
     public void handlePreStart() {
@@ -142,7 +147,7 @@ public class WorldEater extends MiniGameController {
 
     @Override
     public void handleStart() {
-        new RegionBinder(getCenterTopLocation(), getPlayersAndSpectators(), 64, 120);
+        new RegionBinder(getCenterTopLocation(), getPlayersAndSpectators(), 5 / 2 * 16, 120);
 
         WorldEaterTeamSelectionMenu teamSelectionMenu = new WorldEaterTeamSelectionMenu(this, 40, menu -> {
             teamSet.putManyPlayersOnTeam(menu.getHiders(), WorldEaterTeams.HIDER);
@@ -487,36 +492,22 @@ public class WorldEater extends MiniGameController {
         for(int i = 0; i < 2; i++)
             spawnEntityInNaturalHabitat(EntityType.CHICKEN);
 
-        sendGameMessage(new Message("§c(!) Starting from the top of the island to the bottom, each layer of blocks will be removed at an exponential rate."));
+        sendGameMessage(new Message("§cThe Chunk Muncher is eating up the island! See more info in the stats to the right."));
 
-        int startY = 0;
+        startY = 0;
 
         for(int x = 0; x < 16; x++)
             for(int z = 0; z < 16; z++)
-                startY = Math.max(startY, getMiniGameWorld().getHighestBlockYAt(x, z));
+                startY = Math.max(startY, getMiniGameWorld().getHighestBlockYAt(getCenterChunk().getBlock(x, 0, z).getLocation()));
 
-        long progress = 0;
-
-        for(int y = startY; y > getMiniGameWorld().getMinHeight() + 10; y--) {
-            int finalY = y;
-            progress += 20L * 30 * Math.pow(0.983d, 1 + startY - y);
-            addTask(new BukkitRunnable() {
-                @Override
-                public void run() {
-                    playGameSound(Sound.BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_OFF, 1, 1);
-
-                    for(int x = 0; x < 16; x++)
-                        for(int z = 0; z < 16; z++)
-                            getMiniGameWorld().setBlockData(getCenterChunk().getBlock(x, finalY, z).getLocation(), Material.AIR.createBlockData());
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), progress));
-        }
+        nextLayer = startY;
+        removeNextLayer();
 
         sendGameMessage(new Message("§eIf the hiders survive until the game is over, they win. Otherwise the seekers win."));
 
         timeLeft = 30 * 60;
 
-        prepareEvent(WorldEaterEvents.GameEvent.STALKER_CHICKEN, 30);
+        prepareEvent(WorldEaterEvents.GameEvent.STALKER, 25);
 
         prepareEvent(WorldEaterEvents.GameEvent.METEOR_RAIN, 20);
 
@@ -533,16 +524,21 @@ public class WorldEater extends MiniGameController {
         addTask(new BukkitRunnable() {
             @Override
             public void run() {
-                teamSet.updateScoreboard(new String[] {
-                        "§c" + FancyTimeConverter.deltaSecondsToFancyTime(timeLeft) + "§e remaining",
+                teamSet.updateScoreboard(
+                        "§c" + FancyTimeConverter.deltaSecondsToFancyTime(timeLeft, true) + "§e remaining",
                         "§7---",
                         "§4\uD83D\uDDE1§c Seeking: §e" + teamSet.countTeamPlayers(WorldEaterTeams.SEEKER),
                         "§2\uD83C\uDF56§a Hiding: §e" + teamSet.countTeamPlayers(WorldEaterTeams.HIDER),
-                        "§r§7---",
-                        "§7" + getSpectators().size() + "§8 spectating",
-                        "§r§r§7---",
+                        "§7---",
+                        "§8☠§7 Spectating: §e" + getSpectators().size(),
+                        "§7---",
+                        "§3§nChunk Muncher",
+                        "§3 - Y-level §b" + nextLayer,
+                        "§3 - Velocity §b" + layerRemoveSpeed / 20 + "s/layer",
+                        //"§3 - Next layer §b" + FancyTimeConverter.deltaSecondsToFancyTime((int) (nextLayerDisappearsAt - System.currentTimeMillis()) / 1000),
+                        "§7---",
                         currentEvents.size() == 0 ? "§7No current event" : "§9§lEVENT: §b" + currentEvents.get(0).getEventName()
-                });
+                );
 
                 if(timeLeft % 60 == 0) {
                     int minutesRemaining = timeLeft / 60;
@@ -575,7 +571,48 @@ public class WorldEater extends MiniGameController {
             return;
 
         currentEvents.add(eventHere);
-        eventHere.getEventConsumer().accept(this, new Promise(() -> currentEvents.remove(eventHere), 20 * 60 * 10));
+        eventHere.getEventConsumer().accept(this, new Promise(() -> {
+            currentEvents.remove(eventHere);
+            sendGameMessage(new Message("§f" + eventHere.getEventName() + "§c event is now over."));
+        }, 20 * 60 * 10));
+    }
+
+    private void removeNextLayer() {
+        if(nextLayer < getMiniGameWorld().getMinHeight() + 10)
+            return;
+
+        removeLayer(nextLayer--);
+
+        layerRemoveSpeed = (int) (20 * 30 * Math.pow(0.983d, 1 + startY - nextLayer));
+        nextLayerDisappearsAt = System.currentTimeMillis() + layerRemoveSpeed * 50L; // ticks * 50 = ms
+
+        addTask(new BukkitRunnable() {
+            @Override
+            public void run() {
+                removeNextLayer();
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), layerRemoveSpeed));
+    }
+
+    private void removeLayer(int y) {
+        playGameSound(Sound.BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_OFF, 1, 1);
+
+        Random random = new Random();
+
+        for(Chunk chunk : getAllocatedChunks())
+            for(int x = 0; x < 16; x++)
+                for(int z = 0; z < 16; z++) {
+                    Block block = chunk.getBlock(x, y, z);
+                    if(block.getType() != Material.AIR) {
+                        addTask(new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                getMiniGameWorld().setBlockData(block.getLocation(), Material.AIR.createBlockData());
+                                getMiniGameWorld().spawnParticle(Particle.SWEEP_ATTACK, block.getLocation(), 1);
+                            }
+                        }.runTaskLater(NoxetServer.getPlugin(), random.nextInt(20)));
+                    }
+                }
     }
 
     public enum GameResult {
@@ -646,5 +683,13 @@ public class WorldEater extends MiniGameController {
 
     public TeamSet getTeamSet() {
         return teamSet;
+    }
+
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent e) {
+        if(isPlayer(e.getPlayer()) && e.getBlock().getLocation().getY() > nextLayer) {
+            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "The Chunk Muncher has already eaten this Y-level. You cannot build here.").send(e.getPlayer());
+            e.setCancelled(true);
+        }
     }
 }
