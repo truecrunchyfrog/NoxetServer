@@ -15,7 +15,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.menus.ItemGenerator;
@@ -268,11 +267,7 @@ public class WorldEater extends MiniGameController {
 
             firework.setFireworkMeta(fireworkMeta);
 
-            addTask(new BukkitRunnable() {
-                public void run() {
-                    firework.detonate();
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20L * random.nextInt(1, 6)));
+            scheduleTask(firework::detonate, 20 * random.nextInt(1, 6));
         }
 
         return 20 * 15;
@@ -304,14 +299,11 @@ public class WorldEater extends MiniGameController {
                     new Message("§eYou are now invisible for §c20§e seconds.").send(affectedPlayer);
 
                     affectedPlayer.setInvisible(true);
-                    addTask(new BukkitRunnable() {
-                        @Override
-                        public void run() {
+                    scheduleTask(() -> {
                             affectedPlayer.setInvisible(false);
                             affectedPlayer.sendTitle("§c§lWAH!", "§eYou are no longer invisible.", 10, 20 * 3, 10);
                             new Message("§eYou are visible again.").send(affectedPlayer);
-                        }
-                    }.runTaskLater(NoxetServer.getPlugin(), 20 * 20));
+                        }, 20 * 20);
                 } else
                     new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Only hiders can use this item!").send(affectedPlayer);
 
@@ -336,25 +328,17 @@ public class WorldEater extends MiniGameController {
 
         for(int i = 10; i > 0; i--) {
             int finalI = i;
-            addTask(new BukkitRunnable() {
-                @Override
-                public void run() {
-                    player.sendTitle("§c" + finalI, "§euntil you respawn...", 0, 20 * 2, 0);
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20L * (10 - i)));
+            scheduleTask(() -> player.sendTitle("§c" + finalI, "§euntil you respawn...", 0, 20 * 2, 0), 20 * (10 - i));
         }
 
-        addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
+        scheduleTask(() -> {
                 player.setGameMode(GameMode.SURVIVAL);
                 getFreezer().unfreeze(player);
 
                 PlayerState.prepareNormal(player, false);
 
                 player.teleport(getSpawnLocation());
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * 10));
+            }, 20 * 10);
     }
 
     @Override
@@ -386,12 +370,7 @@ public class WorldEater extends MiniGameController {
 
         sendGameMessage(new Message("§eGet ready! Game starts in §c5§e seconds..."));
 
-        addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                phaseHeadStart();
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * 5));
+        scheduleTask(this::phaseHeadStart, 20 * 5);
     }
 
     private void phaseHeadStart() {
@@ -410,7 +389,7 @@ public class WorldEater extends MiniGameController {
 
             final double[] angle = {0};
 
-            BukkitTask moveTask = Bukkit.getScheduler().runTaskTimer(NoxetServer.getPlugin(), () -> {
+            seekerCircleTasks.add(scheduleTaskTimer(() -> {
                 if(!seeker.isFlying())
                     seeker.setFlying(true);
 
@@ -422,10 +401,7 @@ public class WorldEater extends MiniGameController {
 
                 angle[0] += speed;
                 angle[0] %= 360;
-            }, 0, 2);
-
-            addTask(moveTask);
-            seekerCircleTasks.add(moveTask);
+            }, 0, 2));
         });
 
         teamSet.forEach(WorldEaterTeams.HIDER, hider -> {
@@ -439,9 +415,7 @@ public class WorldEater extends MiniGameController {
 
         for(int i = secondsToRelease; i > 0; i--) {
             int finalI = i;
-            addTask(new BukkitRunnable() {
-                @Override
-                public void run() {
+            scheduleTask(() -> {
                     String timeLeftString = FancyTimeConverter.deltaSecondsToFancyTime(finalI, true);
 
                     if(finalI % 2 == 0)
@@ -452,16 +426,10 @@ public class WorldEater extends MiniGameController {
 
                     teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> seeker.sendTitle(timeLeftString, "§euntil released...", 0, 20 * 2, 0));
                     teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§8§l[ §" + (finalI % 2 == 0 ? "4" : "f") + "§l! §8§l] §bReleasing seekers in " + timeLeftString).send(hider));
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20L * (secondsToRelease - i)));
+                }, 20 * (secondsToRelease - i));
         }
 
-        addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                phaseSeekersReleased(seekerCircleTasks);
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * secondsToRelease));
+        scheduleTask(() -> phaseSeekersReleased(seekerCircleTasks), 20 * secondsToRelease);
     }
 
     private void phaseSeekersReleased(List<BukkitTask> seekerCircleTasks) {
@@ -521,9 +489,7 @@ public class WorldEater extends MiniGameController {
 
         prepareEvent(WorldEaterEvents.GameEvent.EVERYONE_VISIBLE, 1);
 
-        addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
+        scheduleTaskTimer(task -> {
                 teamSet.updateScoreboard(
                         "§c" + FancyTimeConverter.deltaSecondsToFancyTime(timeLeft, true) + "§e remaining",
                         "§7---",
@@ -552,12 +518,11 @@ public class WorldEater extends MiniGameController {
                 if(timeLeft == 0) {
                     sendGameMessage(new Message("§aTime has gone out! Hiders win."));
                     finish(GameResult.HIDERS_WIN);
-                    cancel(); // Prevent time from getting negative.
+                    task.cancel(); // Prevent time from getting negative.
                 }
 
                 timeLeft--;
-            }
-        }.runTaskTimer(NoxetServer.getPlugin(), 40, 20));
+            }, 40, 20);
     }
 
     private void prepareEvent(WorldEaterEvents.GameEvent event, int minutesRemaining) {
@@ -586,12 +551,7 @@ public class WorldEater extends MiniGameController {
         layerRemoveSpeed = (int) (20 * 30 * Math.pow(0.983d, 1 + startY - nextLayer));
         nextLayerDisappearsAt = System.currentTimeMillis() + layerRemoveSpeed * 50L; // ticks * 50 = ms
 
-        addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                removeNextLayer();
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), layerRemoveSpeed));
+        scheduleTask(this::removeNextLayer, layerRemoveSpeed);
     }
 
     private void removeLayer(int y) {
@@ -603,15 +563,11 @@ public class WorldEater extends MiniGameController {
             for(int x = 0; x < 16; x++)
                 for(int z = 0; z < 16; z++) {
                     Block block = chunk.getBlock(x, y, z);
-                    if(block.getType() != Material.AIR) {
-                        addTask(new BukkitRunnable() {
-                            @Override
-                            public void run() {
+                    if(block.getType() != Material.AIR)
+                        scheduleTask(() -> {
                                 getMiniGameWorld().setBlockData(block.getLocation(), Material.AIR.createBlockData());
                                 getMiniGameWorld().spawnParticle(Particle.SWEEP_ATTACK, block.getLocation(), 1);
-                            }
-                        }.runTaskLater(NoxetServer.getPlugin(), random.nextInt(20)));
-                    }
+                            }, random.nextInt(20));
                 }
     }
 

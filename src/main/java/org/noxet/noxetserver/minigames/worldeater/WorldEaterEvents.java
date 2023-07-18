@@ -7,8 +7,6 @@ import org.bukkit.Sound;
 import org.bukkit.entity.*;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.util.Promise;
@@ -55,12 +53,10 @@ public class WorldEaterEvents {
 
         chicken.setLootTable(null);
 
-        worldEater.addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
+        worldEater.scheduleTaskTimer(task -> {
                 if(chicken.getTicksLived() > 20 * 60 || chicken.isDead()) {
                     chicken.remove();
-                    cancel();
+                    task.cancel();
                     promise.report();
                     worldEater.sendGameMessage(new Message("§eThe stalker left the game."));
                     return;
@@ -88,8 +84,7 @@ public class WorldEaterEvents {
                 chicken.setVelocity(nearestPlayer.getLocation().subtract(chicken.getLocation()).toVector().normalize().multiply(2));
 
                 MiniGameController.getMiniGameWorld().spawnParticle(Particle.NOTE, chicken.getLocation().add(0, 3, 0), 5);
-            }
-        }.runTaskTimer(NoxetServer.getPlugin(), 60, 30));
+            }, 60, 30);
     }
 
     public static void meteorRain(WorldEater worldEater, Promise promise) {
@@ -99,9 +94,7 @@ public class WorldEaterEvents {
         final int meteorAmount = 10;
         for(int i = 0; i < meteorAmount; i++) {
             boolean isLast = i == meteorAmount - 1;
-            worldEater.addTask(new BukkitRunnable() {
-                @Override
-                public void run() {
+            worldEater.scheduleTask(() -> {
                     Player meteorTarget = worldEater.getRandomPlayer(true);
 
                     meteorTarget.playSound(meteorTarget, Sound.ITEM_GOAT_HORN_SOUND_0, 1, 0.5f);
@@ -122,8 +115,7 @@ public class WorldEaterEvents {
 
                     if(isLast)
                         promise.report();
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20 * (i + 1) * 15));
+                }, 20 * (i + 1) * 15);
         }
     }
 
@@ -140,12 +132,7 @@ public class WorldEaterEvents {
             );
         });
 
-        worldEater.addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                promise.report();
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * 10));
+        worldEater.scheduleTask(promise::report, 20 * 10);
     }
 
     public static void drilling(WorldEater worldEater, Promise promise) {
@@ -157,9 +144,7 @@ public class WorldEaterEvents {
         for(int i = 0; i < drillHoles; i++) {
             boolean isLast = i == drillHoles - 1;
 
-            worldEater.addTask(new BukkitRunnable() {
-                @Override
-                public void run() {
+            worldEater.scheduleTask(() -> {
                     Location drillLocation = worldEater.getCenterChunk().getBlock(
                             random.nextInt(0, 16),
                             0,
@@ -176,9 +161,7 @@ public class WorldEaterEvents {
                         int finalY = y;
                         boolean isLast2 = isLast && y == yMin + 1;
 
-                        worldEater.addTask(new BukkitRunnable() {
-                            @Override
-                            public void run() {
+                        worldEater.scheduleTask(() -> {
                                 if(finalY % 2 == 0)
                                     MiniGameController.getMiniGameWorld().playSound(drillBlock, Sound.BLOCK_BAMBOO_BREAK, 1, 2f);
 
@@ -187,11 +170,9 @@ public class WorldEaterEvents {
 
                                 if(isLast2)
                                     promise.report();
-                            }
-                        }.runTaskLater(NoxetServer.getPlugin(), 2L * (yMax - y)));
+                            }, 2 * (yMax - y));
                     }
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20 * 15 * (i + 1)));
+                }, 20 * 15 * (i + 1));
         }
     }
 
@@ -205,9 +186,7 @@ public class WorldEaterEvents {
         for(int i = 0; i < horseCount; i++) {
             boolean isLast = i == horseCount - 1;
 
-            worldEater.addTask(new BukkitRunnable() {
-                @Override
-                public void run() {
+            worldEater.scheduleTask(() -> {
                     if(Math.random() * 10 < 3) {
                         Player unluckyPlayer = worldEater.getRandomPlayer();
                         unluckyPlayer.playSound(unluckyPlayer, Sound.ENTITY_HORSE_ANGRY, 6, 6);
@@ -217,9 +196,7 @@ public class WorldEaterEvents {
                         horse.setVisualFire(true);
                         horse.setHealth(0.5);
 
-                        worldEater.addTask(new BukkitRunnable() {
-                            @Override
-                            public void run() {
+                        worldEater.scheduleTask(() -> {
                                 if(!horse.isDead()) {
                                     MiniGameController.getMiniGameWorld().playSound(horse.getLocation(), Sound.ENTITY_GHAST_SCREAM, 1, 0.5f);
                                     horse.remove();
@@ -228,11 +205,9 @@ public class WorldEaterEvents {
 
                                 if(isLast)
                                     promise.report();
-                            }
-                        }.runTaskLater(NoxetServer.getPlugin(), 20 * 4));
+                            }, 20 * 4);
                     }
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20 * 3 * i));
+                }, 20 * 3 * i);
         }
     }
 
@@ -249,11 +224,6 @@ public class WorldEaterEvents {
             );
         });
 
-        worldEater.addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                promise.report();
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * 60));
+        worldEater.scheduleTask(promise::report, 20 * 60);
     }
 }

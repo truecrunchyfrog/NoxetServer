@@ -460,12 +460,7 @@ public abstract class MiniGameController implements Listener {
                         .addButton("Lobby", ChatColor.RED, "Head back to hub", "game leave")
         );
 
-        addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                stop(); // Tired of waiting: hard stop the game now.
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), ticks)); // Wait at most 60 seconds.
+        scheduleTask(this::stop, ticks); // Wait at most 60 seconds.
 
         return ticks;
     }
@@ -652,8 +647,34 @@ public abstract class MiniGameController implements Listener {
         return getMiniGameWorld().equals(world);
     }
 
-    public void addTask(BukkitTask task) {
+    private void addTask(BukkitTask task) {
         tasks.add(task);
+    }
+
+    public void scheduleTask(Runnable runnable, int delayTicks) {
+        addTask(new BukkitRunnable() {
+            @Override
+            public void run() {
+                runnable.run();
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), delayTicks));
+    }
+
+    public BukkitTask scheduleTaskTimer(Consumer<BukkitRunnable> runnable, int delayTicks, int periodTicks) {
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                runnable.accept(this);
+            }
+        }.runTaskTimer(NoxetServer.getPlugin(), delayTicks, periodTicks);
+
+        addTask(task);
+
+        return task;
+    }
+
+    public BukkitTask scheduleTaskTimer(Runnable runnable, int delayTicks, int periodTicks) {
+        return scheduleTaskTimer(__ -> runnable.run(), delayTicks, periodTicks);
     }
 
     public PlayerFreezer getFreezer() {

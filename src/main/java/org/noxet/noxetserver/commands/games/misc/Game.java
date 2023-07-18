@@ -277,12 +277,8 @@ public class Game implements TabExecutor {
                 new Message("§4Soft stop margin: " + ticks / 20 + " seconds.").send(commandSender);
             }
 
-            game.addTask(new BukkitRunnable() {
-                @Override
-                public void run() {
-                    new SuccessMessage("Game " + game.getGameId() + " stopped.").send(commandSender);
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), Math.max(ticks - 1, 0)));
+            game.scheduleTask(() -> new SuccessMessage("Game " + game.getGameId() + " stopped.").send(commandSender),
+                    Math.max(ticks - 1, 0));
 
             return true;
         } else if(strings[0].equalsIgnoreCase("debug-create")) {
