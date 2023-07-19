@@ -68,6 +68,11 @@ public class PlayerDataManager {
         return new File(getDirectory(), uuid + ".yml");
     }
 
+    public static void deleteDataFile(UUID uuid) {
+        getDataFile(uuid).delete();
+        clearCacheForUUID(uuid);
+    }
+
     private static void updateCache(UUID uuid, YamlConfiguration config) {
         if(configCache.size() > 50)
             configCache.clear();

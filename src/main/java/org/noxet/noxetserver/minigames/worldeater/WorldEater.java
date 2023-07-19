@@ -411,7 +411,7 @@ public class WorldEater extends MiniGameController {
             hider.sendTitle("§c§lHURRY UP!", "§ePrepare and reach §3shelter§e fast!", 5, 20 * 5, 10);
         });
 
-        int secondsToRelease = 5; //2 * 60; todo
+        int secondsToRelease = 2 * 60;
 
         for(int i = secondsToRelease; i > 0; i--) {
             int finalI = i;
@@ -567,7 +567,7 @@ public class WorldEater extends MiniGameController {
                         scheduleTask(() -> {
                                 getMiniGameWorld().setBlockData(block.getLocation(), Material.AIR.createBlockData());
                                 getMiniGameWorld().spawnParticle(Particle.SWEEP_ATTACK, block.getLocation(), 1);
-                            }, random.nextInt(20));
+                            }, !block.isLiquid() ? random.nextInt(20) : 0);
                 }
     }
 

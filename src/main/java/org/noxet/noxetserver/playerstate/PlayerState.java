@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.UUID;
 
 public class PlayerState {
 
@@ -39,13 +40,21 @@ public class PlayerState {
         return playerStateDir;
     }
 
+    private static File getStateFile(UUID uuid) {
+        return new File(getDirectory(), uuid + ".yml");
+    }
+
     /**
      * Gets the state file of a player. The state file can contain multiple sections of multiple states for different worlds/events.
      * @param player The player whose state should be given
      * @return The player's state file
      */
     private static File getStateFile(Player player) {
-        return new File(getDirectory(), player.getUniqueId() + ".yml");
+        return getStateFile(player.getUniqueId());
+    }
+    
+    public static void deleteStateFile(UUID uuid) {
+        getStateFile(uuid).delete();
     }
 
     /**

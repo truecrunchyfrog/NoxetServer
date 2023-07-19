@@ -35,10 +35,7 @@ import org.noxet.noxetserver.minigames.MiniGameManager;
 import org.noxet.noxetserver.minigames.party.Party;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.realm.RealmManager;
-import org.noxet.noxetserver.util.Captcha;
-import org.noxet.noxetserver.util.FancyTimeConverter;
-import org.noxet.noxetserver.util.TextBeautifier;
-import org.noxet.noxetserver.util.UsernameStorageManager;
+import org.noxet.noxetserver.util.*;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
 import java.util.*;
@@ -110,6 +107,13 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) {
+        PlayerDataEraser playerDataEraser = new PlayerDataEraser();
+
+        if(playerDataEraser.cancelPlayerDataErasePlan(e.getPlayer().getUniqueId()))
+            new NoteMessage("Planned data removal canceled!\nThe data for your Minecraft account on Noxet was requested to be deleted. You have now aborted this.").send(e.getPlayer());
+
+        playerDataEraser.performDataErasureCheck(); // Check for passed data deletion requests when a player has joined.
+
         PlayerDataManager.clearCacheForUUID(e.getPlayer().getUniqueId());
 
         new Message("§3■ " + TextBeautifier.beautify("Absorb the Echoes: ", false) + "§b§l" + TextBeautifier.beautify("noxet.org") + "§3!").send(e.getPlayer());
@@ -223,15 +227,17 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent e) {
-        Realm realm = getCurrentRealm(e.getEntity());
+        Player player = e.getEntity();
+
+        CombatLogging.clearCombatLog(player);
+
+        Realm realm = getCurrentRealm(player);
 
         String deathMessage = e.getDeathMessage();
         e.setDeathMessage(null);
 
         if(realm == null)
             return;
-
-        Player player = e.getEntity();
 
         setPlayerMigrationStatus(player, true);
 

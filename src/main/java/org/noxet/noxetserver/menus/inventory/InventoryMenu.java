@@ -42,7 +42,7 @@ public abstract class InventoryMenu implements InventoryHolder, Listener {
      * @param player The player who clicked a slot
      * @param coordinate What slot the player clicked
      * @param clickType How the player clicked the slot
-     * @return True if the menu should be stopped, false if it should stay open after the method is called
+     * @return true if the menu should be stopped, false if it should stay open after the method is called
      */
     abstract protected boolean onSlotClick(Player player, InventoryCoordinate coordinate, ClickType clickType);
 

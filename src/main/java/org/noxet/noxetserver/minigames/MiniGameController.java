@@ -240,7 +240,7 @@ public abstract class MiniGameController implements Listener {
     /**
      * Adds a player to the game. Can be used on spectators during game, if drop-in is allowed.
      * @param player The player to add to the game
-     * @return True if player was added, false if it failed
+     * @return true if player was added, false if it failed
      */
     public boolean addPlayer(Player player) {
         if(isPlayer(player)) {
@@ -422,7 +422,7 @@ public abstract class MiniGameController implements Listener {
 
     /**
      * Whether the game is in play state.
-     * @return True if the game is in play state
+     * @return true if the game is in play state
      */
     public boolean isPlaying() {
         return state == MiniGameState.PLAYING;
@@ -430,7 +430,7 @@ public abstract class MiniGameController implements Listener {
 
     /**
      * Whether the game has started (either is playing, or has ended).
-     * @return True if the game has started
+     * @return true if the game has started
      */
     public boolean hasStarted() {
         return state != MiniGameState.STALLING;
@@ -438,7 +438,7 @@ public abstract class MiniGameController implements Listener {
 
     /**
      * Whether the game has ended.
-     * @return True if the game has ended
+     * @return true if the game has ended
      */
     public boolean hasEnded() {
         return state == MiniGameState.ENDED;
