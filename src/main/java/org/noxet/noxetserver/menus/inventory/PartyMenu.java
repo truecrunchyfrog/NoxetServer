@@ -140,9 +140,12 @@ public class PartyMenu extends InventoryMenu {
                     case SHIFT_RIGHT:
                         player.performCommand("party transfer " + member.getName());
                         break;
+                    default:
+                        return false;
                 }
 
-                return false;
+                new PartyMenu(player).openInventory(player);
+                return true;
             }
 
         return false;

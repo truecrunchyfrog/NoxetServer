@@ -6,7 +6,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.menus.HubInventory;
+import org.noxet.noxetserver.menus.inventorysetups.HubInventorySetup;
 
 import java.io.File;
 import java.io.IOException;
@@ -195,7 +195,7 @@ public class PlayerState {
         player.setAllowFlight(true);
         player.setGameMode(GameMode.SURVIVAL);
         player.getInventory().setHeldItemSlot(3);
-        HubInventory.applyToPlayer(player);
+        new HubInventorySetup().applyToPlayer(player);
     }
 
     /**

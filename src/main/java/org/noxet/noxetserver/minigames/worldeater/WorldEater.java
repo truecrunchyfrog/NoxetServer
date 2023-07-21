@@ -16,6 +16,7 @@ import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
+import org.noxet.noxetserver.Events;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.inventory.WorldEaterTeamSelectionMenu;
@@ -72,7 +73,7 @@ public class WorldEater extends MiniGameController {
 
         int chunkX = 0,
             chunkY = 0,
-            chunkTries = 0;
+            chunkAttemptsLeft = 150;
         List<Integer> chunkCoordinate = new ArrayList<>();
         Chunk normalChunk = null;
 
@@ -86,7 +87,7 @@ public class WorldEater extends MiniGameController {
             badChunks = new ArrayList<>();
 
         while(true) {
-            if(chunkTries > 150) {
+            if(--chunkAttemptsLeft == 0) {
                 sendGameMessage(new Message("Too many attempts! Gave up trying to find a good chunk."));
                 break;
             }
@@ -107,7 +108,7 @@ public class WorldEater extends MiniGameController {
 
                 chunkX = random.nextInt(-1000, 1000);
                 chunkY = random.nextInt(-1000, 1000);
-                chunkTries++;
+                chunkAttemptsLeft++;
             } else {
                 normalChunk = normalWorld.getChunkAt(chunkX, chunkY);
                 break;
@@ -186,10 +187,10 @@ public class WorldEater extends MiniGameController {
 
         if(teamSet.isTeamEmpty(WorldEaterTeams.HIDER)) { // Last hider left.
             sendGameMessage(new Message("§cThere is no hider remaining, so the game is over."));
-            finish(GameResult.TIE);
+            finish(GameResult.SEEKERS_WIN);
         } else if(teamSet.isTeamEmpty(WorldEaterTeams.SEEKER)) { // Only hiders remain.
             sendGameMessage(new Message("§cThere is no seeker remaining, so the game is over."));
-            finish(GameResult.TIE);
+            finish(GameResult.HIDERS_WIN);
         } else if(getPlayers().size() == 1) { // Only 1 player remain.
             sendGameMessage(new Message("§cEverybody else quit. The game is over. :("));
             finish(GameResult.TIE);
@@ -280,7 +281,13 @@ public class WorldEater extends MiniGameController {
 
     @Override
     public DeathContract handleDeath(Player player) {
-        return teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER) ? DeathContract.SPECTATE : DeathContract.RESPAWN_SAME_LOCATION_KEEP_INVENTORY;
+        if(teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER)) {
+            if(teamSet.countTeamPlayers(WorldEaterTeams.HIDER) == 1) // This was the last hider.
+                finish(GameResult.SEEKERS_WIN);
+            return DeathContract.SPECTATE;
+        }
+
+        return DeathContract.RESPAWN_SAME_LOCATION_KEEP_INVENTORY;
     }
 
     @Override
@@ -321,6 +328,9 @@ public class WorldEater extends MiniGameController {
         if(teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER))
             return;
 
+        if(player.getLocation().getY() < getMiniGameWorld().getMinHeight())
+            player.teleport(getSpawnLocation());
+
         getFreezer().freeze(player);
         player.setGameMode(GameMode.SPECTATOR);
 
@@ -328,17 +338,19 @@ public class WorldEater extends MiniGameController {
 
         for(int i = 10; i > 0; i--) {
             int finalI = i;
-            scheduleTask(() -> player.sendTitle("§c" + finalI, "§euntil you respawn...", 0, 20 * 2, 0), 20 * (10 - i));
+            scheduleTask(() -> player.sendTitle("§c" + FancyTimeConverter.deltaSecondsToFancyTime(finalI), "§euntil you respawn...", 0, 20 * 2, 0), 20 * (10 - i));
         }
 
         scheduleTask(() -> {
-                player.setGameMode(GameMode.SURVIVAL);
-                getFreezer().unfreeze(player);
+            player.setGameMode(GameMode.SURVIVAL);
+            getFreezer().unfreeze(player);
 
-                PlayerState.prepareNormal(player, false);
+            PlayerState.prepareNormal(player, false);
 
-                player.teleport(getSpawnLocation());
-            }, 20 * 10);
+            player.teleport(getSpawnLocation());
+
+            Events.setTemporaryInvulnerability(player);
+        }, 20 * 10);
     }
 
     @Override
@@ -375,6 +387,16 @@ public class WorldEater extends MiniGameController {
 
     private void phaseHeadStart() {
         getFreezer().empty();
+
+        // Prepare the chunk muncher (do it already here to let the hiders place blocks before seekers spawn):
+
+        startY = 0;
+
+        for(int x = 0; x < 16; x++)
+            for(int z = 0; z < 16; z++)
+                startY = Math.max(startY, getMiniGameWorld().getHighestBlockYAt(getCenterChunk().getBlock(x, 0, z).getLocation()));
+
+        nextLayer = startY;
 
         sendGameMessage(new Message("§eHiders are given a head start."));
 
@@ -462,13 +484,6 @@ public class WorldEater extends MiniGameController {
 
         sendGameMessage(new Message("§cThe Chunk Muncher is eating up the island! See more info in the stats to the right."));
 
-        startY = 0;
-
-        for(int x = 0; x < 16; x++)
-            for(int z = 0; z < 16; z++)
-                startY = Math.max(startY, getMiniGameWorld().getHighestBlockYAt(getCenterChunk().getBlock(x, 0, z).getLocation()));
-
-        nextLayer = startY;
         removeNextLayer();
 
         sendGameMessage(new Message("§eIf the hiders survive until the game is over, they win. Otherwise the seekers win."));
@@ -554,21 +569,22 @@ public class WorldEater extends MiniGameController {
         scheduleTask(this::removeNextLayer, layerRemoveSpeed);
     }
 
-    private void removeLayer(int y) {
+    private void removeLayer(int noMarginY) {
         playGameSound(Sound.BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_OFF, 1, 1);
 
         Random random = new Random();
 
         for(Chunk chunk : getAllocatedChunks())
             for(int x = 0; x < 16; x++)
-                for(int z = 0; z < 16; z++) {
-                    Block block = chunk.getBlock(x, y, z);
-                    if(block.getType() != Material.AIR)
-                        scheduleTask(() -> {
+                for(int z = 0; z < 16; z++)
+                    for(int y = noMarginY; y < noMarginY + 2; y++) { // Clear 3 Y-levels of blocks. This is the block-placing margin. Without this, players would be unable to place blocks on top of chunk at all.
+                        Block block = chunk.getBlock(x, y, z);
+                        if(block.getType() != Material.AIR)
+                            scheduleTask(() -> {
                                 getMiniGameWorld().setBlockData(block.getLocation(), Material.AIR.createBlockData());
                                 getMiniGameWorld().spawnParticle(Particle.SWEEP_ATTACK, block.getLocation(), 1);
                             }, !block.isLiquid() ? random.nextInt(20) : 0);
-                }
+                    }
     }
 
     public enum GameResult {
@@ -643,8 +659,8 @@ public class WorldEater extends MiniGameController {
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent e) {
-        if(isPlayer(e.getPlayer()) && e.getBlock().getLocation().getY() > nextLayer) {
-            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "The Chunk Muncher has already eaten this Y-level. You cannot build here.").send(e.getPlayer());
+        if(isPlayer(e.getPlayer()) && e.getBlock().getLocation().getY() > nextLayer + 2) {
+            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "§o** Your hand got bit by the storm of the Chunk Muncher, as you reached to place a block. **").send(e.getPlayer());
             e.setCancelled(true);
         }
     }

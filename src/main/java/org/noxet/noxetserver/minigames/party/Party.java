@@ -109,6 +109,16 @@ public class Party {
     }
 
     public void acceptInvite(Player player) {
+        if(isPlayerMemberOfParty(player)) {
+            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are already in another party.").addButton(
+                    "Leave current party",
+                    ChatColor.RED,
+                    "Leave the party you are in now, to be able to join another party",
+                    "party leave"
+            ).send(player);
+            return;
+        }
+
         if(members.size() >= 50) {
             new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Sorry, there are too many members in this party!").send(player);
             sendPartyMessage(new Message("§c" + player.getName() + " cannot join the game, because there are too many members."));
@@ -168,7 +178,7 @@ public class Party {
             return;
         }
 
-        sendPartyMessage(new Message("§eThe party is now owned by " + newOwner.getName() + " (previously " + newOwner.getName() + ")."));
+        sendPartyMessage(new Message("§eThe party's leadership has been switched to " + newOwner.getName() + " (from " + owner.getName() + "). Take the wheel, " + newOwner.getName() + "!"));
         new Message("§aYou are now the owner of this party.").send(newOwner);
 
         owner = newOwner;

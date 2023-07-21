@@ -72,6 +72,12 @@ public class MiniGameManager {
         return playingIn != null ? playingIn : spectating;
     }
 
+    /**
+     * Check if a player is currently in a game that has not ended.
+     * This will only check if the player is participating, not spectating!
+     * @param player The player to check for
+     * @return true if the player is currently participating in a game that has not yet ended, otherwise false
+     */
     public static boolean isPlayerBusyInGame(Player player) {
         MiniGameController playersGame = findPlayersGame(player);
 

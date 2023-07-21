@@ -227,7 +227,12 @@ public class PartyCommand implements TabExecutor {
             }
 
             if(party.isOwner(player)) {
-                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are the owner of this party. To leave it, you must disband it or transfer it.").send(player);
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are the owner of this party. To leave it, you must disband it or transfer it.").addButton(
+                        "Disband whole party",
+                        ChatColor.RED,
+                        "Disband your party",
+                        "party disband"
+                ).send(player);
                 return true;
             }
 

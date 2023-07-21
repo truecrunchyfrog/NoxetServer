@@ -25,9 +25,10 @@ import org.noxet.noxetserver.combatlogging.CombatLoggingStorageManager;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
 import org.noxet.noxetserver.commands.social.MsgConversation;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
-import org.noxet.noxetserver.menus.HubInventory;
+import org.noxet.noxetserver.menus.inventorysetups.HubInventorySetup;
 import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
+import org.noxet.noxetserver.menus.inventory.SettingsMenu;
 import org.noxet.noxetserver.menus.inventory.SocialMenu;
 import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.minigames.MiniGameController;
@@ -101,6 +102,11 @@ public class Events implements Listener {
 
             // Don't cancel the teleportation!
         }
+    }
+
+    @EventHandler
+    public void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
+        updatePlayerListName(e.getPlayer());
     }
 
     private static final Map<Player, Long> playersTimePlayed = new HashMap<>();
@@ -192,7 +198,12 @@ public class Events implements Listener {
     public static void updatePlayerListName(Player player) {
         Realm realm = getCurrentRealm(player);
 
-        String playerListPrefix = (realm != null ? "§e" + TextBeautifier.beautify(realm.getDisplayName()) + "§r " : "") + "§7";
+        String playerListPrefix = "§7";
+
+        if(realm != null)
+            playerListPrefix = "§e" + TextBeautifier.beautify(realm.getDisplayName()) + "§r ";
+        else if(MiniGameManager.isPlayerBusyInGame(player))
+            playerListPrefix = "§3" + TextBeautifier.beautify("in-game");
 
         player.setPlayerListName(playerListPrefix + player.getDisplayName());
     }
@@ -236,8 +247,16 @@ public class Events implements Listener {
         String deathMessage = e.getDeathMessage();
         e.setDeathMessage(null);
 
-        if(realm == null)
+        Message newDeathMessage = new Message("§4☠ §c" + deathMessage + ".");
+
+        if(realm == null) {
+            MiniGameController inGame = MiniGameManager.findPlayersGame(player);
+            if(inGame != null)
+                inGame.sendGameMessage(newDeathMessage);
             return;
+        }
+
+        newDeathMessage.send(realm);
 
         setPlayerMigrationStatus(player, true);
 
@@ -257,8 +276,6 @@ public class Events implements Listener {
                 }.runTaskLater(NoxetServer.getPlugin(), i * 5);
             }
         }, 2);
-
-        new Message("§c" + deathMessage + ".").send(getCurrentRealm(player));
     }
 
     @EventHandler
@@ -522,11 +539,14 @@ public class Events implements Listener {
         }
 
         if(e.getItem() != null && e.getAction() != Action.PHYSICAL) {
-            if(e.getItem().equals(HubInventory.getGameNavigator())) {
+            if(e.getItem().equals(HubInventorySetup.gameNavigator)) {
                 new GameNavigationMenu().openInventory(e.getPlayer());
                 e.setCancelled(true);
-            } else if(e.getItem().equals(HubInventory.getSocialNavigator())) {
+            } else if(e.getItem().equals(HubInventorySetup.socialNavigator)) {
                 new SocialMenu(e.getPlayer()).openInventory(e.getPlayer());
+                e.setCancelled(true);
+            } else if(e.getItem().equals(HubInventorySetup.settings)) {
+                new SettingsMenu().openInventory(e.getPlayer());
                 e.setCancelled(true);
             }
         }

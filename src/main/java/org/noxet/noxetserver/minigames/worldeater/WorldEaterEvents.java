@@ -108,6 +108,7 @@ public class WorldEaterEvents {
 
                     Fireball meteor = MiniGameController.getMiniGameWorld().spawn(meteorStart, Fireball.class);
 
+                    meteor.setGlowing(true);
                     meteor.setIsIncendiary(true);
                     meteor.setYield(8);
 
