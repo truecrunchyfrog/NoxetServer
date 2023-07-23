@@ -6,6 +6,7 @@ import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.*;
+import org.bukkit.advancement.AdvancementDisplay;
 import org.bukkit.block.data.type.Bed;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -25,11 +26,11 @@ import org.noxet.noxetserver.combatlogging.CombatLoggingStorageManager;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
 import org.noxet.noxetserver.commands.social.MsgConversation;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
-import org.noxet.noxetserver.menus.inventorysetups.HubInventorySetup;
 import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
 import org.noxet.noxetserver.menus.inventory.SettingsMenu;
 import org.noxet.noxetserver.menus.inventory.SocialMenu;
+import org.noxet.noxetserver.menus.inventorysetups.HubInventorySetup;
 import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.minigames.MiniGameManager;
@@ -203,7 +204,7 @@ public class Events implements Listener {
         if(realm != null)
             playerListPrefix = "§e" + TextBeautifier.beautify(realm.getDisplayName()) + "§r ";
         else if(MiniGameManager.isPlayerBusyInGame(player))
-            playerListPrefix = "§3" + TextBeautifier.beautify("in-game");
+            playerListPrefix = "§3" + TextBeautifier.beautify("in-game") + "§r ";
 
         player.setPlayerListName(playerListPrefix + player.getDisplayName());
     }
@@ -304,6 +305,14 @@ public class Events implements Listener {
     @EventHandler
     public void onPlayerAdvancementDone(PlayerAdvancementDoneEvent e) {
         e.getPlayer().getWorld().setGameRule(GameRule.ANNOUNCE_ADVANCEMENTS, false);
+
+        MiniGameController game = MiniGameManager.findPlayersGame(e.getPlayer());
+
+        if(game != null) {
+            AdvancementDisplay advancementDisplay = e.getAdvancement().getDisplay();
+            if(advancementDisplay != null && advancementDisplay.shouldAnnounceChat())
+                game.sendGameMessage(new Message("§e" + e.getPlayer().getName() + " just advanced! " + "§a§o" + advancementDisplay.getTitle() + ": " + advancementDisplay.getDescription()));
+        }
     }
 
     @EventHandler

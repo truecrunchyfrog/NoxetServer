@@ -49,6 +49,11 @@ public enum GameDefinition {
         public MiniGameController initGame() {
             return new WorldEater();
         }
+
+        @Override
+        public boolean shouldAnnounceAdvancements() {
+            return true;
+        }
     });
 
     private final MiniGameOptions options;

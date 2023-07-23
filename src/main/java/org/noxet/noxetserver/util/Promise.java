@@ -41,4 +41,12 @@ public class Promise {
             }.runTask(NoxetServer.getPlugin());
         }
     }
+
+    /**
+     * Check if the promise has been reported.
+     * @return true if the promise has been reported, otherwise false
+     */
+    public boolean isReported() {
+        return callbackUsed;
+    }
 }

@@ -1,14 +1,12 @@
 package org.noxet.noxetserver.minigames.worldeater;
 
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.entity.*;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.minigames.MiniGameController;
+import org.noxet.noxetserver.util.EntityGlowColor;
 import org.noxet.noxetserver.util.Promise;
 
 import java.util.Random;
@@ -16,9 +14,11 @@ import java.util.function.BiConsumer;
 
 public class WorldEaterEvents {
     public enum GameEvent {
-        STALKER("Stalker", WorldEaterEvents::stalker),
+        HOT_SUN("Hot sun", WorldEaterEvents::hotSun),
+        QUICK_STOVE("Quick stove", WorldEaterEvents::quickStove),
         METEOR_RAIN("Meteor rain", WorldEaterEvents::meteorRain),
         VISIBLE_HIDERS("Exposed hiders", WorldEaterEvents::visibleHiders),
+        LOOT_DROP("Loot drop", WorldEaterEvents::lootDrop),
         DRILLING("Drilling", WorldEaterEvents::drilling),
         EXPLODING_HORSES("Exploding horses", WorldEaterEvents::explodingHorses),
         EVERYONE_VISIBLE("Everyone exposed", WorldEaterEvents::everyoneVisible);
@@ -41,50 +41,27 @@ public class WorldEaterEvents {
         }
     }
 
-    public static void stalker(WorldEater worldEater, Promise promise) {
-        worldEater.playGameSound(Sound.ENTITY_CHICKEN_AMBIENT, 1, 2);
-        worldEater.sendGameMessage(new Message("§e§lSTALKER CHICKEN! §fA chicken has spawned. It is glowing, so you can see it from anywhere.\nThe chicken will follow its nearest player.\nThe chicken cannot be eliminated.\nIt will disappear in 1 minute."));
-
-        Mob chicken = (Mob) MiniGameController.getMiniGameWorld().spawnEntity(worldEater.getSpawnLocation(), EntityType.ZOMBIE);
-
-        chicken.setGlowing(true);
-        chicken.setInvulnerable(true);
-        chicken.setVisualFire(true);
-
-        chicken.setLootTable(null);
+    public static void hotSun(WorldEater worldEater, Promise promise) {
+        worldEater.playGameSound(Sound.ENTITY_PLAYER_HURT_ON_FIRE, 1, 2);
+        worldEater.sendGameMessage(new Message("§6§lHOT SUN! §6The sun is on fire! Get in shelter, or you will too..."));
 
         worldEater.scheduleTaskTimer(task -> {
-                if(chicken.getTicksLived() > 20 * 60 || chicken.isDead()) {
-                    chicken.remove();
-                    task.cancel();
-                    promise.report();
-                    worldEater.sendGameMessage(new Message("§eThe stalker left the game."));
-                    return;
-                }
+            if(promise.isReported())
+                task.cancel();
 
-                Player nearestPlayer = null;
+            for(Player player : worldEater.getPlayers())
+                if(MiniGameController.getMiniGameWorld().getHighestBlockYAt(player.getLocation()) < player.getLocation().getY())
+                    player.setFireTicks(30);
+        }, 20 * 5, 20);
 
-                for(Player player : worldEater.getPlayers())
-                    if(nearestPlayer == null || player.getLocation().distanceSquared(chicken.getLocation()) < nearestPlayer.getLocation().distanceSquared(chicken.getLocation()))
-                        nearestPlayer = player;
+        worldEater.scheduleTask(promise::report, 20 * 60 * 2);
+    }
 
-                if(nearestPlayer == null)
-                    return;
+    public static void quickStove(WorldEater worldEater, Promise promise) {
+        worldEater.playGameSound(Sound.ITEM_GOAT_HORN_PLAY, 1, 2);
+        worldEater.sendGameMessage(new Message("§e§lQUICK STOVE! §eFurnaces will now DUPE what's cooked at FIVE TIMES the speed! Get on your grill now, because this will only last for 2 minutes."));
 
-                if(nearestPlayer != chicken.getTarget()) {
-                    nearestPlayer.playSound(nearestPlayer, Sound.ITEM_ARMOR_EQUIP_NETHERITE, 1, 0.5f);
-                    chicken.setTarget(nearestPlayer);
-                    worldEater.sendGameMessage(new Message("§cThe chicken is stalking " + nearestPlayer.getName() + "."));
-                }
-
-
-                if(!chicken.hasLineOfSight(nearestPlayer))
-                    MiniGameController.getMiniGameWorld().createExplosion(chicken.getLocation().add(nearestPlayer.getLocation().subtract(chicken.getLocation()).toVector().normalize().multiply(3)), 3, false);
-
-                chicken.setVelocity(nearestPlayer.getLocation().subtract(chicken.getLocation()).toVector().normalize().multiply(2));
-
-                MiniGameController.getMiniGameWorld().spawnParticle(Particle.NOTE, chicken.getLocation().add(0, 3, 0), 5);
-            }, 60, 30);
+        worldEater.scheduleTask(promise::report, 20 * 60 * 2);
     }
 
     public static void meteorRain(WorldEater worldEater, Promise promise) {
@@ -108,6 +85,7 @@ public class WorldEaterEvents {
 
                     Fireball meteor = MiniGameController.getMiniGameWorld().spawn(meteorStart, Fireball.class);
 
+                    EntityGlowColor.setGlowColor(meteor, ChatColor.RED);
                     meteor.setGlowing(true);
                     meteor.setIsIncendiary(true);
                     meteor.setYield(8);
@@ -134,6 +112,31 @@ public class WorldEaterEvents {
         });
 
         worldEater.scheduleTask(promise::report, 20 * 10);
+    }
+
+    public static void lootDrop(WorldEater worldEater, Promise promise) {
+        worldEater.playGameSound(Sound.ENTITY_CAMEL_SADDLE, 1, 0.5f);
+        worldEater.sendGameMessage(new Message("§9§lLOOT DROP! §9Look up for a falling loot box, with only the best to offer."));
+        Random random = new Random();
+
+        Location dropLocation = worldEater.getCenterChunk().getBlock(random.nextInt(16), 0, random.nextInt(16)).getLocation();
+
+        dropLocation.setY(MiniGameController.getMiniGameWorld().getHighestBlockYAt(dropLocation) + 100);
+
+        FallingBlock fallingLootBox = MiniGameController.getMiniGameWorld().spawnFallingBlock(dropLocation, Material.BARREL.createBlockData());
+
+        EntityGlowColor.setGlowColor(fallingLootBox, ChatColor.BLUE);
+        fallingLootBox.setGlowing(true);
+        fallingLootBox.setDropItem(false);
+
+        worldEater.scheduleTaskTimer(task -> {
+            if(promise.isReported() || fallingLootBox.isDead()) {
+                promise.report();
+                task.cancel();
+            }
+        }, 120, 20);
+
+        worldEater.scheduleTask(promise::report, 20 * 100);
     }
 
     public static void drilling(WorldEater worldEater, Promise promise) {

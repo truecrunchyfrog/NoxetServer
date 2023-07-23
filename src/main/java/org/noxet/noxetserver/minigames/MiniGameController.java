@@ -29,6 +29,7 @@ import org.noxet.noxetserver.minigames.party.Party;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.util.ConcatSet;
+import org.noxet.noxetserver.util.ControllableTaskSet;
 import org.noxet.noxetserver.util.PlayerFreezer;
 import org.noxet.noxetserver.util.TextBeautifier;
 
@@ -64,9 +65,9 @@ public abstract class MiniGameController implements Listener {
     private final List<Chunk> allocatedChunks = new ArrayList<>();
 
     /**
-     * Any delayed BukkitTask related to this game should be added to tasks with the addTask() method, to make sure that they are canceled on stop.
+     * Any delayed BukkitTask related to this game should be added to tasks with taskSet.push() method, to make sure that they are canceled on stop.
      */
-    private final List<BukkitTask> tasks = new ArrayList<>();
+    private final ControllableTaskSet taskSet = new ControllableTaskSet();
 
     public MiniGameController(GameDefinition game) {
         gameId = String.valueOf(new Random().nextInt((int) Math.pow(10, 5), (int) Math.pow(10, 6)));
@@ -220,7 +221,7 @@ public abstract class MiniGameController implements Listener {
             }
         }.runTaskLater(NoxetServer.getPlugin(), ticksBeforeAttempt);
 
-        addTask(startTask);
+        taskSet.push(startTask);
     }
 
     public void attemptStart() {
@@ -301,12 +302,7 @@ public abstract class MiniGameController implements Listener {
                 sendGameMessage(new Message("§c" + player.getName() + "§4 left the game."));
             }
         } else if(!disconnect)
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    softStop(); // Delay to allow players to become spectators, in that case.
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 0);
+            scheduleTask(this::softStop, 0); // Delay to allow players to become spectators, in that case.
         else
             stop();
     }
@@ -473,8 +469,7 @@ public abstract class MiniGameController implements Listener {
 
         freezer.empty();
 
-        for(BukkitTask task : tasks)
-            task.cancel();
+        taskSet.abortAll();
 
         for(Player player : getPlayersAndSpectators()) // Kick all players from the world.
             disconnectPlayerFromGame(player);
@@ -647,12 +642,8 @@ public abstract class MiniGameController implements Listener {
         return getMiniGameWorld().equals(world);
     }
 
-    private void addTask(BukkitTask task) {
-        tasks.add(task);
-    }
-
     public void scheduleTask(Runnable runnable, int delayTicks) {
-        addTask(new BukkitRunnable() {
+        taskSet.push(new BukkitRunnable() {
             @Override
             public void run() {
                 runnable.run();
@@ -668,7 +659,7 @@ public abstract class MiniGameController implements Listener {
             }
         }.runTaskTimer(NoxetServer.getPlugin(), delayTicks, periodTicks);
 
-        addTask(task);
+        taskSet.push(task);
 
         return task;
     }
@@ -742,6 +733,10 @@ public abstract class MiniGameController implements Listener {
 
     public List<Chunk> getAllocatedChunks() {
         return allocatedChunks;
+    }
+
+    public boolean doesOwnLocation(Location location) {
+        return allocatedChunks.contains(location.getChunk());
     }
 
     public Chunk getCenterChunk() {

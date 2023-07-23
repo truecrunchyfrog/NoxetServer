@@ -23,4 +23,6 @@ public interface MiniGameOptions {
     int getWorldChunksSquared();
 
     MiniGameController initGame();
+
+    boolean shouldAnnounceAdvancements();
 }

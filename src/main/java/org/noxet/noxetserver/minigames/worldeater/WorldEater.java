@@ -3,12 +3,19 @@ package org.noxet.noxetserver.minigames.worldeater;
 import org.bukkit.*;
 import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.inventory.FurnaceSmeltEvent;
+import org.bukkit.event.inventory.FurnaceStartSmeltEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.generator.BiomeProvider;
 import org.bukkit.generator.WorldInfo;
 import org.bukkit.inventory.ItemStack;
@@ -38,6 +45,8 @@ public class WorldEater extends MiniGameController {
     private static final String cacheWorldName = "WORLDEATER_CACHE";
     private int startY, nextLayer, layerRemoveSpeed;
     private long nextLayerDisappearsAt;
+    private final Set<FallingBlock> fallingBlockLootBoxes = new HashSet<>();
+    private final Set<Block> placedLootBoxes = new HashSet<>();
 
     @Override
     public void handlePreStart() {
@@ -177,7 +186,6 @@ public class WorldEater extends MiniGameController {
 
     @Override
     public void handlePlayerJoin(Player player) {
-
     }
 
     @Override
@@ -221,7 +229,7 @@ public class WorldEater extends MiniGameController {
                 break;
             default:
                 header = "§e§l" + TextBeautifier.beautify("Tie", false);
-                subHeader = "§7Nobody won the game.";
+                subHeader = "§7Nobody won the game";
         }
 
         forEachPlayer(player -> player.sendTitle(
@@ -301,16 +309,21 @@ public class WorldEater extends MiniGameController {
 
             bindActionToItem(item, affectedPlayer -> {
                 if(teamSet.isPlayerOnTeam(affectedPlayer, WorldEaterTeams.HIDER)) {
+                    if(affectedPlayer.isInvisible()) {
+                        new Message("§cYou are already invisible.").send(affectedPlayer);
+                        return;
+                    }
+
                     affectedPlayer.playSound(affectedPlayer, Sound.ENTITY_CAT_HISS, 1, 0.5f);
                     affectedPlayer.sendTitle("§aInvisible", "§3You are now §ninvisible§3.", 10, 20 * 3, 10);
                     new Message("§eYou are now invisible for §c20§e seconds.").send(affectedPlayer);
 
                     affectedPlayer.setInvisible(true);
                     scheduleTask(() -> {
-                            affectedPlayer.setInvisible(false);
-                            affectedPlayer.sendTitle("§c§lWAH!", "§eYou are no longer invisible.", 10, 20 * 3, 10);
-                            new Message("§eYou are visible again.").send(affectedPlayer);
-                        }, 20 * 20);
+                        affectedPlayer.setInvisible(false);
+                        affectedPlayer.sendTitle("§c§lWAH!", "§eYou are no longer invisible.", 10, 20 * 3, 10);
+                        new Message("§eYou are visible again.").send(affectedPlayer);
+                    }, 20 * 20);
                 } else
                     new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Only hiders can use this item!").send(affectedPlayer);
 
@@ -433,7 +446,7 @@ public class WorldEater extends MiniGameController {
             hider.sendTitle("§c§lHURRY UP!", "§ePrepare and reach §3shelter§e fast!", 5, 20 * 5, 10);
         });
 
-        int secondsToRelease = 2 * 60;
+        int secondsToRelease = teamSet.countTeamPlayers(WorldEaterTeams.SEEKER) * 60;
 
         for(int i = secondsToRelease; i > 0; i--) {
             int finalI = i;
@@ -490,13 +503,16 @@ public class WorldEater extends MiniGameController {
 
         timeLeft = 30 * 60;
 
-        prepareEvent(WorldEaterEvents.GameEvent.STALKER, 25);
+        prepareEvent(WorldEaterEvents.GameEvent.HOT_SUN, 27);
+
+        prepareEvent(WorldEaterEvents.GameEvent.QUICK_STOVE, 25);
+
+        prepareEvent(WorldEaterEvents.GameEvent.VISIBLE_HIDERS, 22);
+        prepareEvent(WorldEaterEvents.GameEvent.VISIBLE_HIDERS, 8);
 
         prepareEvent(WorldEaterEvents.GameEvent.METEOR_RAIN, 20);
 
-        prepareEvent(WorldEaterEvents.GameEvent.VISIBLE_HIDERS, 22);
-        prepareEvent(WorldEaterEvents.GameEvent.VISIBLE_HIDERS, 15);
-        prepareEvent(WorldEaterEvents.GameEvent.VISIBLE_HIDERS, 8);
+        prepareEvent(WorldEaterEvents.GameEvent.LOOT_DROP, 15);
 
         prepareEvent(WorldEaterEvents.GameEvent.DRILLING, 12);
 
@@ -572,12 +588,29 @@ public class WorldEater extends MiniGameController {
     private void removeLayer(int noMarginY) {
         playGameSound(Sound.BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_OFF, 1, 1);
 
+        for(Block placedLootBox : placedLootBoxes)
+            if(placedLootBox.getLocation().getY() >= noMarginY) {
+                placedLootBoxes.remove(placedLootBox);
+
+                Location newBoxLocation = placedLootBox.getLocation().clone();
+                newBoxLocation.setY(noMarginY);
+
+                BlockData blockData = placedLootBox.getBlockData();
+
+                scheduleTask(() -> {
+                    Block newBox = getMiniGameWorld().getBlockAt(newBoxLocation);
+                    newBox.setBlockData(blockData);
+
+                    placedLootBoxes.add(newBox);
+                }, 21);
+            }
+
         Random random = new Random();
 
         for(Chunk chunk : getAllocatedChunks())
             for(int x = 0; x < 16; x++)
                 for(int z = 0; z < 16; z++)
-                    for(int y = noMarginY; y < noMarginY + 2; y++) { // Clear 3 Y-levels of blocks. This is the block-placing margin. Without this, players would be unable to place blocks on top of chunk at all.
+                    for(int y = noMarginY; y < noMarginY + 3; y++) { // Clear 3 Y-levels of blocks. This is the block-placing margin. Without this, players would be unable to place blocks on top of chunk at all.
                         Block block = chunk.getBlock(x, y, z);
                         if(block.getType() != Material.AIR)
                             scheduleTask(() -> {
@@ -662,6 +695,68 @@ public class WorldEater extends MiniGameController {
         if(isPlayer(e.getPlayer()) && e.getBlock().getLocation().getY() > nextLayer + 2) {
             new ErrorMessage(ErrorMessage.ErrorType.COMMON, "§o** Your hand got bit by the storm of the Chunk Muncher, as you reached to place a block. **").send(e.getPlayer());
             e.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onEntityChangeBlock(EntityChangeBlockEvent e) {
+        if(e.getEntity().getType() == EntityType.FALLING_BLOCK && fallingBlockLootBoxes.remove((FallingBlock) e.getEntity())) {
+            placedLootBoxes.add(e.getBlock());
+
+            sendGameMessage(new Message("§9A loot box has dropped! Claim it for rewards."));
+        }
+    }
+
+    private static final List<Material> lootDrops = Arrays.asList(
+            Material.DIAMOND_AXE,
+            Material.DIAMOND_PICKAXE,
+            Material.DIAMOND_BLOCK,
+            Material.NETHERITE_BOOTS,
+            Material.NETHERITE_SWORD,
+            Material.TNT,
+            Material.FLINT_AND_STEEL,
+            Material.SPECTRAL_ARROW
+    );
+
+    private static ItemStack getRandomLootItem() {
+        return new ItemStack(lootDrops.get(new Random().nextInt(lootDrops.size())));
+    }
+
+    private static ItemStack getRandomlyStackedLootItem() {
+        ItemStack itemStack = getRandomLootItem();
+
+        if(itemStack.getType().getMaxStackSize() > 1)
+            itemStack.setAmount(new Random().nextInt(4));
+
+        return itemStack;
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent e) {
+        if((e.getAction() == Action.LEFT_CLICK_BLOCK || e.getAction() == Action.RIGHT_CLICK_BLOCK) && placedLootBoxes.remove(e.getClickedBlock())) {
+            Objects.requireNonNull(e.getClickedBlock()).setType(Material.AIR);
+
+            Location lootDropLocation = e.getClickedBlock().getLocation();
+
+            for(int i = 0; i < 6; i++)
+                getMiniGameWorld().dropItemNaturally(lootDropLocation, getRandomlyStackedLootItem());
+
+            sendGameMessage(new Message("§cThe loot box has been looted by " + e.getPlayer().getName() + "."));
+        }
+    }
+
+    @EventHandler
+    public void onFurnaceStartSmelt(FurnaceStartSmeltEvent e) {
+        if(doesOwnLocation(e.getBlock().getLocation()) && currentEvents.contains(WorldEaterEvents.GameEvent.QUICK_STOVE))
+            e.setTotalCookTime(e.getTotalCookTime() / 5);
+    }
+
+    @EventHandler
+    public void onFurnaceSmelt(FurnaceSmeltEvent e) {
+        if(doesOwnLocation(e.getBlock().getLocation()) && currentEvents.contains(WorldEaterEvents.GameEvent.QUICK_STOVE)) {
+            ItemStack result = e.getResult();
+            result.setAmount(2);
+            e.setResult(result);
         }
     }
 }
