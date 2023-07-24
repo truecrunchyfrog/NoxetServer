@@ -4,7 +4,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.noxet.noxetserver.NoxetServer;
 
-public abstract class DynamicTimer extends BukkitRunnable {
+public abstract class DynamicTimer {
     private BukkitTask timer;
 
     /**
@@ -24,7 +24,12 @@ public abstract class DynamicTimer extends BukkitRunnable {
     private void assignTimer() {
         stopTimer();
 
-        timer = this.runTaskTimer(NoxetServer.getPlugin(), 0, getTickFrequency());
+        timer = new BukkitRunnable() {
+            @Override
+            public void run() {
+                timerCall();
+            }
+        }.runTaskTimer(NoxetServer.getPlugin(), 0, getTickFrequency());
     }
 
     private void stopTimer() {
@@ -43,4 +48,9 @@ public abstract class DynamicTimer extends BukkitRunnable {
         else if(!isTimerNecessary() && timer != null)
             stopTimer();
     }
+
+    /**
+     * Called each time the timer calls.
+     */
+    public abstract void timerCall();
 }

@@ -4,11 +4,11 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.RealmDataManager;
+import org.noxet.noxetserver.realm.RealmDataManager;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.SuccessMessage;
 
-import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
+import static org.noxet.noxetserver.realm.RealmManager.getCurrentRealm;
 
 public class SetRealmSpawn implements CommandExecutor {
     @Override

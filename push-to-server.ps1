@@ -4,5 +4,5 @@ get-content .env | foreach {
 };
 
 $client = New-Object System.Net.WebClient;
-$client.Credentials = New-Object System.Net.NetworkCredential($Env:FtpUsername, $Env:FtpPassword);
-$client.UploadFile($Env:Destination, $Env:Source);
+$client.Credentials = New-Object System.Net.NetworkCredential($Env:USER, $Env:PASS);
+$client.UploadFile($Env:DESTINATION, $Env:SOURCE);

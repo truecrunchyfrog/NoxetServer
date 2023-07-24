@@ -1,27 +1,28 @@
 package org.noxet.noxetserver.util;
 
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.checkerframework.common.value.qual.IntRange;
 import org.noxet.noxetserver.messaging.Message;
 
+import java.util.Set;
+
 public class RegionBinder extends DynamicTimer {
-    private final World world;
     private final Location center;
+    private final Set<Player> playerSet;
     private final int width, tickFrequency;
 
-    @IntRange(from = 1)
-    public RegionBinder(Location center, int width, int tickFrequency) {
-        this.world = center.getWorld();
+    public RegionBinder(Location center, Set<Player> playerSet, int width, int tickFrequency) {
         this.center = center;
+        this.playerSet = playerSet;
         this.width = width;
         this.tickFrequency = tickFrequency;
+
+        touchTimer();
     }
 
     @Override
     public boolean isTimerNecessary() {
-        return world.getPlayers().size() > 0;
+        return !playerSet.isEmpty();
     }
 
     @Override
@@ -30,15 +31,15 @@ public class RegionBinder extends DynamicTimer {
     }
 
     @Override
-    public void run() {
-        for(Player player : world.getPlayers()) {
+    public void timerCall() {
+        for(Player player : playerSet) {
             Location mobile = player.getLocation();
-            Location delta = center.subtract(mobile);
+            Location delta = center.clone().subtract(mobile);
 
             if(Math.abs(delta.getX()) > width) {
-                mobile.setX(center.getX() + width * Math.signum(delta.getX()));
+                mobile.setX(center.getX() + width * -Math.signum(delta.getX()));
             } else if(Math.abs(delta.getZ()) > width) {
-                mobile.setZ(center.getZ() + width * Math.signum(delta.getZ()));
+                mobile.setZ(center.getZ() + width * -Math.signum(delta.getZ()));
             } else continue;
 
             player.teleport(mobile);

@@ -1,7 +1,9 @@
 package org.noxet.noxetserver.minigames;
 
-import org.apache.commons.io.FileUtils;
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.*;
+import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -10,30 +12,30 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
-import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Consumer;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.messaging.ActionBarMessage;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.messaging.MessagingContext;
 import org.noxet.noxetserver.messaging.channels.MessagingGameChannel;
+import org.noxet.noxetserver.minigames.party.Party;
 import org.noxet.noxetserver.playerstate.PlayerState;
+import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.util.ConcatSet;
+import org.noxet.noxetserver.util.ControllableTaskSet;
 import org.noxet.noxetserver.util.PlayerFreezer;
 import org.noxet.noxetserver.util.TextBeautifier;
 
-import java.io.IOException;
 import java.util.*;
 
 public abstract class MiniGameController implements Listener {
-    public static final String gameWorldPrefix = "NOXET_GAME_WORLD_";
-
     public enum MiniGameState {
         STALLING, PLAYING, ENDED
     }
@@ -48,7 +50,6 @@ public abstract class MiniGameController implements Listener {
     private final Set<Player> players = new HashSet<>(),
             spectators = new HashSet<>();
     private final ConcatSet<Player> allPlayers = new ConcatSet<>(players, spectators);
-    private final World workingWorld;
     private final MiniGameOptions options;
     private final PlayerFreezer freezer;
 
@@ -58,24 +59,23 @@ public abstract class MiniGameController implements Listener {
 
     private final Map<ItemStack, Consumer<Player>> actionBoundItems = new HashMap<>();
 
+    private boolean pvpAllowed = true;
+    private long startTimestamp = 0;
+
+    private final List<Chunk> allocatedChunks = new ArrayList<>();
+
     /**
-     * Any delayed BukkitTask related to this game should be added to tasks with the addTask() method, to make sure that they are canceled on stop.
+     * Any delayed BukkitTask related to this game should be added to tasks with taskSet.push() method, to make sure that they are canceled on stop.
      */
-    private final List<BukkitTask> tasks = new ArrayList<>();
+    private final ControllableTaskSet taskSet = new ControllableTaskSet();
 
     public MiniGameController(GameDefinition game) {
         gameId = String.valueOf(new Random().nextInt((int) Math.pow(10, 5), (int) Math.pow(10, 6)));
         this.game = game;
-        this.options = game.getOptions();
+        options = game.getOptions();
+        state = MiniGameState.STALLING;
 
-        WorldCreator worldCreator = new WorldCreator(gameWorldPrefix + gameId);
-
-        if(options.getWorldCreator() != null)
-            worldCreator.copy(options.getWorldCreator());
-
-        workingWorld = NoxetServer.getPlugin().getServer().createWorld(worldCreator);
-
-        messagingContext = new MessagingContext("§3" + TextBeautifier.beautify(options.getDisplayName(), false) + " ", new MessagingGameChannel(this));
+        messagingContext = new MessagingContext("§3§l" + TextBeautifier.beautify(options.getDisplayName()) + "§7 :: ", new MessagingGameChannel(this));
 
         NoxetServer.getPlugin().getServer().getPluginManager().registerEvents(this, NoxetServer.getPlugin());
 
@@ -100,7 +100,14 @@ public abstract class MiniGameController implements Listener {
         if(hasStarted())
             return;
 
+        if(startTask != null)
+            startTask.cancel();
+
         state = MiniGameState.PLAYING;
+
+        startTimestamp = System.currentTimeMillis();
+
+        allocateChunks();
 
         handlePreStart();
 
@@ -193,18 +200,19 @@ public abstract class MiniGameController implements Listener {
 
         int ticksBeforeAttempt;
 
-        if(enoughPlayers()) {
+        if(!enoughPlayers()) { // Too few players.
             ticksBeforeAttempt = 20 * 30;
             sendGameMessage(new Message("§eNeed §7§n" + (options.getMinPlayers() - players.size()) + "§e more to start."));
-        } else if(!isFull()) {
+        } else if(!isFull()) { // Enough players, but more can join.
             ticksBeforeAttempt = 20 * 20;
             sendGameMessage(new Message("§eEnough players gathered!"));
-        } else {
+        } else { // Game is full.
             ticksBeforeAttempt = 20 * 5;
             sendGameMessage(new Message("§eGame is filled up!"));
         }
 
         sendGameMessage(new Message("§aPreliminary start in §e" + ticksBeforeAttempt / 20 + "s" + "§a..."));
+        sendGameMessage(new ActionBarMessage("§eYour game is starting soon!"));
 
         startTask = new BukkitRunnable() {
             @Override
@@ -213,16 +221,18 @@ public abstract class MiniGameController implements Listener {
             }
         }.runTaskLater(NoxetServer.getPlugin(), ticksBeforeAttempt);
 
-        addTask(startTask);
+        taskSet.push(startTask);
     }
 
-    private void attemptStart() {
+    public void attemptStart() {
         if(!enoughPlayers()) {
             sendGameMessage(new Message("§cNot enough players to start."));
+            stop();
             return;
         }
 
         sendGameMessage(new Message("§bFinally! The game is starting..."));
+        sendGameMessage(new ActionBarMessage("§3The game is starting!"));
 
         start();
     }
@@ -231,7 +241,7 @@ public abstract class MiniGameController implements Listener {
     /**
      * Adds a player to the game. Can be used on spectators during game, if drop-in is allowed.
      * @param player The player to add to the game
-     * @return True if player was added, false if it failed
+     * @return true if player was added, false if it failed
      */
     public boolean addPlayer(Player player) {
         if(isPlayer(player)) {
@@ -255,14 +265,14 @@ public abstract class MiniGameController implements Listener {
         }
 
         if(isSpectator(player))
-            removeSpectator(player);
+            removeSpectator(player, false);
 
         players.add(player);
 
         if(hasStarted())
             preparePlayer(player);
 
-        sendGameMessage(new Message("§b" + player.getName() + "§9 joined the game. §7(§e" + players.size() + "§7/§6" + options.getMaxPlayers() + "§7)"));
+        sendGameMessage(new Message("§b" + player.getName() + "§3 joined the game. §7(§e" + players.size() + "§7/§e" + options.getMaxPlayers() + "§7)"));
 
         handlePlayerJoin(player);
 
@@ -272,19 +282,36 @@ public abstract class MiniGameController implements Listener {
     }
 
     public void removePlayer(Player player) {
+        removePlayer(player, true);
+    }
+
+    public void removePlayer(Player player, boolean disconnect) {
         if(!isPlayer(player))
             return;
 
         players.remove(player);
+
         handlePlayerLeave(player);
-        disconnectPlayerFromGame(player);
 
-        touchInit();
+        if(disconnect)
+            disconnectPlayerFromGame(player);
 
-        sendGameMessage(new Message("§c" + player.getName() + "§4 left the game."));
-
-        if(players.size() == 0)
+        if(players.size() > 0) {
+            if(!hasEnded()) {
+                touchInit();
+                sendGameMessage(new Message("§c" + player.getName() + "§4 left the game."));
+            }
+        } else if(!disconnect)
+            scheduleTask(this::softStop, 0); // Delay to allow players to become spectators, in that case.
+        else
             stop();
+    }
+
+    public void addParty(Party party) {
+        party.sendPartyMessage(new Message("§aThe party has collectively entered a game."));
+
+        for(Player member : party.getMembers())
+            addPlayer(member);
     }
 
     public boolean addSpectator(Player player) {
@@ -299,7 +326,7 @@ public abstract class MiniGameController implements Listener {
         }
 
         if(isPlayer(player))
-            removePlayer(player);
+            removePlayer(player, false);
 
         spectators.add(player);
 
@@ -312,18 +339,25 @@ public abstract class MiniGameController implements Listener {
     }
 
     public void removeSpectator(Player player) {
+        removeSpectator(player, true);
+    }
+
+    public void removeSpectator(Player player, boolean disconnect) {
         if(!isSpectator(player))
             return;
 
         spectators.remove(player);
-        disconnectPlayerFromGame(player);
+
+        if(disconnect)
+            disconnectPlayerFromGame(player);
 
         sendGameMessage(new Message("§e" + player.getName() + "§7 is no longer spectating the game."));
     }
 
     public void disconnectPlayerFromGame(Player player) {
         handlePlayerRemoved(player);
-        RealmManager.goToHub(player);
+        if(hasStarted())
+            RealmManager.goToHub(player);
     }
 
     public boolean isPlayer(Player player) {
@@ -363,20 +397,28 @@ public abstract class MiniGameController implements Listener {
     }
 
     public void preparePlayer(Player player) {
-        player.teleport(workingWorld.getSpawnLocation());
+        player.teleport(getSpawnLocation());
         PlayerState.prepareDefault(player);
         player.setGameMode(options.getDefaultGameMode());
+
+        assignPlayerTime(player);
     }
 
     public void prepareSpectator(Player player) {
-        player.teleport(workingWorld.getSpawnLocation());
+        player.teleport(getSpawnLocation());
         PlayerState.prepareDefault(player);
         player.setGameMode(GameMode.SPECTATOR);
+
+        assignPlayerTime(player);
+    }
+
+    public void assignPlayerTime(Player player) {
+        player.setPlayerTime(getTicksSinceStart() - getMiniGameWorld().getTime(), true);
     }
 
     /**
      * Whether the game is in play state.
-     * @return True if the game is in play state
+     * @return true if the game is in play state
      */
     public boolean isPlaying() {
         return state == MiniGameState.PLAYING;
@@ -384,7 +426,7 @@ public abstract class MiniGameController implements Listener {
 
     /**
      * Whether the game has started (either is playing, or has ended).
-     * @return True if the game has started
+     * @return true if the game has started
      */
     public boolean hasStarted() {
         return state != MiniGameState.STALLING;
@@ -392,7 +434,7 @@ public abstract class MiniGameController implements Listener {
 
     /**
      * Whether the game has ended.
-     * @return True if the game has ended
+     * @return true if the game has ended
      */
     public boolean hasEnded() {
         return state == MiniGameState.ENDED;
@@ -403,14 +445,18 @@ public abstract class MiniGameController implements Listener {
      * @return The ticks to wait before the game is stopped
      */
     public int softStop() {
+        state = MiniGameState.ENDED;
+
         int ticks = Math.min(handleSoftStop(), 20 * 60);
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                stop(); // Tired of waiting: hard stop the game now.
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), ticks); // Wait at most 60 seconds.
+        sendGameMessage(
+                new Message("§a§lTHE GAME IS OVER!\n")
+                        .addButton("Play again", ChatColor.GREEN, "Join another queue for this game", "game play " + game.getOptions().getId())
+                        .addButton("Different game", ChatColor.DARK_AQUA, "Find another game to play", "games")
+                        .addButton("Lobby", ChatColor.RED, "Head back to hub", "game leave")
+        );
+
+        scheduleTask(this::stop, ticks); // Wait at most 60 seconds.
 
         return ticks;
     }
@@ -419,25 +465,18 @@ public abstract class MiniGameController implements Listener {
      * Stops the game immediately. Unregisters this game instance, cancels tasks, unregisters event listener, removes players from world, unloads world, and deletes world.
      */
     public void stop() {
+        state = MiniGameState.ENDED;
+
         freezer.empty();
 
-        for(BukkitTask task : tasks)
-            task.cancel();
+        taskSet.abortAll();
+
+        for(Player player : getPlayersAndSpectators()) // Kick all players from the world.
+            disconnectPlayerFromGame(player);
 
         MiniGameManager.unregisterGame(this);
 
         HandlerList.unregisterAll(this); // Stop listening for events.
-
-        for(Player player : workingWorld.getPlayers()) // Kick all players from the world.
-            disconnectPlayerFromGame(player);
-
-        NoxetServer.getPlugin().getServer().unloadWorld(workingWorld, false); // Unload the game world.
-
-        try {
-            FileUtils.deleteDirectory(workingWorld.getWorldFolder());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
 
         handlePostStop();
     }
@@ -449,20 +488,6 @@ public abstract class MiniGameController implements Listener {
     public void disbandPlayer(Player player) {
         removePlayer(player);
         removeSpectator(player);
-    }
-
-    @EventHandler
-    public void onEntityPortal(EntityPortalEvent e) {
-        // Prevent entities' usage of portals.
-        if(e.getFrom().getWorld() == workingWorld)
-            e.setCancelled(true);
-    }
-
-    @EventHandler
-    public void onPlayerPortal(PlayerPortalEvent e) {
-        // Prevent players' usage of portals.
-        if(e.getFrom().getWorld() == workingWorld)
-            e.setCancelled(true);
     }
 
     @EventHandler
@@ -482,16 +507,11 @@ public abstract class MiniGameController implements Listener {
             DeathContract deathContract = handleDeath(e.getEntity());
 
             switch(deathContract) {
-                case RESPAWN_KEEP_INVENTORY:
-                    e.setKeepInventory(true);
-                    e.setKeepLevel(true);
-                    e.getDrops().clear();
-                    e.setDroppedExp(0);
                 case RESPAWN_SAME_LOCATION_KEEP_INVENTORY:
                     Location oldSpawnLocation = e.getEntity().getBedSpawnLocation();
 
                     Location deathLocation = e.getEntity().getLastDeathLocation();
-                    if(deathLocation != null && deathLocation.getY() > getWorkingWorld().getMinHeight())
+                    if(deathLocation != null && deathLocation.getY() > getMiniGameWorld().getMinHeight())
                         e.getEntity().setBedSpawnLocation(deathLocation, true);
 
                     new BukkitRunnable() {
@@ -499,7 +519,12 @@ public abstract class MiniGameController implements Listener {
                         public void run() {
                             e.getEntity().setBedSpawnLocation(oldSpawnLocation, true);
                         }
-                    }.runTaskLater(NoxetServer.getPlugin(), 1);
+                    }.runTaskLater(NoxetServer.getPlugin(), 2);
+                case RESPAWN_KEEP_INVENTORY:
+                    e.setKeepInventory(true);
+                    e.setKeepLevel(true);
+                    e.getDrops().clear();
+                    e.setDroppedExp(0);
                 case RESPAWN_DROP_INVENTORY:
                     new BukkitRunnable() {
                         @Override
@@ -509,26 +534,41 @@ public abstract class MiniGameController implements Listener {
                     }.runTaskLater(NoxetServer.getPlugin(), 0);
                     break;
                 case SPECTATE:
-                    if(!addSpectator(e.getEntity()))
-                        removePlayer(e.getEntity()); // If player cannot spectate, just remove them from the game.
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if(addSpectator(e.getEntity())) {
+                                new Message("You died. Now spectating.").send(e.getEntity());
+                                e.getEntity().spigot().respawn();
+                            } else {
+                                removePlayer(e.getEntity()); // If player cannot spectate, just remove them from the game.
+                                new Message("§cSorry. Could not spectate.").send(e.getEntity());
+                            }
+                        }
+                    }.runTaskLater(NoxetServer.getPlugin(), 0);
                     break;
             }
 
             List<ItemStack> drops = handlePlayerDrops(e.getEntity());
             if(drops != null)
                 e.getDrops().addAll(drops);
-        }
+        } else if(isSpectator(e.getEntity()))
+            prepareSpectator(e.getEntity());
     }
 
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent e) {
-        if(isPlayer(e.getPlayer()))
+        if(isPlayer(e.getPlayer()) && hasStarted()) {
             handleRespawn(e.getPlayer());
+        } else if(!isSpectator(e.getPlayer()))
+            return;
+
+        e.setRespawnLocation(getSpawnLocation());
     }
 
     @EventHandler
     public void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
-        if(e.getFrom() == workingWorld)
+        if(isGameWorld(e.getFrom()))
             disbandPlayer(e.getPlayer());
     }
 
@@ -539,25 +579,31 @@ public abstract class MiniGameController implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent e) {
-        if(e.getBlock().getWorld() == workingWorld && !canPlayerModifyWorld(e.getPlayer()))
+        if(isGameWorld(e.getBlock().getWorld()) && !canPlayerModifyWorld(e.getPlayer()))
             e.setCancelled(true);
     }
 
     @EventHandler
     public void onPlayerDropItem(PlayerDropItemEvent e) {
-        if(e.getPlayer().getWorld() == workingWorld && !canPlayerModifyWorld(e.getPlayer()))
+        if(isGameWorld(e.getPlayer().getWorld()) && !canPlayerModifyWorld(e.getPlayer()))
             e.setCancelled(true);
     }
 
     @EventHandler
     public void onEntityPickupItem(EntityPickupItemEvent e) {
-        if(e.getItem().getWorld() == workingWorld && e.getEntity() instanceof Player && !canPlayerModifyWorld((Player) e.getEntity()))
+        if(isGameWorld(e.getItem().getWorld()) && e.getEntity() instanceof Player && !canPlayerModifyWorld((Player) e.getEntity()))
             e.setCancelled(true);
     }
 
     @EventHandler
     public void onEntityHurtEntity(EntityDamageByEntityEvent e) {
-        if(e.getDamager().getWorld() == workingWorld && e.getDamager() instanceof Player && !canPlayerModifyWorld((Player) e.getDamager()))
+        if(
+                isGameWorld(e.getDamager().getWorld()) &&
+                e.getDamager() instanceof Player &&
+                (!canPlayerModifyWorld((Player) e.getDamager()) || ( // Cancel if game does not allow world modification.
+                        !pvpAllowed && e.getEntity() instanceof Player // Cancel if PVP is disabled.
+                ))
+        )
             e.setCancelled(true);
     }
 
@@ -582,12 +628,44 @@ public abstract class MiniGameController implements Listener {
         return options;
     }
 
-    public World getWorkingWorld() {
-        return workingWorld;
+    public static World getMiniGameWorld() {
+        return new WorldCreator("mini_game_world").generator(new ChunkGenerator() {
+            @Override
+            @SuppressWarnings({"NullableProblems", "deprecation"})
+            public ChunkData generateChunkData(World world, Random random, int x, int z, BiomeGrid biome) {
+                return createChunkData(world);
+            }
+        }).createWorld();
     }
 
-    public void addTask(BukkitTask task) {
-        tasks.add(task);
+    public static boolean isGameWorld(World world) {
+        return getMiniGameWorld().equals(world);
+    }
+
+    public void scheduleTask(Runnable runnable, int delayTicks) {
+        taskSet.push(new BukkitRunnable() {
+            @Override
+            public void run() {
+                runnable.run();
+            }
+        }.runTaskLater(NoxetServer.getPlugin(), delayTicks));
+    }
+
+    public BukkitTask scheduleTaskTimer(Consumer<BukkitRunnable> runnable, int delayTicks, int periodTicks) {
+        BukkitTask task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                runnable.accept(this);
+            }
+        }.runTaskTimer(NoxetServer.getPlugin(), delayTicks, periodTicks);
+
+        taskSet.push(task);
+
+        return task;
+    }
+
+    public BukkitTask scheduleTaskTimer(Runnable runnable, int delayTicks, int periodTicks) {
+        return scheduleTaskTimer(__ -> runnable.run(), delayTicks, periodTicks);
     }
 
     public PlayerFreezer getFreezer() {
@@ -613,5 +691,65 @@ public abstract class MiniGameController implements Listener {
 
     public void bindActionToItem(ItemStack itemStack, Consumer<Player> action) {
         actionBoundItems.put(itemStack, action);
+    }
+
+    public void setPvpRule(boolean enabled) {
+        pvpAllowed = enabled;
+    }
+
+    public long getTicksSinceStart() {
+        return (System.currentTimeMillis() - startTimestamp) / 20_000;
+    }
+
+    private void allocateChunks() {
+        allocatedChunks.clear();
+
+        int chunksSquared = options.getWorldChunksSquared();
+
+        int worldChunksSquared = 60_000 / 16 - chunksSquared;
+
+        Random random = new Random();
+
+        int offsetX = random.nextInt(worldChunksSquared), offsetZ = random.nextInt(worldChunksSquared);
+
+        for(int x = 0; x < chunksSquared; x++)
+            for(int z = 0; z < chunksSquared; z++) {
+                Chunk chunk = getMiniGameWorld().getChunkAt(x + offsetX, z + offsetZ);
+
+                for(int bX = 0; bX < 16; bX++)
+                    for(int bZ = 0; bZ < 16; bZ++)
+                        for(int bY = getMiniGameWorld().getMinHeight(); bY < getMiniGameWorld().getMaxHeight(); bY++) {
+                            Block block = chunk.getBlock(bX, bY, bZ);
+                            if(!block.getType().isAir())
+                                block.setBlockData(Material.AIR.createBlockData());
+                        }
+
+                for(Entity entity : chunk.getEntities())
+                    entity.remove();
+
+                allocatedChunks.add(chunk);
+            }
+    }
+
+    public List<Chunk> getAllocatedChunks() {
+        return allocatedChunks;
+    }
+
+    public boolean doesOwnLocation(Location location) {
+        return allocatedChunks.contains(location.getChunk());
+    }
+
+    public Chunk getCenterChunk() {
+        return allocatedChunks.get(allocatedChunks.size() / 2);
+    }
+
+    public void forEachPlayer(Consumer<Player> playerConsumer) {
+        for(Player player : getPlayers())
+            playerConsumer.accept(player);
+    }
+
+    public void forEachSpectator(Consumer<Player> spectatorConsumer) {
+        for(Player player : getSpectators())
+            spectatorConsumer.accept(player);
     }
 }

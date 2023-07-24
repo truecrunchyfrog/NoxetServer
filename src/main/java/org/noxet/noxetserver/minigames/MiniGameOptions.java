@@ -1,7 +1,6 @@
 package org.noxet.noxetserver.minigames;
 
 import org.bukkit.GameMode;
-import org.bukkit.WorldCreator;
 
 public interface MiniGameOptions {
     enum SpectatorContract {
@@ -17,9 +16,13 @@ public interface MiniGameOptions {
 
     boolean allowPlayerDropIns();
 
-    WorldCreator getWorldCreator();
-
     GameMode getDefaultGameMode();
 
     SpectatorContract getSpectatorContract();
+
+    int getWorldChunksSquared();
+
+    MiniGameController initGame();
+
+    boolean shouldAnnounceAdvancements();
 }

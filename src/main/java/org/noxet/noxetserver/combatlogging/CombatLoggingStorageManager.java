@@ -1,7 +1,9 @@
-package org.noxet.noxetserver;
+package org.noxet.noxetserver.combatlogging;
 
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.util.ConfigManager;
 import org.noxet.noxetserver.playerstate.PlayerState;
+import org.noxet.noxetserver.realm.RealmManager;
 
 import java.util.List;
 

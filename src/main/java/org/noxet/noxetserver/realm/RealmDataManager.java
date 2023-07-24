@@ -1,7 +1,8 @@
-package org.noxet.noxetserver;
+package org.noxet.noxetserver.realm;
 
 
 import org.bukkit.Location;
+import org.noxet.noxetserver.util.ConfigManager;
 
 import javax.annotation.Nullable;
 

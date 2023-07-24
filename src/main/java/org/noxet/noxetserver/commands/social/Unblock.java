@@ -4,7 +4,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.UsernameStorageManager;
+import org.noxet.noxetserver.util.UsernameStorageManager;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.SuccessMessage;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
@@ -47,7 +47,7 @@ public class Unblock implements TabExecutor {
 
         playerDataManager.removeFromStringList(PlayerDataManager.Attribute.BLOCKED_PLAYERS, uuidToUnblock.toString()).save();
 
-        new SuccessMessage(unblockName + " is no longer blocked. They player can now message, friend request and TPA you.").send(player);
+        new SuccessMessage(unblockName + " is no longer blocked. They can now message, friend request and TPA you.").send(player);
 
         return true;
     }

@@ -1,8 +1,10 @@
 package org.noxet.noxetserver.minigames;
 
-import org.bukkit.World;
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.entity.Player;
+import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.WarningMessage;
+import org.noxet.noxetserver.minigames.party.Party;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -24,9 +26,11 @@ public class MiniGameManager {
 
     public static Set<MiniGameController> findGames(GameDefinition gameDefinition) {
         Set<MiniGameController> foundGames = new HashSet<>();
+
         for(MiniGameController eachGame : registeredGames)
             if(eachGame.getGame() == gameDefinition)
                 foundGames.add(eachGame);
+
         return foundGames;
     }
 
@@ -39,6 +43,7 @@ public class MiniGameManager {
         for(MiniGameController eachGame : registeredGames)
             if(eachGame.isPlayer(player))
                 return eachGame;
+
         return null;
     }
 
@@ -51,6 +56,7 @@ public class MiniGameManager {
         for(MiniGameController eachGame : registeredGames)
             if(eachGame.isSpectator(player))
                 return eachGame;
+
         return null;
     }
 
@@ -66,31 +72,37 @@ public class MiniGameManager {
         return playingIn != null ? playingIn : spectating;
     }
 
+    /**
+     * Check if a player is currently in a game that has not ended.
+     * This will only check if the player is participating, not spectating!
+     * @param player The player to check for
+     * @return true if the player is currently participating in a game that has not yet ended, otherwise false
+     */
     public static boolean isPlayerBusyInGame(Player player) {
         MiniGameController playersGame = findPlayersGame(player);
 
         return playersGame != null && !playersGame.hasEnded();
     }
 
-    /**
-     * Find the game that is running on a world. Players in a game may not actually be in the game's world (when game is stalling), so be careful with this.
-     * @param world The world to search for
-     * @return The game instance that has the world if found, otherwise null
-     */
-    public static MiniGameController findWorldsGame(World world) {
-        for(MiniGameController eachGame : registeredGames)
-            if(eachGame.getWorkingWorld() == world)
-                return eachGame;
-        return null;
-    }
+    public static void playGame(Player player, GameDefinition game) {
+        Party party = Party.getPartyFromMember(player);
 
-    public static boolean joinGame(Player player, GameDefinition game) {
+        if(party != null) {
+            if(!party.isOwner(player)) {
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are in a party. Only the party owner can join games for the party.\nYou can leave the party to play by yourself, or have the owner transfer the ownership to you to start games yourself.").send(player);
+                return;
+            }
+
+            partyPlayGame(party, game);
+            return;
+        }
+
         Set<MiniGameController> games = findGames(game);
 
         MiniGameController selectedGame = null;
 
         for(MiniGameController eachGame : games)
-            if(!eachGame.isFull() && (selectedGame == null ||
+            if(!eachGame.isFull() && (!eachGame.hasStarted() || (eachGame.isPlaying() && eachGame.getOptions().allowPlayerDropIns())) && (selectedGame == null ||
                     (
                             (selectedGame.enoughPlayers() &&
                             !eachGame.enoughPlayers()) || // Prioritize this game, with not enough players.
@@ -100,15 +112,55 @@ public class MiniGameManager {
                 selectedGame = eachGame;
 
         if(selectedGame == null)
-            return false;
+            selectedGame = createNewGame(game);
 
-        return selectedGame.addPlayer(player);
+        assert selectedGame != null;
+
+        selectedGame.addPlayer(player);
+    }
+
+    public static void partyPlayGame(Party party, GameDefinition game) {
+        if(game.getOptions().getMaxPlayers() < party.getMembers().size()) {
+            party.sendPartyMessage(new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Tried to join a game of " + game.getOptions().getDisplayName() + ", but there are too many players in this party. The game can only allow " + game.getOptions().getMaxPlayers() + " players, but there are " + party.getMembers().size() + " players in this party."));
+            return;
+        }
+
+        if(!party.isPartyReadyForGame()) {
+            new WarningMessage("Cannot join game, because all members may not be ready.")
+                    .addButton(
+                            "Kick busy players (" + party.getBusyMembers().size() + ") from party",
+                            ChatColor.RED,
+                            "Kick all the players who are already in games from the party",
+                            "party kick-busy"
+                    )
+                    .send(party.getOwner());
+
+            return;
+        }
+
+        Set<MiniGameController> games = findGames(game);
+
+        MiniGameController selectedGame = null;
+
+        for(MiniGameController eachGame : games)
+            if(eachGame.getOptions().getMaxPlayers() - eachGame.getPlayers().size() >= party.getMembers().size()) {
+                selectedGame = eachGame;
+                break;
+            }
+
+        if(selectedGame == null)
+            selectedGame = createNewGame(game);
+
+        assert selectedGame != null;
+
+        selectedGame.addParty(party);
     }
 
     public static MiniGameController getGameFromId(String id) {
         for(MiniGameController eachGame : registeredGames)
             if(eachGame.getGameId().equals(id))
                 return eachGame;
+
         return null;
     }
 
@@ -119,5 +171,14 @@ public class MiniGameManager {
         }
 
         return game.createGame();
+    }
+
+    public static int countPlayersInGame(GameDefinition game) {
+        int count = 0;
+
+        for(MiniGameController eachMiniGame : findGames(game))
+            count += eachMiniGame.getPlayers().size();
+
+        return count;
     }
 }

@@ -6,13 +6,14 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.menus.HubInventory;
+import org.noxet.noxetserver.menus.inventorysetups.HubInventorySetup;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.UUID;
 
 public class PlayerState {
 
@@ -39,13 +40,21 @@ public class PlayerState {
         return playerStateDir;
     }
 
+    private static File getStateFile(UUID uuid) {
+        return new File(getDirectory(), uuid + ".yml");
+    }
+
     /**
      * Gets the state file of a player. The state file can contain multiple sections of multiple states for different worlds/events.
      * @param player The player whose state should be given
      * @return The player's state file
      */
     private static File getStateFile(Player player) {
-        return new File(getDirectory(), player.getUniqueId() + ".yml");
+        return getStateFile(player.getUniqueId());
+    }
+    
+    public static void deleteStateFile(UUID uuid) {
+        getStateFile(uuid).delete();
     }
 
     /**
@@ -157,6 +166,7 @@ public class PlayerState {
 
         player.setInvulnerable(true);
         player.setInvisible(true);
+        player.setCollidable(false);
 
         player.setAllowFlight(true);
         player.setFlying(true);
@@ -173,6 +183,7 @@ public class PlayerState {
 
         player.setInvulnerable(false);
         player.setInvisible(false);
+        player.setCollidable(true);
 
         player.setAllowFlight(false);
         player.setFlying(false);
@@ -184,7 +195,7 @@ public class PlayerState {
         player.setAllowFlight(true);
         player.setGameMode(GameMode.SURVIVAL);
         player.getInventory().setHeldItemSlot(3);
-        HubInventory.applyToPlayer(player);
+        new HubInventorySetup().applyToPlayer(player);
     }
 
     /**

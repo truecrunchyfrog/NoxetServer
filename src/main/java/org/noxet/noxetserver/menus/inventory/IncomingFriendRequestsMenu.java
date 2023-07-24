@@ -3,7 +3,7 @@ package org.noxet.noxetserver.menus.inventory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.UsernameStorageManager;
+import org.noxet.noxetserver.util.UsernameStorageManager;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.util.InventoryCoordinate;

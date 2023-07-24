@@ -10,7 +10,7 @@ import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.messaging.channels.MessagingChannel;
 import org.noxet.noxetserver.util.TextBeautifier;
 
@@ -105,6 +105,11 @@ public class Message {
     }
 
     public void send(CommandSender commandSender) {
+        if(commandSender instanceof Player) {
+            send((Player) commandSender);
+            return;
+        }
+
         commandSender.spigot().sendMessage(getBakedMessage());
     }
 

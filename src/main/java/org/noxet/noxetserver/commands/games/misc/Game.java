@@ -13,11 +13,11 @@ import org.noxet.noxetserver.messaging.SuccessMessage;
 import org.noxet.noxetserver.minigames.GameDefinition;
 import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.minigames.MiniGameManager;
+import org.noxet.noxetserver.minigames.party.Party;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 public class Game implements TabExecutor {
     @Override
@@ -59,8 +59,7 @@ public class Game implements TabExecutor {
                 return true;
             }
 
-            if(!MiniGameManager.joinGame(player, gameToPlay))
-                Objects.requireNonNull(MiniGameManager.createNewGame(gameToPlay)).addPlayer(player);
+            MiniGameManager.playGame(player, gameToPlay);
 
             return true;
         } else if(strings[0].equalsIgnoreCase("join")) {
@@ -70,6 +69,11 @@ public class Game implements TabExecutor {
             }
 
             Player player = (Player) commandSender;
+
+            if(Party.isPlayerMemberOfParty(player)) {
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are in a party, and cannot join games alone.").send(player);
+                return true;
+            }
 
             if(strings.length < 2) {
                 new ErrorMessage(ErrorMessage.ErrorType.ARGUMENT, "Missing argument: ID of game to join.").send(player);
@@ -107,6 +111,8 @@ public class Game implements TabExecutor {
             }
 
             game.disbandPlayer(player); // Try to remove both as player and spectator.
+
+            new Message("§cYou left the game.").send(player);
 
             return true;
         } else if(strings[0].equalsIgnoreCase("spectate")) {
@@ -170,17 +176,17 @@ public class Game implements TabExecutor {
                     "Spectate",
                     ChatColor.GOLD,
                     "Spectate this game",
-                    "game spectate " + game.getGame()
+                    "game spectate " + game.getGameId()
             ).addButton(
                     "Stop",
                     ChatColor.RED,
                     "Soft stop this game",
-                    "game stop " + game.getGameId()
+                    "game stop soft " + game.getGameId()
             ).addButton(
                     "Hard-stop",
                     ChatColor.DARK_RED,
                     "Hard stop this game (instant stop)",
-                    "game hard-stop " + game.getGameId()
+                    "game stop hard " + game.getGameId()
             ).send(commandSender);
 
             return true;
@@ -271,12 +277,53 @@ public class Game implements TabExecutor {
                 new Message("§4Soft stop margin: " + ticks / 20 + " seconds.").send(commandSender);
             }
 
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    new SuccessMessage("Game " + game.getGameId() + " stopped.").send(commandSender);
+            game.scheduleTask(() -> new SuccessMessage("Game " + game.getGameId() + " stopped.").send(commandSender),
+                    Math.max(ticks - 1, 0));
+
+            return true;
+        } else if(strings[0].equalsIgnoreCase("debug-create")) {
+            if(!(commandSender instanceof Player)) {
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Only players can create games.").send(commandSender);
+                return true;
+            }
+
+            if(!commandSender.isOp()) {
+                new ErrorMessage(ErrorMessage.ErrorType.PERMISSION, "Only operators can create games.").send(commandSender);
+                return true;
+            }
+
+            Player player = (Player) commandSender;
+
+            if(strings.length < 2) {
+                new ErrorMessage(ErrorMessage.ErrorType.ARGUMENT, "Missing argument: what game to play.").send(player);
+                return true;
+            }
+
+            GameDefinition gameToPlay = null;
+
+            for(GameDefinition gameDefinition : GameDefinition.values())
+                if(gameDefinition.getOptions().getId().equals(strings[1])) {
+                    gameToPlay = gameDefinition;
+                    break;
                 }
-            }.runTaskLater(NoxetServer.getPlugin(), ticks);
+
+            if(gameToPlay == null) {
+                new ErrorMessage(ErrorMessage.ErrorType.ARGUMENT, "That is not a mini-game.").send(player);
+                return true;
+            }
+
+            if(MiniGameManager.isPlayerBusyInGame(player)) {
+                new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are already in a game.").send(player);
+                return true;
+            }
+
+            MiniGameController game = MiniGameManager.createNewGame(gameToPlay);
+
+            if(game == null)
+                return true;
+
+            game.addPlayer(player);
+            game.start(); // start() does not check for minimum player requirement, so the game will start anyway.
 
             return true;
         } else {
@@ -291,10 +338,11 @@ public class Game implements TabExecutor {
         List<String> completions = new ArrayList<>();
 
         if(strings.length == 1) {
-            completions.addAll(Arrays.asList("play", "join", "leave", "spectate", "info", "list", "stop"));
+            completions.addAll(Arrays.asList("play", "join", "leave", "spectate", "info", "list", "stop", "debug-create"));
         } else if(strings.length == 2) {
             switch(strings[0].toLowerCase()) {
                 case "play":
+                case "debug-create":
                     for(GameDefinition eachGameDefinition : GameDefinition.values())
                         completions.add(eachGameDefinition.getOptions().getId());
                     break;

@@ -4,8 +4,8 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.noxet.noxetserver.NoxetServer;
-import org.noxet.noxetserver.RealmManager;
-import org.noxet.noxetserver.UsernameStorageManager;
+import org.noxet.noxetserver.realm.RealmManager;
+import org.noxet.noxetserver.util.UsernameStorageManager;
 import org.noxet.noxetserver.commands.social.Friend;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.chat.ChatPromptMenu;
@@ -19,7 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
+import static org.noxet.noxetserver.realm.RealmManager.getCurrentRealm;
 
 public class FriendsMenu extends InventoryMenu {
     private final Player player;

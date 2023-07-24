@@ -4,10 +4,10 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.realm.RealmManager;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 
-import static org.noxet.noxetserver.RealmManager.migrateToRealm;
+import static org.noxet.noxetserver.realm.RealmManager.migrateToRealm;
 
 @SuppressWarnings("ALL")
 public class Anarchy implements CommandExecutor {

@@ -6,6 +6,7 @@ import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.*;
+import org.bukkit.advancement.AdvancementDisplay;
 import org.bukkit.block.data.type.Bed;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -20,23 +21,28 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import org.noxet.noxetserver.combatlogging.CombatLogging;
+import org.noxet.noxetserver.combatlogging.CombatLoggingStorageManager;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
 import org.noxet.noxetserver.commands.social.MsgConversation;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
-import org.noxet.noxetserver.menus.HubInventory;
 import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
+import org.noxet.noxetserver.menus.inventory.SettingsMenu;
 import org.noxet.noxetserver.menus.inventory.SocialMenu;
+import org.noxet.noxetserver.menus.inventorysetups.HubInventorySetup;
 import org.noxet.noxetserver.messaging.*;
 import org.noxet.noxetserver.minigames.MiniGameController;
+import org.noxet.noxetserver.minigames.MiniGameManager;
+import org.noxet.noxetserver.minigames.party.Party;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
-import org.noxet.noxetserver.util.FancyTimeConverter;
-import org.noxet.noxetserver.util.TextBeautifier;
+import org.noxet.noxetserver.realm.RealmManager;
+import org.noxet.noxetserver.util.*;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 
 import java.util.*;
 
-import static org.noxet.noxetserver.RealmManager.*;
+import static org.noxet.noxetserver.realm.RealmManager.*;
 
 public class Events implements Listener {
     public enum TemporaryCommand {
@@ -99,10 +105,22 @@ public class Events implements Listener {
         }
     }
 
+    @EventHandler
+    public void onPlayerChangedWorld(PlayerChangedWorldEvent e) {
+        updatePlayerListName(e.getPlayer());
+    }
+
     private static final Map<Player, Long> playersTimePlayed = new HashMap<>();
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) {
+        PlayerDataEraser playerDataEraser = new PlayerDataEraser();
+
+        if(playerDataEraser.cancelPlayerDataErasePlan(e.getPlayer().getUniqueId()))
+            new NoteMessage("Planned data removal canceled!\nThe data for your Minecraft account on Noxet was requested to be deleted. You have now aborted this.").send(e.getPlayer());
+
+        playerDataEraser.performDataErasureCheck(); // Check for passed data deletion requests when a player has joined.
+
         PlayerDataManager.clearCacheForUUID(e.getPlayer().getUniqueId());
 
         new Message("§3■ " + TextBeautifier.beautify("Absorb the Echoes: ", false) + "§b§l" + TextBeautifier.beautify("noxet.org") + "§3!").send(e.getPlayer());
@@ -181,7 +199,12 @@ public class Events implements Listener {
     public static void updatePlayerListName(Player player) {
         Realm realm = getCurrentRealm(player);
 
-        String playerListPrefix = (realm != null ? "§e" + TextBeautifier.beautify(realm.getDisplayName()) + "§r " : "") + "§7";
+        String playerListPrefix = "§7";
+
+        if(realm != null)
+            playerListPrefix = "§e" + TextBeautifier.beautify(realm.getDisplayName()) + "§r ";
+        else if(MiniGameManager.isPlayerBusyInGame(player))
+            playerListPrefix = "§3" + TextBeautifier.beautify("in-game") + "§r ";
 
         player.setPlayerListName(playerListPrefix + player.getDisplayName());
     }
@@ -190,13 +213,14 @@ public class Events implements Listener {
     public void onPlayerQuit(PlayerQuitEvent e) {
         Player player = e.getPlayer();
 
-        migratingPlayers.remove(player);
+        setPlayerMigrationStatus(player, false);
         Captcha.stopPlayerCaptcha(player);
         TeleportAsk.abortPlayerRelatedRequests(player);
         abortUnconfirmedPlayerRespawn(player);
         MsgConversation.clearActiveConversationModes(player);
         PlayerDataManager.clearCacheForUUID(player.getUniqueId());
         CombatLogging.triggerLocationDisband(player);
+        Party.abandonPlayer(player);
 
         PlayerDataManager playerDataManager = new PlayerDataManager(player);
 
@@ -215,17 +239,27 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent e) {
-        Realm realm = getCurrentRealm(e.getEntity());
+        Player player = e.getEntity();
+
+        CombatLogging.clearCombatLog(player);
+
+        Realm realm = getCurrentRealm(player);
 
         String deathMessage = e.getDeathMessage();
         e.setDeathMessage(null);
 
-        if(realm == null)
+        Message newDeathMessage = new Message("§4☠ §c" + deathMessage + ".");
+
+        if(realm == null) {
+            MiniGameController inGame = MiniGameManager.findPlayersGame(player);
+            if(inGame != null)
+                inGame.sendGameMessage(newDeathMessage);
             return;
+        }
 
-        Player player = e.getEntity();
+        newDeathMessage.send(realm);
 
-        migratingPlayers.add(player);
+        setPlayerMigrationStatus(player, true);
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(NoxetServer.getPlugin(), () -> {
             player.sendTitle("§4☠", "§cYou died...", 40, 60, 20);
@@ -243,24 +277,25 @@ public class Events implements Listener {
                 }.runTaskLater(NoxetServer.getPlugin(), i * 5);
             }
         }, 2);
-
-        new Message("§c" + deathMessage + ".").send(getCurrentRealm(player));
     }
 
     @EventHandler
     public void onPlayerSpawnLocation(PlayerSpawnLocationEvent e) {
-        if(e.getSpawnLocation().getWorld() != null && (e.getSpawnLocation().getWorld().getName().equals("world") || e.getSpawnLocation().getWorld().getName().startsWith(MiniGameController.gameWorldPrefix)))
+        if(e.getSpawnLocation().getWorld() != null && RealmManager.getRealmFromWorld(e.getSpawnLocation().getWorld()) == null)
             e.setSpawnLocation(RealmManager.getMainSpawn());
     }
 
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent e) {
-        setTemporaryInvulnerability(e.getPlayer());
+        if(RealmManager.getCurrentRealm(e.getPlayer()) != null)
+            setTemporaryInvulnerability(e.getPlayer());
+        else if(MiniGameManager.isPlayerBusyInGame(e.getPlayer()))
+            return;
 
         new BukkitRunnable() {
             @Override
             public void run() {
-                migratingPlayers.remove(e.getPlayer());
+                setPlayerMigrationStatus(e.getPlayer(), true);
             }
         }.runTaskLater(NoxetServer.getPlugin(), 20);
 
@@ -270,6 +305,14 @@ public class Events implements Listener {
     @EventHandler
     public void onPlayerAdvancementDone(PlayerAdvancementDoneEvent e) {
         e.getPlayer().getWorld().setGameRule(GameRule.ANNOUNCE_ADVANCEMENTS, false);
+
+        MiniGameController game = MiniGameManager.findPlayersGame(e.getPlayer());
+
+        if(game != null) {
+            AdvancementDisplay advancementDisplay = e.getAdvancement().getDisplay();
+            if(advancementDisplay != null && advancementDisplay.shouldAnnounceChat())
+                game.sendGameMessage(new Message("§e" + e.getPlayer().getName() + " just advanced! " + "§a§o" + advancementDisplay.getTitle() + ": " + advancementDisplay.getDescription()));
+        }
     }
 
     @EventHandler
@@ -291,7 +334,7 @@ public class Events implements Listener {
             if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE)) {
                 new Message(
                         "§eHello, " + e.getPlayer().getName() + "!\n" +
-                            "Please read a message from us before you can chat.\n"
+                                "Please read a message from us before you can chat.\n"
                 ).addButton(
                         "Read",
                         ChatColor.GREEN,
@@ -307,19 +350,32 @@ public class Events implements Listener {
             }
 
             Realm realm = getCurrentRealm(e.getPlayer());
+            MiniGameController game = null;
 
-            String channelName = realm != null ? realm.getDisplayName() : (NoxetServer.ServerWorld.HUB.getWorld().equals(e.getPlayer().getWorld()) ? "HUB" : null);
+            String channelName = null;
+
+            if(realm != null) {
+                channelName = realm.getDisplayName();
+            } else if(NoxetServer.ServerWorld.HUB.getWorld().equals(e.getPlayer().getWorld())) {
+                channelName = "Hub";
+            } else {
+                game = MiniGameManager.findPlayersOrSpectatorsGame(e.getPlayer());
+                if(game != null && game.hasStarted())
+                    channelName = game.isPlayer(e.getPlayer()) ? "Game" : "Game Spectator";
+                else if(game != null)
+                    game = null;
+            }
 
             Message message = new Message(
                     (channelName != null ? "§7" + TextBeautifier.beautify(channelName) + "§8⏵ " : "") + "§3" + e.getPlayer().getDisplayName() + "§8→ §f" + e.getMessage());
             message.setPrefix(null);
 
-            message.broadcast();
-
-            /*if(realm != null)
-                message.send(realm);
+            if(game != null)
+                game.sendGameMessage(message); // In game? Send message to the game.
+            else if(realm != null)
+                message.send(realm); // In a realm? Send message to the realm.
             else
-                message.send(NoxetServer.ServerWorld.HUB.getWorld());*/
+                message.send(e.getPlayer().getWorld()); // Not in a game or realm? Send only to the player's world.
         }
     }
 
@@ -492,11 +548,14 @@ public class Events implements Listener {
         }
 
         if(e.getItem() != null && e.getAction() != Action.PHYSICAL) {
-            if(e.getItem().equals(HubInventory.getGameNavigator())) {
+            if(e.getItem().equals(HubInventorySetup.gameNavigator)) {
                 new GameNavigationMenu().openInventory(e.getPlayer());
                 e.setCancelled(true);
-            } else if(e.getItem().equals(HubInventory.getSocialNavigator())) {
+            } else if(e.getItem().equals(HubInventorySetup.socialNavigator)) {
                 new SocialMenu(e.getPlayer()).openInventory(e.getPlayer());
+                e.setCancelled(true);
+            } else if(e.getItem().equals(HubInventorySetup.settings)) {
+                new SettingsMenu().openInventory(e.getPlayer());
                 e.setCancelled(true);
             }
         }
@@ -595,6 +654,12 @@ public class Events implements Listener {
     }
 
     @EventHandler
+    public void onPlayerSwapHandItems(PlayerSwapHandItemsEvent e) {
+        if(e.getPlayer().getWorld() == NoxetServer.ServerWorld.HUB.getWorld() || invulnerablePlayers.contains(e.getPlayer()))
+            e.setCancelled(true);
+    }
+
+    @EventHandler
     public void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent e) {
         if(invulnerablePlayers.contains(e.getPlayer()))
             e.setCancelled(true);
@@ -630,11 +695,21 @@ public class Events implements Listener {
 
     @EventHandler
     public void onEntityPortal(EntityPortalEvent e) {
+        if(MiniGameController.isGameWorld(e.getFrom().getWorld())) {
+            e.setCancelled(true);
+            return;
+        }
+
         handlePortalTeleport(e.getFrom(), e.getTo());
     }
 
     @EventHandler
     public void onPlayerPortal(PlayerPortalEvent e) {
+        if(MiniGameController.isGameWorld(e.getFrom().getWorld())) {
+            e.setCancelled(true);
+            return;
+        }
+
         handlePortalTeleport(e.getFrom(), e.getTo());
     }
 

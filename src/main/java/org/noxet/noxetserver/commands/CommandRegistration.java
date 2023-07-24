@@ -13,6 +13,7 @@ import org.noxet.noxetserver.commands.games.creepersweeper.ClearCreeperSweeperSt
 import org.noxet.noxetserver.commands.games.creepersweeper.CreeperSweeper;
 import org.noxet.noxetserver.commands.games.misc.Game;
 import org.noxet.noxetserver.commands.games.misc.GameSelector;
+import org.noxet.noxetserver.commands.games.misc.PartyCommand;
 import org.noxet.noxetserver.commands.misc.CanvasWorld;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
 import org.noxet.noxetserver.commands.misc.EnderChest;
@@ -85,7 +86,9 @@ public class CommandRegistration {
 
             new CommandDefinition("enderchest", new EnderChest()),
 
-            new CommandDefinition("game", new Game())
+            new CommandDefinition("game", new Game()),
+
+            new CommandDefinition("party", new PartyCommand())
     ));
     
     public static void registerCommands() {

@@ -47,11 +47,11 @@ public class WorldEaterTeamSelectionMenu extends InventoryMenu {
         timer = new BukkitRunnable() {
             @Override
             public void run() {
-                if(--timeLeft == 0)
+                if(--timeLeft == 0 || ((seekers.size() == 0 && hiders.size() == 0) || game.hasEnded()))
                     stop();
                 updateInventory();
             }
-        }.runTaskTimer(NoxetServer.getPlugin(), 60, 20);
+        }.runTaskTimer(NoxetServer.getPlugin(), 120, 20);
 
         this.callback = callback;
     }
@@ -71,6 +71,18 @@ public class WorldEaterTeamSelectionMenu extends InventoryMenu {
         ), 0, 1);
 
         int x = 0;
+
+        while(++x < 9) {
+            for(int y = 0; y < 2; y++)
+                setSlotItem(ItemGenerator.generateItem(
+                        Material.LIGHT_GRAY_STAINED_GLASS_PANE,
+                        "§7Click to play as a",
+                        Collections.singletonList(y == 0 ? "§c§lSEEKER" : "§a§lHIDER")
+                ), x, y);
+        }
+
+        x = 0;
+
         for(Player seeker : seekers)
             setSlotItem(ItemGenerator.generatePlayerSkull(
                     seeker,
@@ -85,10 +97,10 @@ public class WorldEaterTeamSelectionMenu extends InventoryMenu {
                     hider,
                     "§a§lHIDER: §b" + hider.getName(),
                     null
-            ), ++x, 0);
+            ), ++x, 1);
 
         setSlotItem(ItemGenerator.generateItem(
-                Material.CLOCK,
+                timeLeft % 2 == 0 ? Material.CLOCK : Material.LIGHT_GRAY_STAINED_GLASS_PANE,
                 timeLeft,
                 "§c" + timeLeft + "§es",
                 Arrays.asList("§euntil start.", "§aReady up to skip waiting.")
@@ -151,7 +163,9 @@ public class WorldEaterTeamSelectionMenu extends InventoryMenu {
         disbandRemovedPlayers();
 
         timer.cancel();
-        callback.accept(this);
+        if(!game.hasEnded())
+            callback.accept(this);
+
         super.stop();
     }
 

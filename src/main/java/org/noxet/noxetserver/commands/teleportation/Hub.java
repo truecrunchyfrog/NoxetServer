@@ -6,7 +6,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 
-import static org.noxet.noxetserver.RealmManager.goToHub;
+import static org.noxet.noxetserver.realm.RealmManager.goToHub;
 
 @SuppressWarnings("ALL")
 public class Hub implements CommandExecutor {

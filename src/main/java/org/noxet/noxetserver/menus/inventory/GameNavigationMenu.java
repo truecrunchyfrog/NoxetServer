@@ -5,7 +5,9 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
-import org.noxet.noxetserver.RealmManager;
+import org.noxet.noxetserver.realm.RealmManager;
+import org.noxet.noxetserver.minigames.GameDefinition;
+import org.noxet.noxetserver.minigames.MiniGameManager;
 import org.noxet.noxetserver.util.TextBeautifier;
 import org.noxet.noxetserver.util.InventoryCoordinate;
 
@@ -58,7 +60,7 @@ public class GameNavigationMenu extends InventoryMenu {
                 "WorldEater",
                 ChatColor.DARK_GREEN,
                 Arrays.asList("Hide and seek in one chunk.", "Hiders win if survived for", "30 minutes."),
-                0,
+                MiniGameManager.countPlayersInGame(GameDefinition.WORLD_EATER),
                 Material.SPRUCE_LOG
         ), GameSlot.WORLD_EATER);
 
@@ -99,7 +101,7 @@ public class GameNavigationMenu extends InventoryMenu {
         if(coordinate.isAt(GameSlot.ANARCHY_ISLAND)) {
             RealmManager.migrateToRealm(player, RealmManager.Realm.ANARCHY);
         } else if(coordinate.isAt(GameSlot.WORLD_EATER)) {
-            player.performCommand("eatworld play");
+            player.performCommand("game play world-eater");
         } else if(coordinate.isAt(GameSlot.SMP)) {
             RealmManager.migrateToRealm(player, RealmManager.Realm.SMP);
         } else if(coordinate.isAt(GameSlot.CREEPER_SWEEPER)) {

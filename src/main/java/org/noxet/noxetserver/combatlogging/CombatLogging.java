@@ -1,4 +1,4 @@
-package org.noxet.noxetserver;
+package org.noxet.noxetserver.combatlogging;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -6,20 +6,25 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.messaging.Message;
+import org.noxet.noxetserver.minigames.MiniGameManager;
 
 import java.util.*;
 
-import static org.noxet.noxetserver.RealmManager.getCurrentRealm;
+import static org.noxet.noxetserver.realm.RealmManager.getCurrentRealm;
 
 public class CombatLogging {
     private static final Map<Player, BukkitTask> combatLogged = new HashMap<>();
     private static final int combatLogTimeout = 20 * 20;
 
     public static void triggerCombatLog(Player player) {
+        if(MiniGameManager.isPlayerBusyInGame(player))
+            return;
+
         BukkitTask existingTask = combatLogged.remove(player);
         if(existingTask != null)
-            existingTask.cancel(); // If already combat logged: cancel the timeout and set a new one:
+            existingTask.cancel(); // If already combat logged: cancel the timeout and set a new one.
         else
             new Message("§c§lCOMBAT!§7 Logging out or teleporting away while in combat will kill you.").send(player);
 
@@ -65,5 +70,11 @@ public class CombatLogging {
 
         playerInventory.clear();
         new CombatLoggingStorageManager().setPlayerCombatLogMode(player, getCurrentRealm(player), true);
+    }
+
+    public static void clearCombatLog(Player player) {
+        BukkitTask timeoutTask = combatLogged.remove(player);
+        if(timeoutTask != null)
+            timeoutTask.cancel();
     }
 }

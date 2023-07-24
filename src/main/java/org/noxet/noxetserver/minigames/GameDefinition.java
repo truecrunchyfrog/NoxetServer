@@ -1,16 +1,10 @@
 package org.noxet.noxetserver.minigames;
 
 import org.bukkit.GameMode;
-import org.bukkit.World;
-import org.bukkit.WorldCreator;
-import org.bukkit.generator.ChunkGenerator;
 import org.noxet.noxetserver.minigames.worldeater.WorldEater;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.Random;
-
 public enum GameDefinition {
-    WORLD_EATER(WorldEater.class, new MiniGameOptions() {
+    WORLD_EATER(new MiniGameOptions() {
         @Override
         public String getId() {
             return "world-eater";
@@ -37,34 +31,34 @@ public enum GameDefinition {
         }
 
         @Override
-        public WorldCreator getWorldCreator() {
-            return voidWorldCreator;
-        }
-
-        @Override
         public GameMode getDefaultGameMode() {
             return GameMode.SURVIVAL;
         }
 
         @Override
         public SpectatorContract getSpectatorContract() {
-            return null;
+            return SpectatorContract.ALL;
         }
-    });
 
-    public static final WorldCreator voidWorldCreator = new WorldCreator("void").generator(new ChunkGenerator() {
         @Override
-        @SuppressWarnings({"NullableProblems", "deprecation"})
-        public ChunkData generateChunkData(World world, Random random, int x, int z, BiomeGrid biome) {
-            return createChunkData(world);
+        public int getWorldChunksSquared() {
+            return 5;
+        }
+
+        @Override
+        public MiniGameController initGame() {
+            return new WorldEater();
+        }
+
+        @Override
+        public boolean shouldAnnounceAdvancements() {
+            return true;
         }
     });
 
     private final MiniGameOptions options;
-    private final Class<? extends MiniGameController> clazz;
 
-    GameDefinition(Class<? extends MiniGameController> clazz, MiniGameOptions options) {
-        this.clazz = clazz;
+    GameDefinition(MiniGameOptions options) {
         this.options = options;
     }
 
@@ -73,10 +67,6 @@ public enum GameDefinition {
     }
 
     public MiniGameController createGame() {
-        try {
-            return clazz.getDeclaredConstructor().newInstance();
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
+        return options.initGame();
     }
 }

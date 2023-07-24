@@ -2,20 +2,25 @@ package org.noxet.noxetserver.minigames.worldeater;
 
 import org.bukkit.*;
 import org.bukkit.block.Biome;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Firework;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.inventory.FurnaceSmeltEvent;
+import org.bukkit.event.inventory.FurnaceStartSmeltEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.generator.BiomeProvider;
 import org.bukkit.generator.WorldInfo;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.scoreboard.*;
-import org.bukkit.util.Consumer;
+import org.noxet.noxetserver.Events;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.menus.ItemGenerator;
 import org.noxet.noxetserver.menus.inventory.WorldEaterTeamSelectionMenu;
@@ -25,193 +30,38 @@ import org.noxet.noxetserver.messaging.Message;
 import org.noxet.noxetserver.minigames.GameDefinition;
 import org.noxet.noxetserver.minigames.MiniGameController;
 import org.noxet.noxetserver.playerstate.PlayerState;
-import org.noxet.noxetserver.util.FancyTimeConverter;
-import org.noxet.noxetserver.util.RegionBinder;
-import org.noxet.noxetserver.util.TextBeautifier;
+import org.noxet.noxetserver.util.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
 public class WorldEater extends MiniGameController {
-    private final Set<Player> hiders;
-    private Team seekersTeam;
-    private Team hidersTeam;
-    private Scoreboard scoreboard;
-    private final RegionBinder regionBinder = new RegionBinder(getCenterTopLocation(), 64, 120);
+    private final TeamSet teamSet = new TeamSet(getPlayers(), WorldEaterTeams.SEEKER, WorldEaterTeams.HIDER);
+    private GameResult result = GameResult.TIE;
     private static final String cacheWorldName = "WORLDEATER_CACHE";
-
-    /**
-     * Used for accessing the game instance from other scopes.
-     */
-    private final WorldEater controllerInstance = this;
+    private int startY, nextLayer, layerRemoveSpeed;
+    private long nextLayerDisappearsAt;
+    private final Set<FallingBlock> fallingBlockLootBoxes = new HashSet<>();
+    private final Set<Block> placedLootBoxes = new HashSet<>();
+    private final Set<Location> playerPlacedBlocks = new HashSet<>();
 
     @Override
     public void handlePreStart() {
-        gameBuilder();
-    }
-
-    @Override
-    public void handleStart() {
-    }
-
-    @Override
-    public void handlePlayerJoin(Player player) {
-
-    }
-
-    @Override
-    public void handlePlayerLeave(Player player) {
-        if(isPlaying()) {
-            if(isHider(player)) { // Hider left.
-                hiders.remove(player);
-
-                if(hiders.isEmpty()) { // No hider remains.
-                    sendGameMessage(new Message("§cThere is no hider remaining, so the game is over."));
-                    finish(GameResult.TIE);
-                }
-            } else if(getPlayers().size() == hiders.size()) { // Only hiders remain.
-                sendGameMessage(new Message("§cThere is no seeker remaining, so the game is over."));
-                finish(GameResult.TIE);
-            } else if(getPlayers().size() == 1) { // Only 1 player remain.
-                sendGameMessage(new Message("§cEverybody else quit. The game is over. :("));
-                finish(GameResult.TIE);
-            }
-        }
-    }
-
-    @Override
-    public void handlePlayerRemoved(Player player) {
-        getFreezer().unfreeze(player);
-    }
-
-    @Override
-    public int handleSoftStop() {
-        return 20 * 15;
-    }
-
-    @Override
-    public void handlePostStop() {
-        if(scoreboard != null)
-            scoreboard.getObjectives().forEach(Objective::unregister);
-
-        if(seekersTeam != null)
-            for(String entry : seekersTeam.getEntries())
-                seekersTeam.removeEntry(entry);
-
-        if(hidersTeam != null)
-            for(String entry : hidersTeam.getEntries())
-                hidersTeam.removeEntry(entry);
-    }
-
-    @Override
-    public DeathContract handleDeath(Player player) {
-        return isSeeker(player) ? DeathContract.SPECTATE : DeathContract.RESPAWN_SAME_LOCATION_KEEP_INVENTORY;
-    }
-
-    @Override
-    public List<ItemStack> handlePlayerDrops(Player deadPlayer) {
-        if(isSeeker(deadPlayer)) {
-            ItemStack item = ItemGenerator.generatePlayerSkull(
-                    deadPlayer,
-                    "§c§lGift of the Ghosts §8[ §eRight-click for invisibility §8]",
-                    Collections.singletonList("§eRight-click to become invisible for 20 seconds.")
-            );
-
-            bindActionToItem(item, affectedPlayer -> {
-                if(isHider(affectedPlayer)) {
-                    affectedPlayer.playSound(affectedPlayer, Sound.ENTITY_CAT_HISS, 1, 0.5f);
-                    affectedPlayer.sendTitle("§aInvisible", "§3You are now §ninvisible§3.", 10, 20 * 3, 10);
-                    new Message("§eYou are now invisible for §c20§e seconds.").send(affectedPlayer);
-
-                    affectedPlayer.setInvisible(true);
-                    addTask(new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            affectedPlayer.setInvisible(false);
-                            affectedPlayer.sendTitle("§c§lWAH!", "§eYou are no longer invisible.", 10, 20 * 3, 10);
-                            new Message("§eYou are visible again.").send(affectedPlayer);
-                        }
-                    }.runTaskLater(NoxetServer.getPlugin(), 20 * 20));
-                } else
-                    new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Only hiders can use this item!").send(affectedPlayer);
-
-                affectedPlayer.getInventory().remove(item);
-            });
-
-            return Collections.singletonList(item);
-        }
-
-        return null;
-    }
-
-    @Override
-    public void handleRespawn(Player player) {
-        if(!isSeeker(player))
-            return;
-
-        getFreezer().freeze(player);
-        player.setGameMode(GameMode.SPECTATOR);
-
-        player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 10, 10, true, false));
-
-        for(int i = 10; i > 0; i--) {
-            int finalI = i;
-            addTask(new BukkitRunnable() {
-                @Override
-                public void run() {
-                    player.sendTitle("§c" + finalI, "§euntil you respawn...", 0, 20 * 2, 0);
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20L * (10 - i)));
-        }
-
-        addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                player.setGameMode(GameMode.SURVIVAL);
-                getFreezer().unfreeze(player);
-
-                PlayerState.prepareNormal(player, false);
-
-                player.teleport(getSpawnLocation());
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * 10));
-    }
-
-    @Override
-    public Location getSpawnLocation() {
-        return getAppropriateSpawnLocation(getCenterTopLocation());
-    }
-
-    private int timeLeft;
-    private final List<WorldEaterEvents.GameEvent> events;
-
-    public WorldEater() {
-        super(GameDefinition.WORLD_EATER);
-
-        hiders = new HashSet<>();
-        events = new ArrayList<>();
-    }
-
-    private void gameBuilder() {
-        sendGameMessage(new Message("Preparing game..."));
-
         World normalWorld;
-
-        sendGameMessage(new Message("Loading normal world..."));
 
         WorldCreator normalWorldCreator = new WorldCreator(cacheWorldName);
         normalWorldCreator.type(WorldType.NORMAL);
         normalWorldCreator.generateStructures(true);
         normalWorldCreator.biomeProvider(new BiomeProvider() {
-            @SuppressWarnings("all")
             @Override
+            @SuppressWarnings("all")
             public Biome getBiome(WorldInfo worldInfo, int i, int i1, int i2) {
                 return Biome.DARK_FOREST;
             }
 
-            @SuppressWarnings("all")
             @Override
+            @SuppressWarnings("all")
             public List<Biome> getBiomes(WorldInfo worldInfo) {
                 List<Biome> result = new ArrayList<>();
                 result.add(Biome.DARK_FOREST);
@@ -222,26 +72,19 @@ public class WorldEater extends MiniGameController {
         normalWorld = normalWorldCreator.createWorld();
         assert normalWorld != null;
 
-        sendGameMessage(new Message("Setting up void world..."));
-
-        getWorkingWorld().setPVP(false);
-
-        // Reset world
-
-        getWorkingWorld().setTime(0);
-        getWorkingWorld().setClearWeatherDuration(20 * 60 * 30);
+        setPvpRule(false);
 
         // Clone chunk
 
         Random random = new Random();
 
         int chunkX = 0,
-                chunkY = 0,
-                chunkTries = 0;
+            chunkY = 0,
+            chunkAttemptsLeft = 150;
         List<Integer> chunkCoordinate = new ArrayList<>();
         Chunk normalChunk = null;
 
-        File badChunksFile = new File(NoxetServer.getPlugin().getPluginDirectory(), "worldEaterBadChunks.yml");
+        File badChunksFile = new File(NoxetServer.getPlugin().getPluginDirectory(), "world-eater-bad-chunks.yml");
         YamlConfiguration badChunksConfig = YamlConfiguration.loadConfiguration(badChunksFile);
 
         @SuppressWarnings("unchecked")
@@ -250,17 +93,14 @@ public class WorldEater extends MiniGameController {
         if(badChunks == null)
             badChunks = new ArrayList<>();
 
-        sendGameMessage(new Message("Finding a good chunk..."));
-
         while(true) {
-            if(chunkTries > 150) {
+            if(--chunkAttemptsLeft == 0) {
                 sendGameMessage(new Message("Too many attempts! Gave up trying to find a good chunk."));
                 break;
             }
 
             chunkCoordinate.clear();
-            chunkCoordinate.add(chunkX);
-            chunkCoordinate.add(chunkY);
+            chunkCoordinate.addAll(Arrays.asList(chunkX, chunkY));
 
             boolean registeredBadChunk = false;
 
@@ -273,9 +113,9 @@ public class WorldEater extends MiniGameController {
             if(registeredBadChunk || isChunkFlooded(normalWorld.getChunkAt(chunkX, chunkY))) {
                 badChunks.add(new ArrayList<>(chunkCoordinate));
 
-                chunkX = random.nextInt(0, 100);
-                chunkY = random.nextInt(0, 100);
-                chunkTries++;
+                chunkX = random.nextInt(-1000, 1000);
+                chunkY = random.nextInt(-1000, 1000);
+                chunkAttemptsLeft++;
             } else {
                 normalChunk = normalWorld.getChunkAt(chunkX, chunkY);
                 break;
@@ -292,292 +132,106 @@ public class WorldEater extends MiniGameController {
             throw new RuntimeException(e);
         }
 
-        Chunk chunk = getWorkingWorld().getChunkAt(0, 0);
-
         assert normalChunk != null;
 
         for(int x = 0; x < 16; x++)
             for(int z = 0; z < 16; z++)
-                for(int y = getWorkingWorld().getMinHeight(); y < getWorkingWorld().getMaxHeight(); y++) {
+                for(int y = getMiniGameWorld().getMinHeight(); y < getMiniGameWorld().getMaxHeight(); y++) {
                     Material sourceMaterial = normalChunk.getBlock(x, y, z).getType();
                     if(!sourceMaterial.isAir())
-                        chunk.getBlock(x, y, z).setType(sourceMaterial);
+                        getCenterChunk().getBlock(x, y, z).setType(sourceMaterial);
                 }
 
+        for(int i = 0; i < 5; i++)
+            magicalEntitySpawn(EntityType.PIG);
+
         for(int i = 0; i < 4; i++)
-            spawnEntityInNaturalHabitat(EntityType.COW);
+            magicalEntitySpawn(EntityType.COW);
 
         for(int i = 0; i < 3; i++)
-            spawnEntityInNaturalHabitat(EntityType.SHEEP);
+            magicalEntitySpawn(EntityType.SHEEP);
 
         for(int i = 0; i < 2; i++)
-            spawnEntityInNaturalHabitat(EntityType.CHICKEN);
+            magicalEntitySpawn(EntityType.CHICKEN);
+    }
 
-        Scoreboard mainScoreboard = Objects.requireNonNull(Bukkit.getScoreboardManager()).getMainScoreboard();
-
-        seekersTeam = mainScoreboard.getTeam("seekers");
-        hidersTeam = mainScoreboard.getTeam("hiders");
-
-        if(seekersTeam == null)
-            seekersTeam = mainScoreboard.registerNewTeam("seekers");
-
-        if(hidersTeam == null)
-            hidersTeam = mainScoreboard.registerNewTeam("hiders");
-
-        seekersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
-        seekersTeam.setCanSeeFriendlyInvisibles(false);
-        seekersTeam.setAllowFriendlyFire(false);
-        seekersTeam.setPrefix("§4§l[ §c§lSEEKER §4§l] ");
-        seekersTeam.setColor(ChatColor.RED);
-
-        hidersTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.FOR_OTHER_TEAMS);
-        hidersTeam.setCanSeeFriendlyInvisibles(false);
-        hidersTeam.setAllowFriendlyFire(false);
-        hidersTeam.setPrefix("§2§l[ §a§lHIDER §2§l] ");
-        hidersTeam.setColor(ChatColor.GREEN);
-
-        scoreboard = createGameScoreboard();
+    @Override
+    public void handleStart() {
+        new RegionBinder(getCenterTopLocation(), getPlayersAndSpectators(), 5 / 2 * 16, 120);
 
         WorldEaterTeamSelectionMenu teamSelectionMenu = new WorldEaterTeamSelectionMenu(this, 40, menu -> {
-            hiders.addAll(menu.getHiders());
+            teamSet.putManyPlayersOnTeam(menu.getHiders(), WorldEaterTeams.HIDER);
+            teamSet.putManyPlayersOnTeam(menu.getSeekers(), WorldEaterTeams.SEEKER);
 
-            if(hiders.isEmpty()) {
+            if(teamSet.isTeamEmpty(WorldEaterTeams.HIDER)) {
                 sendGameMessage(new Message("No one wanted to play as a hider! Picking a random hider."));
-                hiders.add(getRandomPlayer());
-            } else if(getPlayers().size() == hiders.size()) {
+                teamSet.putPlayerOnTeam(getRandomPlayer(), WorldEaterTeams.HIDER);
+            } else if(teamSet.isTeamEmpty(WorldEaterTeams.SEEKER)) {
                 sendGameMessage(new Message("No one wanted to play as a seeker! Picking a random seeker."));
-                hiders.remove(getRandomPlayer());
+                teamSet.putPlayerOnTeam(getRandomPlayer(), WorldEaterTeams.SEEKER);
             }
 
-            gamePlay(chunk);
+            phaseTeamsPicked();
         });
 
         forEachPlayer(player -> {
             player.teleport(getSpawnLocation());
             PlayerState.prepareIdle(player, true);
+            player.setGameMode(GameMode.SPECTATOR);
 
             teamSelectionMenu.openInventory(player);
-
-            player.setScoreboard(scoreboard);
         });
 
         getFreezer().bulkFreeze(getPlayers());
     }
 
-    private void gamePlay(Chunk chunk) {
-        sendGameMessage(new Message("§aHiders are..."));
-
-        forEachPlayer(player -> PlayerState.prepareIdle(player, true));
-
-        forEachSeeker(seeker -> seeker.sendTitle("§c§lSEEKER", "§eFind and eliminate the hiders.", 0, 20 * 5, 0));
-        forEachHider(hider -> {
-            hider.sendTitle("§a§lHIDER", "§eEndure the seekers attempts to kill you.", 0, 20 * 5, 0);
-            sendGameMessage(new Message(" - §a§l" + hider.getName()));
-        });
-
-        sendGameMessage(new Message("§eGet ready! Game starts in §c5§e seconds..."));
-
-        addTask(new BukkitRunnable() {
-            @Override
-            public void run() {
-                getFreezer().empty();
-
-                sendGameMessage(new Message("§eHiders are given a head start."));
-
-                final ArrayList<BukkitTask> seekerCircleTasks = new ArrayList<>();
-
-                forEachSeeker(seeker -> {
-                    PlayerState.prepareIdle(seeker, true);
-
-                    Location center = getCenterTopLocation().add(0, 20, 0);
-
-                    double speed = 0.1;
-
-                    final double[] angle = {0};
-
-                    BukkitTask moveTask = Bukkit.getScheduler().runTaskTimer(NoxetServer.getPlugin(), () -> {
-                        if(!seeker.isFlying())
-                            seeker.setFlying(true);
-
-                        double radians = Math.toRadians(angle[0]);
-
-                        center.setYaw((float) Math.toDegrees(Math.atan2(-Math.cos(radians), Math.sin(radians))));
-                        center.setPitch(90);
-                        seeker.teleport(center);
-
-                        angle[0] += speed;
-                        angle[0] %= 360;
-                    }, 0, 1);
-
-                    addTask(moveTask);
-                    seekerCircleTasks.add(moveTask);
-
-                    seekersTeam.addEntry(seeker.getName());
-                });
-
-                forEachHider(hider -> {
-                    preparePlayer(hider);
-
-                    hider.playSound(hider, Sound.BLOCK_NOTE_BLOCK_BASS, 1, 0.5f);
-                    hider.sendTitle("§c§lHURRY UP!", "§ePrepare and reach §3shelter§e fast!", 5, 20 * 5, 10);
-
-                    hidersTeam.addEntry(hider.getName());
-                });
-
-
-                int secondsToRelease = 2 * 60;
-
-                for(int i = secondsToRelease; i > 0; i--) {
-                    int finalI = i;
-                    addTask(new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            String timeLeftString = FancyTimeConverter.deltaSecondsToFancyTime(finalI);
-
-                            if(finalI % 2 == 0)
-                                playGameSound(Sound.BLOCK_POINTED_DRIPSTONE_FALL, 0.6f, 2);
-
-                            if(finalI % 10 == 0)
-                                sendGameMessage(new Message("§eSeekers are released in " + timeLeftString + "."));
-
-                            forEachSeeker(seeker -> seeker.sendTitle(timeLeftString, "§euntil released...", 0, 20 * 2, 0));
-                            forEachHider(hider -> new ActionBarMessage("§8§l[ §" + (finalI % 2 == 0 ? "4" : "f") + "§l! §8§l] §bReleasing seekers in " + timeLeftString).send(hider));
-                        }
-                    }.runTaskLater(NoxetServer.getPlugin(), 20L * (secondsToRelease - i)));
-                }
-
-                addTask(new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        for(BukkitTask task : seekerCircleTasks)
-                            task.cancel();
-
-                        getFreezer().empty();
-
-                        sendGameMessage(new Message("§c§lSEEKERS HAVE BEEN RELEASED!"));
-
-                        getWorkingWorld().setPVP(true);
-
-                        playGameSound(Sound.BLOCK_ANVIL_LAND, 2, 2);
-
-                        forEachSeeker(seeker -> {
-                            preparePlayer(seeker);
-                            seeker.resetTitle();
-                        });
-
-                        forEachHider(hider -> new ActionBarMessage("§c§lSEEKERS RELEASED!").send(hider));
-
-                        for(int i = 0; i < 4; i++)
-                            spawnEntityInNaturalHabitat(EntityType.COW);
-
-                        for(int i = 0; i < 3; i++)
-                            spawnEntityInNaturalHabitat(EntityType.SHEEP);
-
-                        for(int i = 0; i < 2; i++)
-                            spawnEntityInNaturalHabitat(EntityType.CHICKEN);
-
-                        sendGameMessage(new Message("§c(!) Starting from the top of the island to the bottom, each layer of blocks will be removed at an exponential rate."));
-
-                        int startY = 0;
-
-                        for(int x = 0; x < 16; x++)
-                            for(int z = 0; z < 16; z++)
-                                startY = Math.max(startY, getWorkingWorld().getHighestBlockYAt(x, z));
-
-                        long progress = 0;
-
-                        for(int y = startY; y > -50; y--) {
-                            int finalY = y;
-                            progress += 20L * 30 * Math.pow(0.983D, 1 + startY - y);
-                            addTask(new BukkitRunnable() {
-                                @Override
-                                public void run() {
-                                    playGameSound(Sound.BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_OFF, 1, 1);
-
-                                    for(int x = 0; x < 16; x++)
-                                        for(int z = 0; z < 16; z++)
-                                            getWorkingWorld().setBlockData(chunk.getBlock(x, finalY, z).getLocation(), Material.AIR.createBlockData());
-                                }
-                            }.runTaskLater(NoxetServer.getPlugin(), progress));
-                        }
-
-                        sendGameMessage(new Message("§eIf the hiders survive until the game is over, they win. Otherwise the seekers win."));
-
-                        timeLeft = 30 * 60;
-
-                        for(int i = timeLeft / 60; i >= 0; i--) {
-                            int finalI = i;
-                            addTask(new BukkitRunnable() {
-                                @Override
-                                public void run() {
-                                    if(finalI > 0) {
-                                        if(finalI % 5 == 0 || finalI < 10)
-                                            sendGameMessage(new Message("§eThe game has §c" + finalI + "§e minutes remaining."));
-
-                                        switch(finalI) { // Timed events
-                                            case 20:
-                                                events.add(WorldEaterEvents.GameEvent.METEOR_RAIN);
-                                                WorldEaterEvents.meteorRain(controllerInstance);
-                                                break;
-                                            case 22:
-                                            case 15:
-                                            case 8:
-                                                events.add(WorldEaterEvents.GameEvent.VISIBLE_HIDERS);
-                                                WorldEaterEvents.visibleHiders(controllerInstance);
-                                                break;
-                                            case 12:
-                                                events.add(WorldEaterEvents.GameEvent.DRILLING);
-                                                WorldEaterEvents.drilling(controllerInstance);
-                                                break;
-                                            case 10:
-                                                events.add(WorldEaterEvents.GameEvent.SHRINKING_WORLD_BORDER);
-                                                WorldEaterEvents.shrinkingWorldBorder(controllerInstance);
-                                                break;
-                                            case 5:
-                                                events.add(WorldEaterEvents.GameEvent.EXPLODING_HORSES);
-                                                WorldEaterEvents.explodingHorses(controllerInstance);
-                                                break;
-                                            case 1:
-                                                events.add(WorldEaterEvents.GameEvent.EVERYONE_VISIBLE);
-                                                WorldEaterEvents.everyoneVisible(controllerInstance);
-                                                break;
-                                        }
-                                    } else {
-                                        sendGameMessage(new Message("§aTime has gone out! Hiders win."));
-                                        finish(GameResult.HIDERS_WIN);
-                                    }
-                                }
-                            }.runTaskLater(NoxetServer.getPlugin(), 20L * 60 * (timeLeft - i)));
-                        }
-
-                        addTask(new BukkitRunnable() {
-                            @Override
-                            public void run() {
-                                updateScoreboard();
-                                timeLeft--;
-                            }
-                        }.runTaskTimer(NoxetServer.getPlugin(), 40, 20));
-                    }
-                }.runTaskLater(NoxetServer.getPlugin(), 20 * secondsToRelease));
-            }
-        }.runTaskLater(NoxetServer.getPlugin(), 20 * 5));
+    @Override
+    public void handlePlayerJoin(Player player) {
     }
 
-    public enum GameResult {
-        SEEKERS_WIN, TIE, HIDERS_WIN
+    @Override
+    public void handlePlayerLeave(Player player) {
+        if(!isPlaying())
+            return;
+
+        if(teamSet.isTeamEmpty(WorldEaterTeams.HIDER)) { // Last hider left.
+            sendGameMessage(new Message("§cThere is no hider remaining, so the game is over."));
+            finish(GameResult.SEEKERS_WIN);
+        } else if(teamSet.isTeamEmpty(WorldEaterTeams.SEEKER)) { // Only hiders remain.
+            sendGameMessage(new Message("§cThere is no seeker remaining, so the game is over."));
+            finish(GameResult.HIDERS_WIN);
+        } else if(getPlayers().size() == 1) { // Only 1 player remain.
+            sendGameMessage(new Message("§cEverybody else quit. The game is over. :("));
+            finish(GameResult.TIE);
+        }
     }
 
-    public boolean didPlayerWin(Player player, GameResult result) {
-        return (isSeeker(player) && result == GameResult.SEEKERS_WIN) || (isHider(player) && result == GameResult.HIDERS_WIN);
+    @Override
+    public void handlePlayerRemoved(Player player) {
+        getFreezer().unfreeze(player);
+
+        teamSet.refreshPlayers();
     }
 
-    private void finish(GameResult result) {
+    @Override
+    public int handleSoftStop() {
         playGameSound(Sound.BLOCK_BELL_USE, 3, 3);
 
-        if(result != GameResult.TIE)
-            sendGameMessage(new Message((result == GameResult.SEEKERS_WIN ? "Seekers" : "Hiders") + " won the game!"));
-        else
-            sendGameMessage(new Message("Tie! Nobody won the game."));
+        String header, subHeader;
+
+        switch(result) {
+            case SEEKERS_WIN:
+                header = "§c§l" + TextBeautifier.beautify("Seekers", false);
+                subHeader = "§7won the game";
+                break;
+            case HIDERS_WIN:
+                header = "§a§l" + TextBeautifier.beautify("Hiders", false);
+                subHeader = "§7won the game";
+                break;
+            default:
+                header = "§e§l" + TextBeautifier.beautify("Tie", false);
+                subHeader = "§7Nobody won the game";
+        }
 
         forEachPlayer(player -> player.sendTitle(
                 didPlayerWin(player, result) ?
@@ -591,18 +245,31 @@ public class WorldEater extends MiniGameController {
                 0, 20 * 6, 0
         ));
 
-        sendGameMessage(new Message("§aThe game has ended. Thanks for playing."));
+        forEachSpectator(spectator -> spectator.sendTitle(
+                header,
+                subHeader,
+                0, 20 * 6, 0
+        ));
+
+        sendGameMessage(new Message(header + " " + subHeader));
 
         Random random = new Random();
         for(int i = 0; i < 10; i++) {
-            double x = random.nextInt(-16, 16), z = random.nextInt(-16, 16);
             FireworkEffect effect = FireworkEffect.builder().flicker(false).trail(false).with(FireworkEffect.Type.STAR).withColor(Color.fromRGB(
                     random.nextInt(256),
                     random.nextInt(256),
                     random.nextInt(256)
             )).build();
 
-            Firework firework = getWorkingWorld().spawn(new Location(getWorkingWorld(), x, getWorkingWorld().getHighestBlockYAt((int) x, (int) z) + random.nextInt(2, 10), z), Firework.class);
+            Location fireworkLocation = getCenterTopLocation().add(
+                    random.nextInt(-16, 16),
+                    0,
+                    random.nextInt(-16, 16)
+            );
+
+            fireworkLocation.setY(getMiniGameWorld().getHighestBlockYAt(fireworkLocation) + random.nextInt(2, 10));
+
+            Firework firework = getMiniGameWorld().spawn(fireworkLocation, Firework.class);
 
             FireworkMeta fireworkMeta = firework.getFireworkMeta();
             fireworkMeta.clearEffects();
@@ -610,22 +277,377 @@ public class WorldEater extends MiniGameController {
 
             firework.setFireworkMeta(fireworkMeta);
 
-            new BukkitRunnable() {
-                public void run() {
-                    firework.detonate();
-                }
-            }.runTaskLater(NoxetServer.getPlugin(), 20L * random.nextInt(1, 4));
+            scheduleTask(firework::detonate, 20 * random.nextInt(1, 6));
         }
 
+        return 20 * 15;
+    }
+
+    @Override
+    public void handlePostStop() {
+        teamSet.unregister();
+    }
+
+    @Override
+    public DeathContract handleDeath(Player player) {
+        if(teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER)) {
+            if(teamSet.countTeamPlayers(WorldEaterTeams.HIDER) == 1) // This was the last hider.
+                finish(GameResult.SEEKERS_WIN);
+            return DeathContract.SPECTATE;
+        }
+
+        return DeathContract.RESPAWN_SAME_LOCATION_KEEP_INVENTORY;
+    }
+
+    @Override
+    public List<ItemStack> handlePlayerDrops(Player deadPlayer) {
+        if(teamSet.isPlayerOnTeam(deadPlayer, WorldEaterTeams.SEEKER)) {
+            ItemStack item = ItemGenerator.generatePlayerSkull(
+                    deadPlayer,
+                    "§c§lGift of the Ghosts §8[ §eRight-click for invisibility §8]",
+                    Collections.singletonList("§eRight-click to become invisible for 20 seconds.")
+            );
+
+            bindActionToItem(item, affectedPlayer -> {
+                if(teamSet.isPlayerOnTeam(affectedPlayer, WorldEaterTeams.HIDER)) {
+                    if(affectedPlayer.isInvisible()) {
+                        new Message("§cYou are already invisible.").send(affectedPlayer);
+                        return;
+                    }
+
+                    affectedPlayer.playSound(affectedPlayer, Sound.ENTITY_CAT_HISS, 1, 0.5f);
+                    affectedPlayer.sendTitle("§aInvisible", "§3You are now §ninvisible§3.", 10, 20 * 3, 10);
+                    new Message("§eYou are now invisible for §c20§e seconds.").send(affectedPlayer);
+
+                    affectedPlayer.setInvisible(true);
+                    scheduleTask(() -> {
+                        affectedPlayer.setInvisible(false);
+                        affectedPlayer.sendTitle("§c§lWAH!", "§eYou are no longer invisible.", 10, 20 * 3, 10);
+                        new Message("§eYou are visible again.").send(affectedPlayer);
+                    }, 20 * 20);
+                } else
+                    new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Only hiders can use this item!").send(affectedPlayer);
+
+                affectedPlayer.getInventory().remove(item);
+            });
+
+            return Collections.singletonList(item);
+        }
+
+        return null;
+    }
+
+    @Override
+    public void handleRespawn(Player player) {
+        if(teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER))
+            return;
+
+        if(player.getLocation().getY() < getMiniGameWorld().getMinHeight())
+            player.teleport(getSpawnLocation());
+
+        getFreezer().freeze(player);
+        player.setGameMode(GameMode.SPECTATOR);
+
+        player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 10, 10, true, false));
+
+        for(int i = 10; i > 0; i--) {
+            int finalI = i;
+            scheduleTask(() -> player.sendTitle("§c" + FancyTimeConverter.deltaSecondsToFancyTime(finalI), "§euntil you respawn...", 0, 20 * 2, 0), 20 * (10 - i));
+        }
+
+        scheduleTask(() -> {
+            player.setGameMode(GameMode.SURVIVAL);
+            getFreezer().unfreeze(player);
+
+            PlayerState.prepareNormal(player, false);
+
+            player.teleport(getSpawnLocation());
+
+            Events.setTemporaryInvulnerability(player);
+        }, 20 * 10);
+    }
+
+    @Override
+    public Location getSpawnLocation() {
+        return getAppropriateSpawnLocation(getCenterTopLocation());
+    }
+
+    private int timeLeft;
+    private final Map<Integer, WorldEaterEvents.GameEvent> preparedEvents = new HashMap<>();
+    private final List<WorldEaterEvents.GameEvent> currentEvents = new ArrayList<>();
+
+    public WorldEater() {
+        super(GameDefinition.WORLD_EATER);
+    }
+
+    private void phaseTeamsPicked() {
+        sendGameMessage(new Message("§eThe §ahiders§e are..."));
+
+        forEachPlayer(player -> PlayerState.prepareIdle(player, true));
+
+        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> seeker.sendTitle("§c§lSEEKER", "§eFind and eliminate the hiders.", 0, 20 * 5, 0));
+
+        teamSet.forEach(WorldEaterTeams.HIDER, hider -> {
+            hider.sendTitle("§a§lHIDER", "§eEndure the seekers attempts to kill you.", 0, 20 * 5, 0);
+            sendGameMessage(new Message(" - §b" + hider.getName()));
+        });
+
+        sendGameMessage(new Message("§eThe rest are §cseekers§e."));
+
+        sendGameMessage(new Message("§eGet ready! Game starts in §c5§e seconds..."));
+
+        scheduleTask(this::phaseHeadStart, 20 * 5);
+    }
+
+    private void phaseHeadStart() {
+        getFreezer().empty();
+
+        // Prepare the chunk muncher (do it already here to let the hiders place blocks before seekers spawn):
+
+        startY = 0;
+
+        for(int x = 0; x < 16; x++)
+            for(int z = 0; z < 16; z++)
+                startY = Math.max(startY, getMiniGameWorld().getHighestBlockYAt(getCenterChunk().getBlock(x, 0, z).getLocation()));
+
+        nextLayer = startY;
+
+        sendGameMessage(new Message("§eHiders are given a head start."));
+
+        final ArrayList<BukkitTask> seekerCircleTasks = new ArrayList<>();
+
+        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> {
+            PlayerState.prepareIdle(seeker, true);
+
+            Location center = getCenterTopLocation().add(0, 20, 0);
+
+            double speed = 0.1;
+
+            final double[] angle = {0};
+
+            seekerCircleTasks.add(scheduleTaskTimer(() -> {
+                if(!seeker.isFlying())
+                    seeker.setFlying(true);
+
+                double radians = Math.toRadians(angle[0]);
+
+                center.setYaw((float) Math.toDegrees(Math.atan2(-Math.cos(radians), Math.sin(radians))));
+                center.setPitch(90);
+                seeker.teleport(center);
+
+                angle[0] += speed;
+                angle[0] %= 360;
+            }, 0, 2));
+        });
+
+        teamSet.forEach(WorldEaterTeams.HIDER, hider -> {
+            preparePlayer(hider);
+
+            hider.playSound(hider, Sound.BLOCK_NOTE_BLOCK_BASS, 1, 0.5f);
+            hider.sendTitle("§c§lHURRY UP!", "§ePrepare and reach §3shelter§e fast!", 5, 20 * 5, 10);
+        });
+
+        int secondsToRelease = teamSet.countTeamPlayers(WorldEaterTeams.SEEKER) * 60;
+
+        for(int i = secondsToRelease; i > 0; i--) {
+            int finalI = i;
+            scheduleTask(() -> {
+                    String timeLeftString = FancyTimeConverter.deltaSecondsToFancyTime(finalI, true);
+
+                    if(finalI % 2 == 0)
+                        playGameSound(Sound.BLOCK_POINTED_DRIPSTONE_FALL, 0.6f, 2);
+
+                    if(finalI % 10 == 0)
+                        sendGameMessage(new Message("§eSeekers are released in " + timeLeftString + "."));
+
+                    teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> seeker.sendTitle(timeLeftString, "§euntil released...", 0, 20 * 2, 0));
+                    teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§8§l[ §" + (finalI % 2 == 0 ? "4" : "f") + "§l! §8§l] §bReleasing seekers in " + timeLeftString).send(hider));
+                }, 20 * (secondsToRelease - i));
+        }
+
+        scheduleTask(() -> phaseSeekersReleased(seekerCircleTasks), 20 * secondsToRelease);
+    }
+
+    private void phaseSeekersReleased(List<BukkitTask> seekerCircleTasks) {
+        for(BukkitTask task : seekerCircleTasks)
+            task.cancel();
+
+        getFreezer().empty();
+
+        sendGameMessage(new Message("§c§lSEEKERS HAVE BEEN RELEASED!"));
+
+        setPvpRule(true);
+
+        playGameSound(Sound.BLOCK_ANVIL_LAND, 2, 2);
+
+        teamSet.forEach(WorldEaterTeams.SEEKER, seeker -> {
+            preparePlayer(seeker);
+            seeker.resetTitle();
+        });
+
+        teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§c§lSEEKERS RELEASED!").send(hider));
+
+        for(int i = 0; i < 5; i++)
+            magicalEntitySpawn(EntityType.PIG);
+
+        for(int i = 0; i < 4; i++)
+            magicalEntitySpawn(EntityType.COW);
+
+        for(int i = 0; i < 3; i++)
+            magicalEntitySpawn(EntityType.SHEEP);
+
+        for(int i = 0; i < 2; i++)
+            magicalEntitySpawn(EntityType.CHICKEN);
+
+        sendGameMessage(new Message("§cThe Chunk Muncher is eating up the island! See more info in the stats to the right."));
+
+        removeNextLayer();
+
+        sendGameMessage(new Message("§eIf the hiders survive until the game is over, they win. Otherwise the seekers win."));
+
+        timeLeft = 30 * 60;
+
+        prepareEvent(WorldEaterEvents.GameEvent.HOT_SUN, 27);
+
+        prepareEvent(WorldEaterEvents.GameEvent.QUICK_STOVE, 25);
+
+        prepareEvent(WorldEaterEvents.GameEvent.VISIBLE_HIDERS, 22);
+        prepareEvent(WorldEaterEvents.GameEvent.VISIBLE_HIDERS, 8);
+
+        prepareEvent(WorldEaterEvents.GameEvent.METEOR_RAIN, 20);
+
+        prepareEvent(WorldEaterEvents.GameEvent.LOOT_DROP, 15);
+
+        prepareEvent(WorldEaterEvents.GameEvent.DRILLING, 12);
+
+        prepareEvent(WorldEaterEvents.GameEvent.EXPLODING_HORSES, 5);
+
+        prepareEvent(WorldEaterEvents.GameEvent.EVERYONE_VISIBLE, 1);
+
+        scheduleTaskTimer(task -> {
+                teamSet.updateScoreboard(
+                        "§c" + FancyTimeConverter.deltaSecondsToFancyTime(timeLeft, true) + "§e remaining",
+                        "§7---",
+                        "§4\uD83D\uDDE1§c Seeking: §e" + teamSet.countTeamPlayers(WorldEaterTeams.SEEKER),
+                        "§2\uD83C\uDF56§a Hiding: §e" + teamSet.countTeamPlayers(WorldEaterTeams.HIDER),
+                        "§7---",
+                        "§8☠§7 Spectating: §e" + getSpectators().size(),
+                        "§7---",
+                        "§3§nChunk Muncher",
+                        "§3 - Y-level §b" + nextLayer,
+                        "§3 - Velocity §b" + layerRemoveSpeed / 20 + "s/layer",
+                        //"§3 - Next layer §b" + FancyTimeConverter.deltaSecondsToFancyTime((int) (nextLayerDisappearsAt - System.currentTimeMillis()) / 1000),
+                        "§7---",
+                        currentEvents.size() == 0 ? "§7No current event" : "§9§lEVENT: §b" + currentEvents.get(0).getEventName()
+                );
+
+                if(timeLeft % 60 == 0) {
+                    int minutesRemaining = timeLeft / 60;
+
+                    if(minutesRemaining != 0 && (minutesRemaining % 5 == 0 || minutesRemaining < 10))
+                        sendGameMessage(new Message("§eThe game has §c" + minutesRemaining + "§e minutes remaining."));
+
+                    dispatchEvents(minutesRemaining);
+                }
+
+                if(timeLeft == 0) {
+                    sendGameMessage(new Message("§aTime has gone out! Hiders win."));
+                    finish(GameResult.HIDERS_WIN);
+                    task.cancel(); // Prevent time from getting negative.
+                }
+
+                timeLeft--;
+            }, 40, 20);
+    }
+
+    private void prepareEvent(WorldEaterEvents.GameEvent event, int minutesRemaining) {
+        preparedEvents.put(minutesRemaining, event);
+    }
+
+    private void dispatchEvents(int minutesRemaining) {
+        WorldEaterEvents.GameEvent eventHere = preparedEvents.get(minutesRemaining);
+
+        if(eventHere == null)
+            return;
+
+        currentEvents.add(eventHere);
+        eventHere.getEventConsumer().accept(this, new Promise(() -> {
+            currentEvents.remove(eventHere);
+            sendGameMessage(new Message("§f" + eventHere.getEventName() + "§c event is now over."));
+        }, 20 * 60 * 10));
+    }
+
+    private void removeNextLayer() {
+        if(nextLayer < getMiniGameWorld().getMinHeight() + 10)
+            return;
+
+        removeLayer(nextLayer--);
+
+        layerRemoveSpeed = (int) (20 * 30 * Math.pow(0.983d, 1 + startY - nextLayer));
+        nextLayerDisappearsAt = System.currentTimeMillis() + layerRemoveSpeed * 50L; // ticks * 50 = ms
+
+        scheduleTask(this::removeNextLayer, layerRemoveSpeed);
+    }
+
+    private void removeLayer(int noMarginY) {
+        playGameSound(Sound.BLOCK_BAMBOO_WOOD_PRESSURE_PLATE_CLICK_OFF, 1, 1);
+
+        for(Block placedLootBox : placedLootBoxes)
+            if(placedLootBox.getLocation().getY() >= noMarginY) {
+                placedLootBoxes.remove(placedLootBox);
+
+                Location newBoxLocation = placedLootBox.getLocation().clone();
+                newBoxLocation.setY(noMarginY);
+
+                BlockData blockData = placedLootBox.getBlockData();
+
+                scheduleTask(() -> {
+                    Block newBox = getMiniGameWorld().getBlockAt(newBoxLocation);
+                    newBox.setBlockData(blockData);
+
+                    placedLootBoxes.add(newBox);
+                }, 21);
+            }
+
+        Random random = new Random();
+
+        for(Chunk chunk : getAllocatedChunks())
+            for(int x = 0; x < 16; x++)
+                for(int z = 0; z < 16; z++)
+                    for(int y = noMarginY; y < noMarginY + 3; y++) { // Clear 3 Y-levels of blocks. This is the block-placing margin. Without this, players would be unable to place blocks on top of chunk at all.
+                        Block block = chunk.getBlock(x, y, z);
+                        if(block.getType() != Material.AIR)
+                            scheduleTask(() -> {
+                                if(!playerPlacedBlocks.remove(block.getLocation()) || !block.breakNaturally())
+                                    getMiniGameWorld().setBlockData(block.getLocation(), Material.AIR.createBlockData());
+                                getMiniGameWorld().spawnParticle(Particle.SWEEP_ATTACK, block.getLocation(), 1);
+                            }, !block.isLiquid() ? random.nextInt(20) : 0);
+                    }
+    }
+
+    public enum GameResult {
+        SEEKERS_WIN, TIE, HIDERS_WIN
+    }
+
+    public boolean didPlayerWin(Player player, GameResult result) {
+        return (teamSet.isPlayerOnTeam(player, WorldEaterTeams.SEEKER) && result == GameResult.SEEKERS_WIN) || (teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER) && result == GameResult.HIDERS_WIN);
+    }
+
+    private void finish(GameResult result) {
+        this.result = result;
         softStop();
     }
 
     protected Location getCenterTopLocation() {
-        return new Location(getWorkingWorld(), 8, getWorkingWorld().getHighestBlockYAt(8, 8), 8);
+        Location center = getCenterChunk().getBlock(8, 0, 8).getLocation();
+        center.setY(getMiniGameWorld().getHighestBlockYAt(center));
+        return center;
     }
 
     protected Location getAppropriateSpawnLocation(Location spawn) {
-        while(true)
+        int i = 0;
+
+        while(i++ < 100)
             if(spawn.getBlock().getType().isAir() || spawn.getBlock().getType().toString().endsWith("_LEAVES") || spawn.getBlock().getType().toString().endsWith("_MUSHROOM"))
                 spawn.subtract(0, 1, 0); // Go down 1 block if air or leaf block.
             else if(spawn.getBlock().getType().toString().endsWith("_LOG"))
@@ -657,77 +679,108 @@ public class WorldEater extends MiniGameController {
     }
 
     private void spawnEntityInNaturalHabitat(EntityType type) {
-        Location spawn = getSpawnLocation();
-
         Random random = new Random();
 
-        spawn.setX(random.nextInt(3, 14));
-        spawn.setZ(random.nextInt(3, 14));
-        spawn.setY(getWorkingWorld().getHighestBlockYAt((int) spawn.getX(), (int) spawn.getZ()));
+        Location spawn = getCenterChunk().getBlock(
+                random.nextInt(3, 14),
+                0,
+                random.nextInt(3, 14)
+        ).getLocation();
+        spawn.setY(getMiniGameWorld().getHighestBlockYAt(spawn));
 
-        getWorkingWorld().spawnEntity(getAppropriateSpawnLocation(spawn), type);
+        getMiniGameWorld().spawnEntity(getAppropriateSpawnLocation(spawn), type);
     }
 
-    private static Scoreboard createGameScoreboard() {
-        Scoreboard scoreboard = Objects.requireNonNull(Bukkit.getScoreboardManager()).getNewScoreboard();
+    private void magicalEntitySpawn(EntityType type) {
+        Random random = new Random();
 
-        Objective objective = scoreboard.registerNewObjective("worldeater_scoreboard", Criteria.DUMMY, "§6§lWORLD§2§lEATER");
-        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+        Location spawn = getCenterTopLocation().add(
+                random.nextInt(16 * 2, 16 * 5),
+                1,
+                random.nextInt(16 * 2, 16 * 5)
+        );
 
-        return scoreboard;
+        LivingEntity entity = (LivingEntity) getMiniGameWorld().spawnEntity(spawn, type);
+
+        entity.setVelocity(getCenterTopLocation().toVector().subtract(spawn.toVector()).setY(0));
+        entity.teleport(entity.getLocation().setDirection(entity.getVelocity()));
     }
 
-    private static void setObjectiveLines(Objective objective, String[] lines) {
-        for(String score : Objects.requireNonNull(objective.getScoreboard()).getEntries())
-            objective.getScoreboard().resetScores(score);
-
-        int i = 0;
-        for(String line : lines)
-            objective.getScore(line).setScore(lines.length - i++);
+    public TeamSet getTeamSet() {
+        return teamSet;
     }
 
-    private void updateScoreboard() {
-        setObjectiveLines(scoreboard.getObjectives().toArray(new Objective[0])[0], new String[] {
-                "§eTime remaining: " + getFancyTimeLeft(timeLeft),
-                "§e" + getPlayers().size() + " playing:",
-                "§c" + (getPlayers().size() - hiders.size()) + "§e seeking",
-                "§a" + hiders.size() + "§e hiding",
-                "§7---",
-                "§7" + getSpectators().size() + "§8 spectating",
-                "§7---",
-                events.size() == 0 ? "§7No event" : events.get(0).eventName
-        });
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent e) {
+        if(!isPlayer(e.getPlayer()))
+            return;
+
+        if(e.getBlock().getLocation().getY() > nextLayer + 2) {
+            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "§o** Your hand got bit by the storm of the Chunk Muncher, as you reached to place a block. **").send(e.getPlayer());
+            e.setCancelled(true);
+        } else
+            playerPlacedBlocks.add(e.getBlock().getLocation());
     }
 
-    private static String getFancyTimeLeft(int countdown) {
-        return (countdown >= 60 ? "§c" + (countdown / 60) + "§em " : "") + "§c" + countdown % 60 + "§es";
+    @EventHandler
+    public void onEntityChangeBlock(EntityChangeBlockEvent e) {
+        if(e.getEntity().getType() == EntityType.FALLING_BLOCK && fallingBlockLootBoxes.remove((FallingBlock) e.getEntity())) {
+            placedLootBoxes.add(e.getBlock());
+
+            sendGameMessage(new Message("§9A loot box has dropped! Claim it for rewards."));
+        }
     }
 
-    public boolean isSeeker(Player player) {
-        return isPlayer(player) && !isHider(player);
+    private static final List<Material> lootDrops = Arrays.asList(
+            Material.DIAMOND_AXE,
+            Material.DIAMOND_PICKAXE,
+            Material.DIAMOND_BLOCK,
+            Material.NETHERITE_BOOTS,
+            Material.NETHERITE_SWORD,
+            Material.TNT,
+            Material.FLINT_AND_STEEL,
+            Material.SPECTRAL_ARROW
+    );
+
+    private static ItemStack getRandomLootItem() {
+        return new ItemStack(lootDrops.get(new Random().nextInt(lootDrops.size())));
     }
 
-    public boolean isHider(Player player) {
-        return hiders.contains(player);
+    private static ItemStack getRandomlyStackedLootItem() {
+        ItemStack itemStack = getRandomLootItem();
+
+        if(itemStack.getType().getMaxStackSize() > 1)
+            itemStack.setAmount(new Random().nextInt(4));
+
+        return itemStack;
     }
 
-    public void forEachPlayer(Consumer<Player> playerConsumer) {
-        for(Player player : getPlayers())
-            playerConsumer.accept(player);
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent e) {
+        if((e.getAction() == Action.LEFT_CLICK_BLOCK || e.getAction() == Action.RIGHT_CLICK_BLOCK) && placedLootBoxes.remove(e.getClickedBlock())) {
+            Objects.requireNonNull(e.getClickedBlock()).setType(Material.AIR);
+
+            Location lootDropLocation = e.getClickedBlock().getLocation();
+
+            for(int i = 0; i < 6; i++)
+                getMiniGameWorld().dropItemNaturally(lootDropLocation, getRandomlyStackedLootItem());
+
+            sendGameMessage(new Message("§cThe loot box has been looted by " + e.getPlayer().getName() + "."));
+        }
     }
 
-    public void forEachSeeker(Consumer<Player> seekerConsumer) {
-        for(Player player : getPlayers())
-            if(!isHider(player))
-                seekerConsumer.accept(player);
+    @EventHandler
+    public void onFurnaceStartSmelt(FurnaceStartSmeltEvent e) {
+        if(doesOwnLocation(e.getBlock().getLocation()) && currentEvents.contains(WorldEaterEvents.GameEvent.QUICK_STOVE))
+            e.setTotalCookTime(e.getTotalCookTime() / 5);
     }
 
-    public void forEachHider(Consumer<Player> hiderConsumer) {
-        for(Player hider : hiders)
-            hiderConsumer.accept(hider);
-    }
-
-    public void removeEvent(WorldEaterEvents.GameEvent event) {
-        events.remove(event);
+    @EventHandler
+    public void onFurnaceSmelt(FurnaceSmeltEvent e) {
+        if(doesOwnLocation(e.getBlock().getLocation()) && currentEvents.contains(WorldEaterEvents.GameEvent.QUICK_STOVE)) {
+            ItemStack result = e.getResult();
+            e.getResult().setAmount(2);
+            e.setResult(result);
+        }
     }
 }

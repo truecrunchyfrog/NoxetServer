@@ -7,8 +7,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.noxet.noxetserver.Events;
-import org.noxet.noxetserver.RealmManager;
-import org.noxet.noxetserver.UsernameStorageManager;
+import org.noxet.noxetserver.realm.RealmManager;
+import org.noxet.noxetserver.util.UsernameStorageManager;
 import org.noxet.noxetserver.commands.social.Friend;
 import org.noxet.noxetserver.menus.chat.ChatPromptMenu;
 import org.noxet.noxetserver.menus.inventory.HomeNavigationMenu;
@@ -88,7 +88,20 @@ public class Home implements TabExecutor {
             Location homeLocation = friendHomes.get(homeName);
 
             if(!TeleportUtil.isLocationTeleportSafe(homeLocation)) {
-                if(strings.length < 3) {
+                boolean arg = strings.length > 2,
+                        safe = arg && strings[2].equalsIgnoreCase("safe"),
+                        force = arg && strings[2].equalsIgnoreCase("force");
+
+                if(safe) {
+                    new Message("§aFinding a safe location nearby friend's home...").send(player);
+                    homeLocation = TeleportUtil.getSafeTeleportLocation(homeLocation);
+                    if(homeLocation == null) {
+                        new ErrorMessage(ErrorMessage.ErrorType.COMMON, "We could not find a safe location nearby that home.").send(player);
+                        return true;
+                    }
+                } else if(force) {
+                    new Message("§aForcing teleport to friend's home...").send(player);
+                } else {
                     new WarningMessage(
                             "This friend home is in a suspicious location."
                     ).addButton(
@@ -104,15 +117,6 @@ public class Home implements TabExecutor {
                     ).send(player);
 
                     return true;
-                } else if(strings[2].equalsIgnoreCase("force")) {
-                    new Message("§aForcing teleport to friend's home...").send(player);
-                } else if(strings[2].equalsIgnoreCase("safe")) {
-                    new Message("§aFinding a safe location nearby friend's home...").send(player);
-                    homeLocation = TeleportUtil.getSafeTeleportLocation(homeLocation);
-                    if(homeLocation == null) {
-                        new ErrorMessage(ErrorMessage.ErrorType.COMMON, "We could not find a safe location nearby that home.").send(player);
-                        return true;
-                    }
                 }
             }
 
@@ -144,7 +148,20 @@ public class Home implements TabExecutor {
                 }
 
                 if(!TeleportUtil.isLocationTeleportSafe(homeLocation)) {
-                    if(strings.length < 3) {
+                    boolean arg = strings.length > 2,
+                            safe = arg && strings[2].equalsIgnoreCase("safe"),
+                            force = arg && strings[2].equalsIgnoreCase("force");
+
+                    if(safe) {
+                        new Message("§aFinding a safe location nearby...").send(player);
+                        homeLocation = TeleportUtil.getSafeTeleportLocation(homeLocation);
+                        if(homeLocation == null) {
+                            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "We could not find a safe location nearby that home.").send(player);
+                            return true;
+                        }
+                    } else if(force) {
+                        new Message("§aForcing teleport to home...").send(player);
+                    } else {
                         new WarningMessage(
                                 "This home may not be safe to teleport to."
                         ).addButton(
@@ -160,15 +177,6 @@ public class Home implements TabExecutor {
                         ).send(player);
 
                         return true;
-                    } else if(strings[2].equalsIgnoreCase("force")) {
-                        new Message("§aForcing teleport to home...").send(player);
-                    } else if(strings[2].equalsIgnoreCase("safe")) {
-                        new Message("§aFinding a safe location nearby...").send(player);
-                        homeLocation = TeleportUtil.getSafeTeleportLocation(homeLocation);
-                        if(homeLocation == null) {
-                            new ErrorMessage(ErrorMessage.ErrorType.COMMON, "We could not find a safe location nearby that home.").send(player);
-                            return true;
-                        }
                     }
                 }
 
