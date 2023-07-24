@@ -5,10 +5,7 @@ import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.FallingBlock;
-import org.bukkit.entity.Firework;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -47,6 +44,7 @@ public class WorldEater extends MiniGameController {
     private long nextLayerDisappearsAt;
     private final Set<FallingBlock> fallingBlockLootBoxes = new HashSet<>();
     private final Set<Block> placedLootBoxes = new HashSet<>();
+    private final Set<Location> playerPlacedBlocks = new HashSet<>();
 
     @Override
     public void handlePreStart() {
@@ -144,14 +142,17 @@ public class WorldEater extends MiniGameController {
                         getCenterChunk().getBlock(x, y, z).setType(sourceMaterial);
                 }
 
+        for(int i = 0; i < 5; i++)
+            magicalEntitySpawn(EntityType.PIG);
+
         for(int i = 0; i < 4; i++)
-            spawnEntityInNaturalHabitat(EntityType.COW);
+            magicalEntitySpawn(EntityType.COW);
 
         for(int i = 0; i < 3; i++)
-            spawnEntityInNaturalHabitat(EntityType.SHEEP);
+            magicalEntitySpawn(EntityType.SHEEP);
 
         for(int i = 0; i < 2; i++)
-            spawnEntityInNaturalHabitat(EntityType.CHICKEN);
+            magicalEntitySpawn(EntityType.CHICKEN);
     }
 
     @Override
@@ -486,14 +487,17 @@ public class WorldEater extends MiniGameController {
 
         teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§c§lSEEKERS RELEASED!").send(hider));
 
+        for(int i = 0; i < 5; i++)
+            magicalEntitySpawn(EntityType.PIG);
+
         for(int i = 0; i < 4; i++)
-            spawnEntityInNaturalHabitat(EntityType.COW);
+            magicalEntitySpawn(EntityType.COW);
 
         for(int i = 0; i < 3; i++)
-            spawnEntityInNaturalHabitat(EntityType.SHEEP);
+            magicalEntitySpawn(EntityType.SHEEP);
 
         for(int i = 0; i < 2; i++)
-            spawnEntityInNaturalHabitat(EntityType.CHICKEN);
+            magicalEntitySpawn(EntityType.CHICKEN);
 
         sendGameMessage(new Message("§cThe Chunk Muncher is eating up the island! See more info in the stats to the right."));
 
@@ -614,7 +618,8 @@ public class WorldEater extends MiniGameController {
                         Block block = chunk.getBlock(x, y, z);
                         if(block.getType() != Material.AIR)
                             scheduleTask(() -> {
-                                getMiniGameWorld().setBlockData(block.getLocation(), Material.AIR.createBlockData());
+                                if(!playerPlacedBlocks.remove(block.getLocation()) || !block.breakNaturally())
+                                    getMiniGameWorld().setBlockData(block.getLocation(), Material.AIR.createBlockData());
                                 getMiniGameWorld().spawnParticle(Particle.SWEEP_ATTACK, block.getLocation(), 1);
                             }, !block.isLiquid() ? random.nextInt(20) : 0);
                     }
@@ -686,16 +691,35 @@ public class WorldEater extends MiniGameController {
         getMiniGameWorld().spawnEntity(getAppropriateSpawnLocation(spawn), type);
     }
 
+    private void magicalEntitySpawn(EntityType type) {
+        Random random = new Random();
+
+        Location spawn = getCenterTopLocation().add(
+                random.nextInt(16 * 2, 16 * 5),
+                1,
+                random.nextInt(16 * 2, 16 * 5)
+        );
+
+        LivingEntity entity = (LivingEntity) getMiniGameWorld().spawnEntity(spawn, type);
+
+        entity.setVelocity(getCenterTopLocation().toVector().subtract(spawn.toVector()).setY(0));
+        entity.teleport(entity.getLocation().setDirection(entity.getVelocity()));
+    }
+
     public TeamSet getTeamSet() {
         return teamSet;
     }
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent e) {
-        if(isPlayer(e.getPlayer()) && e.getBlock().getLocation().getY() > nextLayer + 2) {
+        if(!isPlayer(e.getPlayer()))
+            return;
+
+        if(e.getBlock().getLocation().getY() > nextLayer + 2) {
             new ErrorMessage(ErrorMessage.ErrorType.COMMON, "§o** Your hand got bit by the storm of the Chunk Muncher, as you reached to place a block. **").send(e.getPlayer());
             e.setCancelled(true);
-        }
+        } else
+            playerPlacedBlocks.add(e.getBlock().getLocation());
     }
 
     @EventHandler
@@ -755,7 +779,7 @@ public class WorldEater extends MiniGameController {
     public void onFurnaceSmelt(FurnaceSmeltEvent e) {
         if(doesOwnLocation(e.getBlock().getLocation()) && currentEvents.contains(WorldEaterEvents.GameEvent.QUICK_STOVE)) {
             ItemStack result = e.getResult();
-            result.setAmount(2);
+            e.getResult().setAmount(2);
             e.setResult(result);
         }
     }
