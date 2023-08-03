@@ -1,6 +1,5 @@
 package org.noxet.noxetserver.playerstate.properties;
 
-import org.bukkit.GameRule;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.configuration.ConfigurationSection;
@@ -32,19 +31,27 @@ public class PSPAdvancementCriteria implements PlayerStateProperty<String[]> {
     public void restoreProperty(Player player, String[] restoreCriteriaList) {
         Iterator<Advancement> advancementIterator = NoxetServer.getPlugin().getServer().advancementIterator();
 
-        boolean oldAnnouncementValue = Boolean.TRUE.equals(player.getWorld().getGameRuleValue(GameRule.ANNOUNCE_ADVANCEMENTS));
-        player.getWorld().setGameRule(GameRule.ANNOUNCE_ADVANCEMENTS, false);
-
         while(advancementIterator.hasNext()) {
             AdvancementProgress progress = player.getAdvancementProgress(advancementIterator.next());
-            for(String criteria : progress.getRemainingCriteria())
-                for(String hasCriteria : restoreCriteriaList)
-                    if(criteria.equals(hasCriteria))
-                        progress.awardCriteria(criteria);
-        }
 
-        if(oldAnnouncementValue)
-            player.getWorld().setGameRule(GameRule.ANNOUNCE_ADVANCEMENTS, true);
+            for(String criteria : progress.getRemainingCriteria()) // Check all not yet rewarded criteria
+                for(String hasCriteria : restoreCriteriaList) // Loop all criteria which should be set
+                    if(criteria.equals(hasCriteria)) // Is a criteria which should be set, not set?
+                        progress.awardCriteria(criteria);
+
+            for(String existingCriteria : progress.getAwardedCriteria()) {
+                boolean revokeCritera = true;
+
+                for(String hasCriteria : restoreCriteriaList)
+                    if(existingCriteria.equals(hasCriteria)) {
+                        revokeCritera = false;
+                        break;
+                    }
+
+                if(revokeCritera)
+                    progress.revokeCriteria(existingCriteria);
+            }
+        }
     }
 
     @Override

@@ -28,10 +28,7 @@ import org.noxet.noxetserver.messaging.channels.MessagingGameChannel;
 import org.noxet.noxetserver.minigames.party.Party;
 import org.noxet.noxetserver.playerstate.PlayerState;
 import org.noxet.noxetserver.realm.RealmManager;
-import org.noxet.noxetserver.util.ConcatSet;
-import org.noxet.noxetserver.util.ControllableTaskSet;
-import org.noxet.noxetserver.util.PlayerFreezer;
-import org.noxet.noxetserver.util.TextBeautifier;
+import org.noxet.noxetserver.util.*;
 
 import java.util.*;
 
@@ -100,8 +97,10 @@ public abstract class MiniGameController implements Listener {
         if(hasStarted())
             return;
 
-        if(startTask != null)
+        if(startTask != null) {
             startTask.cancel();
+            startTask = null;
+        }
 
         state = MiniGameState.PLAYING;
 
@@ -212,21 +211,31 @@ public abstract class MiniGameController implements Listener {
         }
 
         sendGameMessage(new Message("§aPreliminary start in §e" + ticksBeforeAttempt / 20 + "s" + "§a..."));
-        sendGameMessage(new ActionBarMessage("§eYour game is starting soon!"));
 
-        startTask = new BukkitRunnable() {
-            @Override
-            public void run() {
+        long startTimestamp = System.currentTimeMillis() + ticksBeforeAttempt / 20 * 1000;
+
+        startTask = scheduleTaskTimer(t -> {
+            if(System.currentTimeMillis() > startTimestamp) {
+                t.cancel();
                 attemptStart();
+                return;
             }
-        }.runTaskLater(NoxetServer.getPlugin(), ticksBeforeAttempt);
 
-        taskSet.push(startTask);
+            int secondRelation = (int) (System.currentTimeMillis() / 1000) % 7;
+
+            sendGameMessage(new ActionBarMessage(
+                    secondRelation <= 4 ? // Every 7 seconds, show alternate text at 6-7th second.
+                            "§eStarting in §6" + FancyTimeConverter.deltaSecondsToFancyTime((int) (startTimestamp - System.currentTimeMillis()) / 1000 + 1) + " §7| §3" + players.size() + "§7 of " +
+                                    (enoughPlayers() ? "§3" + options.getMaxPlayers() + "§7 players" : "§3" + options.getMinPlayers() + "§7 players required") :
+                            "§cExit this queue with §n/game leave"
+            ));
+        }, 0, 20);
     }
 
     public void attemptStart() {
         if(!enoughPlayers()) {
             sendGameMessage(new Message("§cNot enough players to start."));
+            sendGameMessage(new ActionBarMessage("§cNot enough players!"));
             stop();
             return;
         }
@@ -465,7 +474,8 @@ public abstract class MiniGameController implements Listener {
      * Stops the game immediately. Unregisters this game instance, cancels tasks, unregisters event listener, removes players from world, unloads world, and deletes world.
      */
     public void stop() {
-        state = MiniGameState.ENDED;
+        if(startTask != null)
+            startTask.cancel();
 
         freezer.empty();
 
@@ -473,6 +483,8 @@ public abstract class MiniGameController implements Listener {
 
         for(Player player : getPlayersAndSpectators()) // Kick all players from the world.
             disconnectPlayerFromGame(player);
+
+        state = MiniGameState.ENDED;
 
         MiniGameManager.unregisterGame(this);
 

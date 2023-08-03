@@ -17,6 +17,7 @@ import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
 import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.messaging.ActionBarMessage;
 import org.noxet.noxetserver.messaging.Message;
+import org.noxet.noxetserver.minigames.MiniGameManager;
 import org.noxet.noxetserver.util.TextBeautifier;
 import org.noxet.noxetserver.playerdata.PlayerDataManager;
 import org.noxet.noxetserver.playerstate.PlayerState;
@@ -73,6 +74,9 @@ public class RealmManager {
                 }.runTaskLater(NoxetServer.getPlugin(), 20 * 25);
             }
         }, player -> {
+            if(MiniGameManager.isPlayerBusyInGame(player))
+                return;
+
             Events.setPlayerRecentlyKickedToRemoveCheats(player.getUniqueId());
 
             new BukkitRunnable() {
