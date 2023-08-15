@@ -59,14 +59,16 @@ public class WorldEaterEvents {
 
     public static void quickStove(WorldEater worldEater, Promise promise) {
         worldEater.playGameSound(Sound.ITEM_GOAT_HORN_PLAY, 1, 2);
-        worldEater.sendGameMessage(new Message("§e§lQUICK STOVE! §eFurnaces will now DUPE what's cooked at FIVE TIMES the speed! Get on your grill now, because this will only last for 2 minutes."));
+        worldEater.sendGameMessage(new Message("§e§lQUICK STOVE! §eFurnaces will now not only DUPE what's cooked, it will also cook at FIVE TIMES (5x) the speed! Get on your grill now, because this will only last for 2 minutes."));
 
         worldEater.scheduleTask(promise::report, 20 * 60 * 2);
     }
 
     public static void meteorRain(WorldEater worldEater, Promise promise) {
         worldEater.playGameSound(Sound.ITEM_GOAT_HORN_SOUND_3, 1, 2);
-        worldEater.sendGameMessage(new Message("§c§lMETEOR RAIN! §cHead to shelter!"));
+        worldEater.sendGameMessage(new Message("§c§lMETEOR RAIN! §cHead to shelter!\nWhen you hear a horn, a meteor is flying towards you. "));
+
+        Random random = new Random();
 
         final int meteorAmount = 10;
         for(int i = 0; i < meteorAmount; i++) {
@@ -75,13 +77,12 @@ public class WorldEaterEvents {
                     Player meteorTarget = worldEater.getRandomPlayer(true);
 
                     meteorTarget.playSound(meteorTarget, Sound.ITEM_GOAT_HORN_SOUND_0, 1, 0.5f);
+                    worldEater.sendGameMessage(new Message("§5§l§k### ### ### ### §c" + meteorTarget.getName() + "§4 is targeted by a meteor."));
 
                     Location targetLocation = meteorTarget.getLocation();
 
-                    Random random = new Random();
-
                     Location meteorStart = targetLocation.clone();
-                    meteorStart.add(random.nextInt(-50, 50), random.nextInt(50, 100), random.nextInt(-50, 50));
+                    meteorStart.add(random.nextInt(-50, 50), random.nextInt(30, 100), random.nextInt(-50, 50));
 
                     Fireball meteor = MiniGameController.getMiniGameWorld().spawn(meteorStart, Fireball.class);
 

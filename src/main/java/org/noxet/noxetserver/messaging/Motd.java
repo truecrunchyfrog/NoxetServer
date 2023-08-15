@@ -47,6 +47,8 @@ public class Motd {
     }
 
     private static String getRandomQuote() {
+        if(quotes.isEmpty())
+            return "no quote found :(";
         return quotes.get(random.nextInt(quotes.size()));
     }
 

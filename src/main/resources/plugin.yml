@@ -124,3 +124,6 @@ commands:
     usage: /party <create|invite|chat|accept|deny|kick|transfer|leave|list|disband|kick-busy|toggle-invites> [player|message]
     aliases:
       - p
+  preload-mini-game-world:
+    description: Preload the mini-game world, simply for debugging/testing to prevent crashes/timeouts when starting mini-games on low-end hardware
+    usage: /preload-mini-game-world

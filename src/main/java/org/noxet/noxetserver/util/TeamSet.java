@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.*;
 import org.bukkit.util.Consumer;
+import org.noxet.noxetserver.menus.inventory.TeamPickerMenu;
 
 import java.util.*;
 
@@ -35,6 +36,10 @@ public class TeamSet {
             scoreboardTeam.setPrefix(team.getFormattedDisplayName());
             scoreboardTeam.setColor(team.getColor());
         }
+    }
+
+    public List<Team> getTeams() {
+        return teams;
     }
 
     private void updateTeamEntriesAndPlayerScoreboards() {
@@ -70,6 +75,15 @@ public class TeamSet {
     public void putManyPlayersOnTeam(Set<Player> players, Team team) {
         for(Player player : players)
             putPlayerOnTeam(player, team);
+    }
+
+    public void assignPlayersByTeamPickerMenu(TeamPickerMenu menu) {
+        for(Map.Entry<Team, Set<Player>> teamSetEntry : menu.getPlayerTeams().entrySet()) {
+            Team team = teamSetEntry.getKey();
+            Set<Player> players = teamSetEntry.getValue();
+
+            putManyPlayersOnTeam(players, team);
+        }
     }
 
     public Set<Player> getPlayersOnTeam(Team team) {

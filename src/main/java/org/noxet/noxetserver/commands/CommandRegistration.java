@@ -8,6 +8,7 @@ import org.noxet.noxetserver.commands.admin.realm.ResetRealmSpawn;
 import org.noxet.noxetserver.commands.admin.realm.SetRealmSpawn;
 import org.noxet.noxetserver.commands.debug.ClearPlayerDataCache;
 import org.noxet.noxetserver.commands.debug.FakeCombatLog;
+import org.noxet.noxetserver.commands.debug.PreloadMiniGameWorld;
 import org.noxet.noxetserver.commands.debug.WhereAmI;
 import org.noxet.noxetserver.commands.games.creepersweeper.ClearCreeperSweeperStats;
 import org.noxet.noxetserver.commands.games.creepersweeper.CreeperSweeper;
@@ -88,8 +89,12 @@ public class CommandRegistration {
 
             new CommandDefinition("game", new Game()),
 
-            new CommandDefinition("party", new PartyCommand())
+            new CommandDefinition("party", new PartyCommand()),
+
+            new CommandDefinition("preload-mini-game-world", new PreloadMiniGameWorld())
     ));
+
+    // Remember to define command in src/main/resources/plugin.yml, too!
     
     public static void registerCommands() {
         for(CommandDefinition commandDefinition : commandDefinitions) {

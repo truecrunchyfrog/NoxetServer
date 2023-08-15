@@ -23,7 +23,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.noxet.noxetserver.Events;
 import org.noxet.noxetserver.NoxetServer;
 import org.noxet.noxetserver.menus.ItemGenerator;
-import org.noxet.noxetserver.menus.inventory.WorldEaterTeamSelectionMenu;
+import org.noxet.noxetserver.menus.inventory.TeamPickerMenu;
 import org.noxet.noxetserver.messaging.ActionBarMessage;
 import org.noxet.noxetserver.messaging.ErrorMessage;
 import org.noxet.noxetserver.messaging.Message;
@@ -35,6 +35,7 @@ import org.noxet.noxetserver.util.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class WorldEater extends MiniGameController {
     private final TeamSet teamSet = new TeamSet(getPlayers(), WorldEaterTeams.SEEKER, WorldEaterTeams.HIDER);
@@ -45,6 +46,7 @@ public class WorldEater extends MiniGameController {
     private final Set<FallingBlock> fallingBlockLootBoxes = new HashSet<>();
     private final Set<Block> placedLootBoxes = new HashSet<>();
     private final Set<Location> playerPlacedBlocks = new HashSet<>();
+    private final Map<Player, Integer> seekerDeathCount = new HashMap<>();
 
     @Override
     public void handlePreStart() {
@@ -143,25 +145,24 @@ public class WorldEater extends MiniGameController {
                 }
 
         for(int i = 0; i < 5; i++)
-            magicalEntitySpawn(EntityType.PIG);
+            spawnEntityInNaturalHabitat(EntityType.PIG);
 
         for(int i = 0; i < 4; i++)
-            magicalEntitySpawn(EntityType.COW);
+            spawnEntityInNaturalHabitat(EntityType.COW);
 
         for(int i = 0; i < 3; i++)
-            magicalEntitySpawn(EntityType.SHEEP);
+            spawnEntityInNaturalHabitat(EntityType.SHEEP);
 
         for(int i = 0; i < 2; i++)
-            magicalEntitySpawn(EntityType.CHICKEN);
+            spawnEntityInNaturalHabitat(EntityType.CHICKEN);
     }
 
     @Override
     public void handleStart() {
         new RegionBinder(getCenterTopLocation(), getPlayersAndSpectators(), 5 / 2 * 16, 120);
 
-        WorldEaterTeamSelectionMenu teamSelectionMenu = new WorldEaterTeamSelectionMenu(this, 40, menu -> {
-            teamSet.putManyPlayersOnTeam(menu.getHiders(), WorldEaterTeams.HIDER);
-            teamSet.putManyPlayersOnTeam(menu.getSeekers(), WorldEaterTeams.SEEKER);
+        TeamPickerMenu teamSelectionMenu = new TeamPickerMenu(this, getTeamSet().getTeams(), 40, menu -> {
+            teamSet.assignPlayersByTeamPickerMenu(menu);
 
             if(teamSet.isTeamEmpty(WorldEaterTeams.HIDER)) {
                 sendGameMessage(new Message("No one wanted to play as a hider! Picking a random hider."));
@@ -350,21 +351,35 @@ public class WorldEater extends MiniGameController {
 
         player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 10, 10, true, false));
 
-        for(int i = 10; i > 0; i--) {
-            int finalI = i;
-            scheduleTask(() -> player.sendTitle("§c" + FancyTimeConverter.deltaSecondsToFancyTime(finalI), "§euntil you respawn...", 0, 20 * 2, 0), 20 * (10 - i));
-        }
+        int newDeathCount = seekerDeathCount.getOrDefault(player, 0) + 1;
 
-        scheduleTask(() -> {
-            player.setGameMode(GameMode.SURVIVAL);
-            getFreezer().unfreeze(player);
+        seekerDeathCount.put(player, newDeathCount);
 
-            PlayerState.prepareNormal(player, false);
+        AtomicInteger secondsLeft = new AtomicInteger(5 + newDeathCount - 1);
 
-            player.teleport(getSpawnLocation());
+        scheduleTaskTimer(t -> {
+            if(secondsLeft.get() == 0) {
+                player.setGameMode(GameMode.SURVIVAL);
+                getFreezer().unfreeze(player);
 
-            Events.setTemporaryInvulnerability(player);
-        }, 20 * 10);
+                PlayerState.prepareNormal(player, false);
+
+                player.teleport(getSpawnLocation());
+
+                Events.setTemporaryInvulnerability(player);
+
+                if(newDeathCount == 5) {
+                    player.setHealthScale(0.5);
+                    player.setWalkSpeed(0.7f);
+                    new Message("§cDue to excessive deaths, your max health has been limited, and your speed has been lowered.").send(player);
+                    player.sendTitle("§4Excessive deaths", "§cMax health and walk speed decreased...", 10, 20 * 4, 10);
+                }
+
+                return;
+            }
+
+            player.sendTitle("§c" + FancyTimeConverter.deltaSecondsToFancyTime(secondsLeft.getAndDecrement()), "§euntil you respawn...", 0, 20 * 2, 0);
+        }, 0, 20);
     }
 
     @Override
@@ -488,16 +503,16 @@ public class WorldEater extends MiniGameController {
         teamSet.forEach(WorldEaterTeams.HIDER, hider -> new ActionBarMessage("§c§lSEEKERS RELEASED!").send(hider));
 
         for(int i = 0; i < 5; i++)
-            magicalEntitySpawn(EntityType.PIG);
+            spawnEntityInNaturalHabitat(EntityType.PIG);
 
         for(int i = 0; i < 4; i++)
-            magicalEntitySpawn(EntityType.COW);
+            spawnEntityInNaturalHabitat(EntityType.COW);
 
         for(int i = 0; i < 3; i++)
-            magicalEntitySpawn(EntityType.SHEEP);
+            spawnEntityInNaturalHabitat(EntityType.SHEEP);
 
         for(int i = 0; i < 2; i++)
-            magicalEntitySpawn(EntityType.CHICKEN);
+            spawnEntityInNaturalHabitat(EntityType.CHICKEN);
 
         sendGameMessage(new Message("§cThe Chunk Muncher is eating up the island! See more info in the stats to the right."));
 
@@ -538,7 +553,7 @@ public class WorldEater extends MiniGameController {
                         "§3 - Velocity §b" + layerRemoveSpeed / 20 + "s/layer",
                         //"§3 - Next layer §b" + FancyTimeConverter.deltaSecondsToFancyTime((int) (nextLayerDisappearsAt - System.currentTimeMillis()) / 1000),
                         "§7---",
-                        currentEvents.size() == 0 ? "§7No current event" : "§9§lEVENT: §b" + currentEvents.get(0).getEventName()
+                        currentEvents.isEmpty() ? "§7No current event" : "§9§lEVENT: §b" + currentEvents.get(0).getEventName()
                 );
 
                 if(timeLeft % 60 == 0) {
@@ -648,7 +663,7 @@ public class WorldEater extends MiniGameController {
         int i = 0;
 
         while(i++ < 100)
-            if(spawn.getBlock().getType().isAir() || spawn.getBlock().getType().toString().endsWith("_LEAVES") || spawn.getBlock().getType().toString().endsWith("_MUSHROOM"))
+            if(spawn.getBlock().getType().isAir() || spawn.getBlock().getType().toString().contains("LEAVES") || spawn.getBlock().getType().toString().contains("MUSHROOM"))
                 spawn.subtract(0, 1, 0); // Go down 1 block if air or leaf block.
             else if(spawn.getBlock().getType().toString().endsWith("_LOG"))
                 spawn.add(1, 0, 0); // Go x++ if wood log block.
@@ -691,21 +706,6 @@ public class WorldEater extends MiniGameController {
         getMiniGameWorld().spawnEntity(getAppropriateSpawnLocation(spawn), type);
     }
 
-    private void magicalEntitySpawn(EntityType type) {
-        Random random = new Random();
-
-        Location spawn = getCenterTopLocation().add(
-                random.nextInt(16 * 2, 16 * 5),
-                1,
-                random.nextInt(16 * 2, 16 * 5)
-        );
-
-        LivingEntity entity = (LivingEntity) getMiniGameWorld().spawnEntity(spawn, type);
-
-        entity.setVelocity(getCenterTopLocation().toVector().subtract(spawn.toVector()).setY(0));
-        entity.teleport(entity.getLocation().setDirection(entity.getVelocity()));
-    }
-
     public TeamSet getTeamSet() {
         return teamSet;
     }
@@ -735,11 +735,18 @@ public class WorldEater extends MiniGameController {
             Material.DIAMOND_AXE,
             Material.DIAMOND_PICKAXE,
             Material.DIAMOND_BLOCK,
+            Material.DIAMOND_HELMET,
+            Material.DIAMOND_CHESTPLATE,
+            Material.DIAMOND_LEGGINGS,
+            Material.NETHERITE_HELMET,
             Material.NETHERITE_BOOTS,
             Material.NETHERITE_SWORD,
             Material.TNT,
             Material.FLINT_AND_STEEL,
-            Material.SPECTRAL_ARROW
+            Material.SPECTRAL_ARROW,
+            Material.OAK_LOG,
+            Material.DARK_OAK_LOG,
+            Material.SPRUCE_LOG
     );
 
     private static ItemStack getRandomLootItem() {
