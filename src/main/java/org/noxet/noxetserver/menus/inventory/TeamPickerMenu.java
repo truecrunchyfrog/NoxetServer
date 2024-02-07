@@ -64,7 +64,10 @@ public class TeamPickerMenu extends InventoryMenu {
 
             while(teamIterator.hasNext()) {
                 Team team = teamIterator.next();
-                Set<Player> teamPlayers = playerTeams.getOrDefault(team, new HashSet<>());
+
+                playerTeams.computeIfAbsent(team, k -> new HashSet<>());
+
+                Set<Player> teamPlayers = playerTeams.get(team);
 
                 if(team.getMaxTeamMembers() > teamPlayers.size()) {
                     teamPlayers.add(playerIterator.next()); // Team is not full, let them in!
@@ -93,7 +96,7 @@ public class TeamPickerMenu extends InventoryMenu {
     protected void updateInventory() {
         disbandRemovedPlayers();
 
-        int y = 0;
+        int y = 0, x = 0;
 
         for(Map.Entry<Team, Set<Player>> teamSetEntry : playerTeams.entrySet()) {
             Team team = teamSetEntry.getKey();
@@ -101,11 +104,9 @@ public class TeamPickerMenu extends InventoryMenu {
 
             setSlotItem(ItemGenerator.generateItem(
                     team.getTeamIcon(),
-                    "§7Team",
-                    Collections.singletonList(team.getDisplayName().toUpperCase() + 'S')
-            ), 0, y);
-
-            int x = 1;
+                    "§7Team" + (team.getMaxTeamMembers() > teamPlayers.size() ? "" : " §c(full!)"),
+                    Collections.singletonList(team.getFormattedDisplayName() + 'S')
+            ), x, y);
 
             Iterator<Player> playerIterator = teamPlayers.iterator();
 
@@ -114,26 +115,25 @@ public class TeamPickerMenu extends InventoryMenu {
             while(playerIterator.hasNext()) {
                 Player thisPlayer = playerIterator.next();
 
-                if(skip > 0) {
-                    skip--;
+                if(skip-- > 0)
                     continue;
-                }
 
                 setSlotItem(ItemGenerator.generatePlayerSkull(
                         thisPlayer,
-                         team.getDisplayName()+ ": §b" + thisPlayer.getName(),
+                         team.getFormattedDisplayName()+ ": §b" + thisPlayer.getName(),
                         null
-                ), x++, y);
+                ), ++x, y);
             }
 
             while(++x < 9)
                 setSlotItem(ItemGenerator.generateItem(
                         Material.LIGHT_GRAY_STAINED_GLASS_PANE,
                         team.getMaxTeamMembers() > teamPlayers.size() ? "§7Click to play as a" : "§c" + (timeLeft % 3 == 0 ? "§n" : "") + "This team is full!",
-                        Collections.singletonList(team.getDisplayName())
+                        Collections.singletonList(team.getFormattedDisplayName())
                 ), x, y);
 
             y++;
+            x = 0;
         }
 
         setSlotItem(ItemGenerator.generateItem(
