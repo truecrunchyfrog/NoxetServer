@@ -235,7 +235,7 @@ public class TeleportAsk implements TabExecutor {
             return true;
         }
 
-        UUID targetUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(strings[0]);
+        UUID targetUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(strings[0]);
 
         if(targetUUID == null) {
             new ErrorMessage(ErrorMessage.ErrorType.COMMON, "That player is not registered on this server.").send(player);

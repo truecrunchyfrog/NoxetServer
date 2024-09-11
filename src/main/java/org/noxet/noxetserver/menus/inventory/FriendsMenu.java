@@ -41,8 +41,8 @@ public class FriendsMenu extends InventoryMenu {
     @Override
     protected void updateInventory() {
         for(String friendUUIDString : friends) {
-            UUID friendUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(friendUUIDString);
-            String friendName = UsernameStorageManager.getCasedUsernameFromUUID(friendUUID);
+            UUID friendUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(friendUUIDString);
+            String friendName = UsernameStorageManager.getCasedUsernameFromUuid(friendUUID);
 
             Player friendPlayer = NoxetServer.getPlugin().getServer().getPlayer(friendUUID);
             RealmManager.Realm realm = null;
@@ -158,8 +158,8 @@ public class FriendsMenu extends InventoryMenu {
 
         String clickedFriendUUID = friends.get(coordinate.getSlotIndex());
 
-        UUID friendUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(clickedFriendUUID);
-        String friendName = UsernameStorageManager.getCasedUsernameFromUUID(friendUUID);
+        UUID friendUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(clickedFriendUUID);
+        String friendName = UsernameStorageManager.getCasedUsernameFromUuid(friendUUID);
 
         Player friendPlayer = NoxetServer.getPlugin().getServer().getPlayer(friendUUID);
 

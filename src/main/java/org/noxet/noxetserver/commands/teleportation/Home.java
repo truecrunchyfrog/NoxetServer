@@ -64,14 +64,14 @@ public class Home implements TabExecutor {
             String friendName = friendTpId.substring(0, slashIndex);
             String homeName = '*' + friendTpId.substring(slashIndex + 1);
 
-            UUID friendUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(friendName);
+            UUID friendUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(friendName);
 
             if(friendUUID == null) {
                 new ErrorMessage(ErrorMessage.ErrorType.COMMON, "Player '" + friendName + "' has never been on this server.").send(player);
                 return true;
             }
 
-            String realFriendName = UsernameStorageManager.getCasedUsernameFromUUID(friendUUID);
+            String realFriendName = UsernameStorageManager.getCasedUsernameFromUuid(friendUUID);
 
             if(!Friend.areFriends(player.getUniqueId(), friendUUID)) {
                 new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are not friends with " + realFriendName + ", and cannot teleport to their friend homes.").send(player);
@@ -376,8 +376,8 @@ public class Home implements TabExecutor {
         List<String> friendUUIDs = Friend.getFriendList(player.getUniqueId());
 
         for(String eachFriend : friendUUIDs) {
-            UUID friendUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(eachFriend);
-            String friendName = UsernameStorageManager.getCasedUsernameFromUUID(friendUUID);
+            UUID friendUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(eachFriend);
+            String friendName = UsernameStorageManager.getCasedUsernameFromUuid(friendUUID);
 
             if(friendUUID == null)
                 continue;

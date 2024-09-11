@@ -43,7 +43,7 @@ public class Friend implements TabExecutor {
                 return true;
             }
 
-            UUID uuidToBefriend = new UsernameStorageManager().getUUIDFromUsernameOrUUID(strings[1]);
+            UUID uuidToBefriend = new UsernameStorageManager().getUuidFromUsernameOrUuid(strings[1]);
 
             if(uuidToBefriend == null) {
                 new ErrorMessage(ErrorMessage.ErrorType.COMMON, "That player is not registered.").send(player);
@@ -51,7 +51,7 @@ public class Friend implements TabExecutor {
             }
 
             Player playerToBefriend = NoxetServer.getPlugin().getServer().getPlayer(uuidToBefriend); // Only works if the player is online.
-            String befriendName = UsernameStorageManager.getCasedUsernameFromUUID(uuidToBefriend); // This works anyway.
+            String befriendName = UsernameStorageManager.getCasedUsernameFromUuid(uuidToBefriend); // This works anyway.
 
             if(player.getUniqueId().equals(uuidToBefriend)) {
                 new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You cannot befriend yourself.").send(player);
@@ -136,7 +136,7 @@ public class Friend implements TabExecutor {
                 return true;
             }
 
-            UUID uuidToUnfriend = new UsernameStorageManager().getUUIDFromUsernameOrUUID(strings[1]);
+            UUID uuidToUnfriend = new UsernameStorageManager().getUuidFromUsernameOrUuid(strings[1]);
 
             if(uuidToUnfriend == null) {
                 new ErrorMessage(ErrorMessage.ErrorType.COMMON, "That player is not registered.").send(player);
@@ -144,7 +144,7 @@ public class Friend implements TabExecutor {
             }
 
             Player playerToUnfriend = NoxetServer.getPlugin().getServer().getPlayer(uuidToUnfriend); // Only works if the player is online.
-            String unfriendName = UsernameStorageManager.getCasedUsernameFromUUID(uuidToUnfriend); // This works anyway.
+            String unfriendName = UsernameStorageManager.getCasedUsernameFromUuid(uuidToUnfriend); // This works anyway.
 
             if(!areFriends(player.getUniqueId(), uuidToUnfriend)) {
                 new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are not friends!").send(player);
@@ -166,7 +166,7 @@ public class Friend implements TabExecutor {
                 return true;
             }
 
-            UUID uuidToDeny = new UsernameStorageManager().getUUIDFromUsernameOrUUID(strings[1]);
+            UUID uuidToDeny = new UsernameStorageManager().getUuidFromUsernameOrUuid(strings[1]);
 
             if(uuidToDeny == null) {
                 new ErrorMessage(ErrorMessage.ErrorType.COMMON, "That player is not registered.").send(player);
@@ -174,7 +174,7 @@ public class Friend implements TabExecutor {
             }
 
             Player playerToDeny = NoxetServer.getPlugin().getServer().getPlayer(uuidToDeny); // Only works if the player is online.
-            String denyName = UsernameStorageManager.getCasedUsernameFromUUID(uuidToDeny); // This works anyway.
+            String denyName = UsernameStorageManager.getCasedUsernameFromUuid(uuidToDeny); // This works anyway.
 
             if(!hasReceivedFriendRequestFrom(player.getUniqueId(), uuidToDeny)) {
                 new ErrorMessage(ErrorMessage.ErrorType.COMMON, "They have not sent you a friend request!").send(player);
@@ -199,14 +199,14 @@ public class Friend implements TabExecutor {
                 return true;
             }
 
-            UUID uuidToCancel = new UsernameStorageManager().getUUIDFromUsernameOrUUID(strings[1]);
+            UUID uuidToCancel = new UsernameStorageManager().getUuidFromUsernameOrUuid(strings[1]);
 
             if(uuidToCancel == null) {
                 new ErrorMessage(ErrorMessage.ErrorType.COMMON, "That player is not registered.").send(player);
                 return true;
             }
 
-            String cancelName = UsernameStorageManager.getCasedUsernameFromUUID(uuidToCancel); // This works anyway.
+            String cancelName = UsernameStorageManager.getCasedUsernameFromUuid(uuidToCancel); // This works anyway.
 
             if(!hasReceivedFriendRequestFrom(uuidToCancel, player.getUniqueId())) {
                 new ErrorMessage(ErrorMessage.ErrorType.COMMON, "You have not sent them a friend request!").send(player);
@@ -226,8 +226,8 @@ public class Friend implements TabExecutor {
             new Message("§eFriends: " + friendUUIDs.size()).send(player);
 
             for(String friendUUIDString : friendUUIDs) {
-                UUID friendUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(friendUUIDString);
-                String friendName = UsernameStorageManager.getCasedUsernameFromUUID(friendUUID);
+                UUID friendUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(friendUUIDString);
+                String friendName = UsernameStorageManager.getCasedUsernameFromUuid(friendUUID);
 
                 new Message("└§a§lFRIEND §2" + friendName).send(player);
             }
@@ -241,8 +241,8 @@ public class Friend implements TabExecutor {
             new Message("§eIncoming friend requests: " + incomingUUIDs.size()).send(player);
 
             for(String incomingUUIDString : incomingUUIDs) {
-                UUID incomingUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(incomingUUIDString);
-                String incomingName = UsernameStorageManager.getCasedUsernameFromUUID(incomingUUID);
+                UUID incomingUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(incomingUUIDString);
+                String incomingName = UsernameStorageManager.getCasedUsernameFromUuid(incomingUUID);
 
                 new Message("└§6§lINCOMING §a" + incomingName)
                         .addButton("Accept", ChatColor.GREEN, "Become friends!", "friend add " + incomingUUIDString)
@@ -260,8 +260,8 @@ public class Friend implements TabExecutor {
             new Message("§eOutgoing friend requests: " + outgoingUUIDs.size()).send(player);
 
             for(String outgoingUUIDString : outgoingUUIDs) {
-                UUID outgoingUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(outgoingUUIDString);
-                String outgoingName = UsernameStorageManager.getCasedUsernameFromUUID(outgoingUUID);
+                UUID outgoingUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(outgoingUUIDString);
+                String outgoingName = UsernameStorageManager.getCasedUsernameFromUuid(outgoingUUID);
 
                 new Message("└§8§lOUTGOING §7" + outgoingName)
                         .addButton("Cancel", ChatColor.RED, "Regret wanting to become friends?", "friend cancel " + outgoingUUIDString)
@@ -321,22 +321,22 @@ public class Friend implements TabExecutor {
                         completions.add(playerToRecommend.getName());
                 case "deny":
                     for(String incomingUUIDString : getIncomingFriendRequests(player.getUniqueId())) {
-                        UUID incomingUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(incomingUUIDString);
-                        completions.add(incomingUUID != null ? UsernameStorageManager.getCasedUsernameFromUUID(incomingUUID) : incomingUUIDString);
+                        UUID incomingUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(incomingUUIDString);
+                        completions.add(incomingUUID != null ? UsernameStorageManager.getCasedUsernameFromUuid(incomingUUID) : incomingUUIDString);
                     }
 
                     break;
                 case "remove":
                     for(String friendUUIDString : getFriendList(player.getUniqueId())) {
-                        UUID friendUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(friendUUIDString);
-                        completions.add(friendUUID != null ? UsernameStorageManager.getCasedUsernameFromUUID(friendUUID) : friendUUIDString);
+                        UUID friendUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(friendUUIDString);
+                        completions.add(friendUUID != null ? UsernameStorageManager.getCasedUsernameFromUuid(friendUUID) : friendUUIDString);
                     }
 
                     break;
                 case "cancel":
                     for(String outgoingUUIDString : getOutgoingFriendRequests(player.getUniqueId())) {
-                        UUID outgoingUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(outgoingUUIDString);
-                        completions.add(outgoingUUID != null ? UsernameStorageManager.getCasedUsernameFromUUID(outgoingUUID) : outgoingUUIDString);
+                        UUID outgoingUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(outgoingUUIDString);
+                        completions.add(outgoingUUID != null ? UsernameStorageManager.getCasedUsernameFromUuid(outgoingUUID) : outgoingUUIDString);
                     }
 
                     break;

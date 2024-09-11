@@ -56,7 +56,7 @@ public class MsgConversation implements TabExecutor, Listener {
             return true;
         }
 
-        UUID playerToMessageUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(strings[0]);
+        UUID playerToMessageUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(strings[0]);
 
         if(playerToMessageUUID == null) {
             new ErrorMessage(ErrorMessage.ErrorType.COMMON, "That player is not registered on Noxet.org.").send(player);

@@ -30,8 +30,8 @@ public class BlockedPlayersMenu extends InventoryMenu {
     @Override
     protected void updateInventory() {
         for(String blockedUUIDString : blockedPlayers) {
-            UUID blockedUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(blockedUUIDString);
-            String blockedName = UsernameStorageManager.getCasedUsernameFromUUID(blockedUUID);
+            UUID blockedUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(blockedUUIDString);
+            String blockedName = UsernameStorageManager.getCasedUsernameFromUuid(blockedUUID);
 
             setSlotItem(
                     ItemGenerator.generatePlayerSkull(

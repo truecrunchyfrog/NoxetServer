@@ -21,12 +21,9 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
-import org.noxet.noxetserver.combatlogging.CombatLogging;
-import org.noxet.noxetserver.combatlogging.CombatLoggingStorageManager;
 import org.noxet.noxetserver.commands.misc.ChickenLeg;
 import org.noxet.noxetserver.commands.social.MsgConversation;
 import org.noxet.noxetserver.commands.teleportation.TeleportAsk;
-import org.noxet.noxetserver.menus.book.BookMenu;
 import org.noxet.noxetserver.menus.inventory.GameNavigationMenu;
 import org.noxet.noxetserver.menus.inventory.SettingsMenu;
 import org.noxet.noxetserver.menus.inventory.SocialMenu;
@@ -71,8 +68,8 @@ public class Events implements Listener {
 
     @EventHandler
     public void onPlayerTeleport(PlayerTeleportEvent e) {
-        if(CombatLogging.isCombatLogged(e.getPlayer())) {
-            CombatLogging.triggerLocationDisband(e.getPlayer());
+        if(_CombatLogging.isCombatLogged(e.getPlayer())) {
+            _CombatLogging.triggerLocationDisband(e.getPlayer());
             new Message("§cYou teleported away while combat logged and was killed in penalty.").send(e.getPlayer());
 
             new BukkitRunnable() {
@@ -85,7 +82,7 @@ public class Events implements Listener {
                     Realm toRealm = getCurrentRealm(e.getPlayer());
 
                     if(fromRealm == toRealm)
-                        new CombatLoggingStorageManager().combatLogRejoin(e.getPlayer(), toRealm);
+                        new _CombatLoggingStorageManager().combatLogRejoin(e.getPlayer(), toRealm);
                 }
             }.runTaskLater(NoxetServer.getPlugin(), 1);
         }
@@ -169,8 +166,8 @@ public class Events implements Listener {
             return;
         }
 
-        if(!e.getPlayer().getUniqueId().equals(new UsernameStorageManager().getUUIDFromUsernameOrUUID(e.getPlayer().getName())))
-            new UsernameStorageManager().assignUUIDToUsername(e.getPlayer().getName(), e.getPlayer().getUniqueId()); // Correct username if changed (either entirely or just by different casing).
+        if(!e.getPlayer().getUniqueId().equals(new UsernameStorageManager().getUuidFromUsernameOrUuid(e.getPlayer().getName())))
+            new UsernameStorageManager().bindUsernameToUuid(e.getPlayer().getName(), e.getPlayer().getUniqueId()); // Correct username if changed (either entirely or just by different casing).
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(NoxetServer.getPlugin(), () -> {
             Realm realm = getCurrentRealm(e.getPlayer());
@@ -185,7 +182,7 @@ public class Events implements Listener {
 
         updatePlayerListName(e.getPlayer());
 
-        new CombatLoggingStorageManager().combatLogRejoin(e.getPlayer(), getCurrentRealm(e.getPlayer()));
+        new _CombatLoggingStorageManager().combatLogRejoin(e.getPlayer(), getCurrentRealm(e.getPlayer()));
 
         int incomingFriendRequests = new PlayerDataManager(e.getPlayer()).getListSize(PlayerDataManager.Attribute.INCOMING_FRIEND_REQUESTS);
 
@@ -219,7 +216,7 @@ public class Events implements Listener {
         abortUnconfirmedPlayerRespawn(player);
         MsgConversation.clearActiveConversationModes(player);
         PlayerDataManager.clearCacheForUUID(player.getUniqueId());
-        CombatLogging.triggerLocationDisband(player);
+        _CombatLogging.triggerLocationDisband(player);
         Party.abandonPlayer(player);
 
         PlayerDataManager playerDataManager = new PlayerDataManager(player);
@@ -241,7 +238,7 @@ public class Events implements Listener {
     public void onPlayerDeath(PlayerDeathEvent e) {
         Player player = e.getEntity();
 
-        CombatLogging.clearCombatLog(player);
+        _CombatLogging.clearCombatLog(player);
 
         Realm realm = getCurrentRealm(player);
 
@@ -409,7 +406,7 @@ public class Events implements Listener {
         } else if(TemporaryCommand.READ_BEFORE_CHAT.isMessageThisCommand(e)) {
             PlayerDataManager playerDataManager = new PlayerDataManager(e.getPlayer());
             if(!(boolean) playerDataManager.get(PlayerDataManager.Attribute.SEEN_CHAT_NOTICE)) {
-                new BookMenu(Collections.singletonList(
+                new _BookMenu(Collections.singletonList(
                         new ComponentBuilder(
                                 "§8Welcome to the §3" + TextBeautifier.beautify("noxet") + "§8 chat.\n" +
                                     "You can §0/msg§8 players to talk privately.\n" +
@@ -672,8 +669,8 @@ public class Events implements Listener {
                 e.getEntity() instanceof Player &&
                 e.getDamager() instanceof Player
         ) {
-            CombatLogging.triggerCombatLog((Player) e.getEntity());
-            CombatLogging.triggerCombatLog((Player) e.getDamager());
+            _CombatLogging.triggerCombatLog((Player) e.getEntity());
+            _CombatLogging.triggerCombatLog((Player) e.getDamager());
         }
     }
 

@@ -104,7 +104,7 @@ public class PartyCommand implements TabExecutor {
                 return true;
             }
 
-            Party party = Party.getOwnersParty(partyOwner);
+            Party party = Party.getOwnedParty(partyOwner);
 
             if(party == null) {
                 new NoteMessage("That player is not hosting a party. The party may have disbanded.").send(player);
@@ -132,7 +132,7 @@ public class PartyCommand implements TabExecutor {
                 return true;
             }
 
-            Party party = Party.getOwnersParty(partyOwner);
+            Party party = Party.getOwnedParty(partyOwner);
 
             if(party == null) {
                 new NoteMessage("That player is not hosting a party. The party may have disbanded.").send(player);
@@ -347,7 +347,7 @@ public class PartyCommand implements TabExecutor {
                     break;
                 case "kick":
                 case "transfer":
-                    Party party = Party.getOwnersParty(player);
+                    Party party = Party.getOwnedParty(player);
                     if(party != null)
                         party.getMembers().forEach(member -> {
                             if(member != party.getOwner())

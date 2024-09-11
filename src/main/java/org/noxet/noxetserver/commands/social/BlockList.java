@@ -30,8 +30,8 @@ public class BlockList implements CommandExecutor {
         new Message("§eBlocked players: " + blockedUUIDs.size()).send(player);
 
         for(String blockedUUIDString : blockedUUIDs) {
-            UUID blockedUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(blockedUUIDString);
-            String blockedName = UsernameStorageManager.getCasedUsernameFromUUID(blockedUUID);
+            UUID blockedUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(blockedUUIDString);
+            String blockedName = UsernameStorageManager.getCasedUsernameFromUuid(blockedUUID);
             new Message("└§4§lBLOCKED §c" + (blockedName != null ? blockedName : blockedUUIDString))
                     .addButton("Pardon", ChatColor.GREEN, "Unblock this player", "unblock " + blockedUUIDString)
                     .send(player);

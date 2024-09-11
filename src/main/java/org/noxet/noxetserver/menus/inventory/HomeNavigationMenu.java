@@ -67,7 +67,7 @@ public class HomeNavigationMenu extends InventoryMenu {
                 setSlotItem(
                         ItemGenerator.generatePlayerSkull(
                                 friends.size() > 0 ? NoxetServer.getPlugin().getServer().getOfflinePlayer(
-                                        new UsernameStorageManager().getUUIDFromUsernameOrUUID(
+                                        new UsernameStorageManager().getUuidFromUsernameOrUuid(
                                                 friends.get(friendSkullScrollIndex++)
                                         )
                                 ) : player,
@@ -145,7 +145,7 @@ public class HomeNavigationMenu extends InventoryMenu {
             // friendTpId is formatted as: player/home-name
 
             String playerName = friendTpId.substring(0, friendTpId.indexOf('/'));
-            UUID playerUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(playerName);
+            UUID playerUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(playerName);
 
             setSlotItem(
                     ItemGenerator.generatePlayerSkull(NoxetServer.getPlugin().getServer().getOfflinePlayer(playerUUID),

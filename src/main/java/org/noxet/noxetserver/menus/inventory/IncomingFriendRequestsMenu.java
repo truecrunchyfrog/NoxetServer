@@ -25,8 +25,8 @@ public class IncomingFriendRequestsMenu extends InventoryMenu {
     @Override
     protected void updateInventory() {
         for(String incomingUUIDString : incomingPlayers) {
-            UUID incomingUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(incomingUUIDString);
-            String incomingName = UsernameStorageManager.getCasedUsernameFromUUID(incomingUUID);
+            UUID incomingUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(incomingUUIDString);
+            String incomingName = UsernameStorageManager.getCasedUsernameFromUuid(incomingUUID);
 
             setSlotItem(
                     ItemGenerator.generatePlayerSkull(
@@ -50,7 +50,7 @@ public class IncomingFriendRequestsMenu extends InventoryMenu {
             return false;
 
         String clickedIncomingUUID = incomingPlayers.get(coordinate.getSlotIndex());
-        String clickedIncomingName = UsernameStorageManager.getCasedUsernameFromUUID(new UsernameStorageManager().getUUIDFromUsernameOrUUID(clickedIncomingUUID));
+        String clickedIncomingName = UsernameStorageManager.getCasedUsernameFromUuid(new UsernameStorageManager().getUuidFromUsernameOrUuid(clickedIncomingUUID));
 
         switch(clickType) {
             case DOUBLE_CLICK:

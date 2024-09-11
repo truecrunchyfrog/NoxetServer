@@ -29,14 +29,14 @@ public class Unblock implements TabExecutor {
             return true;
         }
 
-        UUID uuidToUnblock = new UsernameStorageManager().getUUIDFromUsernameOrUUID(strings[0]);
+        UUID uuidToUnblock = new UsernameStorageManager().getUuidFromUsernameOrUuid(strings[0]);
 
         if(uuidToUnblock == null) {
             new ErrorMessage(ErrorMessage.ErrorType.COMMON, "That player is not registered.").send(player);
             return true;
         }
 
-        String unblockName = UsernameStorageManager.getCasedUsernameFromUUID(uuidToUnblock); // This works anyway.
+        String unblockName = UsernameStorageManager.getCasedUsernameFromUuid(uuidToUnblock); // This works anyway.
 
         PlayerDataManager playerDataManager = new PlayerDataManager(player);
 
@@ -65,8 +65,8 @@ public class Unblock implements TabExecutor {
         if(strings.length == 1) {
             //noinspection unchecked
             for(String blockedUUIDString : (List<String>) new PlayerDataManager(player.getUniqueId()).get(PlayerDataManager.Attribute.BLOCKED_PLAYERS)) {
-                UUID blockedUUID = new UsernameStorageManager().getUUIDFromUsernameOrUUID(blockedUUIDString);
-                completions.add(blockedUUID != null ? UsernameStorageManager.getCasedUsernameFromUUID(blockedUUID) : blockedUUIDString);
+                UUID blockedUUID = new UsernameStorageManager().getUuidFromUsernameOrUuid(blockedUUIDString);
+                completions.add(blockedUUID != null ? UsernameStorageManager.getCasedUsernameFromUuid(blockedUUID) : blockedUUIDString);
             }
         }
 

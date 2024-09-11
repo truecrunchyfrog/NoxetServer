@@ -31,14 +31,14 @@ public class Block implements TabExecutor {
             return true;
         }
 
-        UUID uuidToBlock = new UsernameStorageManager().getUUIDFromUsernameOrUUID(strings[0]);
+        UUID uuidToBlock = new UsernameStorageManager().getUuidFromUsernameOrUuid(strings[0]);
 
         if(uuidToBlock == null) {
             new ErrorMessage(ErrorMessage.ErrorType.COMMON, "That player is not registered.").send(player);
             return true;
         }
 
-        String blockName = UsernameStorageManager.getCasedUsernameFromUUID(uuidToBlock); // This works anyway.
+        String blockName = UsernameStorageManager.getCasedUsernameFromUuid(uuidToBlock); // This works anyway.
 
         PlayerDataManager playerDataManager = new PlayerDataManager(player);
 
