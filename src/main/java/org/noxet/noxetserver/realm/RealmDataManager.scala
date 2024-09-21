@@ -2,17 +2,18 @@ package org.noxet.noxetserver.realm
 
 import org.bukkit.Location
 import org.noxet.noxetserver.util.ConfigManager
+import org.noxet.noxetserver.realm.RealmManager.Realm
 
-class RealmDataManager extends ConfigManager:
+object RealmDataManager extends ConfigManager:
   override protected def getFileName: String = "realm-data"
 
-  private def getRealmKey(realm: RealmManager.Realm, key: String): String =
+  private def getRealmKey(realm: Realm, key: String): String =
     val realmName =
       if realm != null then realm.name()
       else "_"
     realmName + "." + key
 
-  def setSoftSpawnLocation(realm: RealmManager.Realm, location: Option[Location]): Unit =
+  def setSoftSpawnLocation(realm: Realm, location: Option[Location]): Unit =
     location match
       case Some(loc) =>
         loc.setX(Math.round(loc.getX * 2) / 2.0)
@@ -26,5 +27,5 @@ class RealmDataManager extends ConfigManager:
     config.set(getRealmKey(realm, "spawn"), location.orNull)
     save()
 
-  def getSpawnLocation(realm: RealmManager.Realm): Option[Location] =
+  def getSpawnLocation(realm: Realm): Option[Location] =
     Option(config.getLocation(getRealmKey(realm, "spawn")))

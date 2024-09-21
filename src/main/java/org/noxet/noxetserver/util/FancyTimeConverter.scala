@@ -1,27 +1,25 @@
 package org.noxet.noxetserver.util
 
-object FancyTimeConverter:
-    def deltaSecondsToFancyTime(seconds: Int): String = deltaSecondsToFancyTime(seconds, false)
+import scala.collection.mutable
 
-    def deltaSecondsToFancyTime(seconds: Int, secondSpecific: Boolean): String =
+object FancyTimeConverter:
+    def deltaSecondsToFancyTime(seconds: Int, secondSpecific: Boolean = false): String =
         val days = seconds / 86400
         val hours = seconds / 3600 % 24
         val minutes = seconds / 60 % 60
 
-        val stringBuilder = StringBuilder()
+        val parts = mutable.ListBuffer[String]()
 
         if days > 0 then
-            stringBuilder.append(days).append("d ")
+            parts += days + "d"
 
         if hours > 0 then
-            stringBuilder.append(hours).append("h ")
+            parts += hours + "h"
 
         if days == 0 && minutes > 0 then
-            stringBuilder.append(minutes).append("m ")
+            parts += minutes + "m"
 
         if days == 0 && hours == 0 && (secondSpecific || minutes == 0) then
-            stringBuilder.append(seconds % 60).append("s ")
+            parts += seconds % 60 + "s"
 
-        stringBuilder
-          .deleteCharAt(stringBuilder.length() - 1)
-          .toString()
+        parts.mkString(" ")

@@ -5,23 +5,24 @@ import org.bukkit.generator.ChunkGenerator
 import org.bukkit.generator.ChunkGenerator.{BiomeGrid, ChunkData}
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.{World, WorldCreator, WorldType}
-import org.noxet.noxetserver.commands.CommandRegistration
+import org.noxet.noxetserver.commands.RegisteredCommand
 import org.noxet.noxetserver.messaging.Motd
 import org.noxet.noxetserver.realm.RealmManager.Realm
 
 import java.io.File
 import java.util.Random
 
+// TODO class -> object
 class NoxetServer extends JavaPlugin:
     override def onEnable(): Unit =
         NoxetServer.plugin = Some(this)
 
-        getServer.getPluginManager.registerEvents(Events(), this)
+        getServer.getPluginManager.registerEvents(Events, this)
 
         Motd.loadQuotes()
 
         NoxetServer.logInfo("Loading commands...")
-        CommandRegistration.registerCommands()
+        RegisteredCommand.registerCommands()
 
         NoxetServer.logInfo("Noxet plugin is ready.")
 
@@ -37,19 +38,21 @@ class NoxetServer extends JavaPlugin:
 
 object NoxetServer:
     enum WorldFlag:
-        case Neutral, Overworld, Nether, TheEnd, Flat, _Void
+        case Neutral, Overworld, Nether, TheEnd, Flat, Void
 
     enum ServerWorld(val worldName: String, val realm: Option[Realm], val preservedWorld: Boolean, val safeZone: Boolean, val flag: WorldFlag):
         case Hub extends ServerWorld("hub", None, true, true, WorldFlag.Neutral)
+        
         case SmpSpawn extends ServerWorld("smp_spawn", Some(Realm.SMP), true, true, WorldFlag.Neutral)
         case SmpWorld extends ServerWorld("smp_world", Some(Realm.SMP), false, false, WorldFlag.Overworld)
         case SmpNether extends ServerWorld("smp_nether", Some(Realm.SMP), false, false, WorldFlag.Nether)
         case SmpEnd extends ServerWorld("smp_end", Some(Realm.SMP), false, false, WorldFlag.TheEnd)
+        
         case AnarchyWorld extends ServerWorld("anarchy", Some(Realm.ANARCHY), false, false, WorldFlag.Overworld)
         case AnarchyNether extends ServerWorld("anarchy_nether", Some(Realm.ANARCHY), false, false, WorldFlag.Nether)
         case AnarchyEnd extends ServerWorld("anarchy_end", Some(Realm.ANARCHY), false, false, WorldFlag.TheEnd)
 
-        case CanvasWorld extends ServerWorld("canvas", Some(Realm.CANVAS), false, true, WorldFlag._Void)
+        case CanvasWorld extends ServerWorld("canvas", Some(Realm.CANVAS), false, true, WorldFlag.Void)
 
         private def getWorldCreator: WorldCreator =
             val worldCreator = WorldCreator(worldName)
@@ -62,7 +65,7 @@ object NoxetServer:
                 case WorldFlag.Flat =>
                     worldCreator.`type`(WorldType.FLAT)
                     worldCreator.generateStructures(false)
-                case _Void =>
+                case WorldFlag.Void =>
                     worldCreator.generator(new ChunkGenerator:
                         override def generateChunkData(world: World, random: Random, x: Int, z: Int, biome: BiomeGrid): ChunkData = createChunkData(world)
                     )
@@ -78,9 +81,7 @@ object NoxetServer:
     def shouldAllowWorldPreservation: Boolean = true
 
     def logInfo(message: String): Unit = getPlugin.getLogger.info(message)
-
     def logWarning(message: String): Unit = getPlugin.getLogger.warning(message)
-
     def logSevere(message: String): Unit = getPlugin.getLogger.severe(message)
 
     def isWorldPreserved(world: World): Boolean =

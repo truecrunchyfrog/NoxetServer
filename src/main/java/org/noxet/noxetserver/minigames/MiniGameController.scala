@@ -1,6 +1,5 @@
 package org.noxet.noxetserver.minigames
 
-import net.md_5.bungee.api.ChatColor
 import org.bukkit.*
 import org.bukkit.block.Block
 import org.bukkit.entity.{Entity, EntityType, Pig, Player}
@@ -25,545 +24,556 @@ import java.util.Random
 import scala.collection.mutable
 
 abstract class MiniGameController(val game: GameDefinition) extends Listener:
-    enum MiniGameState:
-        case STALLING, PLAYING, ENDED
+  enum MiniGameState:
+    case Stalling, Playing, Ended
 
-    enum DeathContract:
-        case RESPAWN_DROP_INVENTORY, RESPAWN_KEEP_INVENTORY, RESPAWN_SAME_LOCATION_KEEP_INVENTORY, SPECTATE
+  enum DeathContract:
+    case RespawnDropInventory, RespawnKeepInventory, RespawnSameLocationKeepInventory, Spectate
 
-    val gameId: String = Random().nextInt(Math.pow(10, 5).toInt, Math.pow(10, 6).toInt).toString
-    val options: MiniGameOptions = game.getOptions
-    private var state = MiniGameState.STALLING
-    private val messagingContext = MessagingContext(s"§3§l${TextBeautifier.beautify(options.getDisplayName)}§7 :: ", MessagingGameChannel(this))
-    val freezer = PlayerFreezer(1)
-    private val players = mutable.HashSet[Player]()
-    private val spectators = mutable.HashSet[Player]()
-    private val allPlayers = ConcatSet(players, spectators)
-    private val actionBoundItems = mutable.HashMap[ItemStack, Player => Unit]()
-    private val allocatedChunks = mutable.List()
-    /** Any delayed BukkitTask related to this game should be added to tasks with taskSet.push() method, to make sure that they are canceled on stop. */
-    private val taskSet = ControllableTaskSet()
+  val createdAt: Long = System.currentTimeMillis
+  val gameId: String = Random().nextInt(math.pow(10, 5).toInt, math.pow(10, 6).toInt).toString
+  val options: MiniGameOptions = game.getOptions
+  var state = MiniGameState.Stalling
+  private val messagingContext = MessagingContext(s"§3§l${TextBeautifier.beautify(options.getDisplayName)}§7 :: ", MessagingGameChannel(this))
+  val freezer = PlayerFreezer(1)
+  private val players = mutable.HashSet[Player]()
+  private val spectators = mutable.HashSet[Player]()
+  private val actionBoundItems = mutable.HashMap[ItemStack, Player => Unit]()
+  private val allocatedChunks = mutable.List()
+  /** Any delayed BukkitTask related to this game should be added to tasks with taskSet.push() method, to make sure that they are canceled on stop. */
+  private val taskSet = ControllableTaskSet()
 
-    private var startTask: Option[BukkitTask] = None
-    private var pvpAllowed = true
-    private var startTimestamp = 0
+  private var startTask: Option[BukkitTask] = None
+  private var pvpAllowed = true
+  private var startTimestamp = 0
 
-    NoxetServer.getPlugin.getServer.getPluginManager.registerEvents(this, NoxetServer.getPlugin)
-    MiniGameManager.registerGame(this)
+  NoxetServer.getPlugin.getServer.getPluginManager.registerEvents(this, NoxetServer.getPlugin)
+  MiniGameManager.registerGame(this)
 
-    def start(): Unit =
-        if hasStarted then return
+  /**
+   * Checks if a set of players can join this game.
+   * This is done by ensuring that the game would fit that many players added,
+   * and that the game has not been started (or, if the game is being played and it allows drop-ins).
+   *
+   * @param amountOfPlayers the amount of players that is checked if they can join this game.
+   * @return
+   */
+  def canJoin(amountOfPlayers: Int): Boolean =
+    amountOfPlayers <= options.getMaxPlayers - getPlayers.size
+      && (!hasStarted || (isPlaying && options.allowPlayerDropIns))
 
-        startTask.foreach(_.cancel)
-        startTask = None
+  def start(): Unit =
+    if hasStarted then return
 
-        state = MiniGameState.PLAYING
+    startTask.foreach(_.cancel)
+    startTask = None
 
-        startTimestamp = System.currentTimeMillis
+    state = MiniGameState.Playing
 
-        allocateChunks()
+    startTimestamp = System.currentTimeMillis
 
-        handlePreStart()
+    allocateChunks()
 
-        players.foreach(preparePlayer)
-        spectators.foreach(prepareSpectator)
+    handlePreStart()
 
-        handleStart()
+    players.foreach(preparePlayer)
+    spectators.foreach(prepareSpectator)
 
-    /**
-     * Called before the players are warped to the world (is only run when the player starts, not when players drop in after start).
-     * In this method, the game world should be prepared so that a teleportation is appropriate.
-     */
-    def handlePreStart(): Unit
+    handleStart()
 
-    /**
-     * Called when the game has otherwise initialized. Players are warped. The world should already have been mostly set up.
-     */
-    def handleStart(): Unit
+  /**
+   * Called before the players are warped to the world (is only run when the player starts, not when players drop in after start).
+   * In this method, the game world should be prepared so that a teleportation is appropriate.
+   */
+  def handlePreStart(): Unit
 
-    /**
-     * Called when a player has joined the game.
-     * @param player The player that joined the game
-     */
-    def handlePlayerJoin(player: Player): Unit
+  /**
+   * Called when the game has otherwise initialized. Players are warped. The world should already have been mostly set up.
+   */
+  def handleStart(): Unit
 
-    /**
-     * Called after a player leaves the game.
-     *
-     * @param player The player that left the game
-     */
-    def handlePlayerLeave(player: Player): Unit
+  /**
+   * Called when a player has joined the game.
+   *
+   * @param player The player that joined the game
+   */
+  def handlePlayerJoin(player: Player): Unit
 
-    /**
-     * Called when a player or spectator has been removed from the game.
-     * Used to clean up player from variables and such.
-     *
-     * @param player The player that was removed from the game
-     */
-    def handlePlayerRemoved(player: Player): Unit
+  /**
+   * Called after a player leaves the game.
+   *
+   * @param player The player that left the game
+   */
+  def handlePlayerLeave(player: Player): Unit
 
-    /**
-     * Called when the game is over, but still running.
-     *
-     * @return The ticks to wait before stopping the game
-     */
-    def handleSoftStop: Int
+  /**
+   * Called when a player or spectator has been removed from the game.
+   * Used to clean up player from variables and such.
+   *
+   * @param player The player that was removed from the game
+   */
+  def handlePlayerRemoved(player: Player): Unit
 
-    /**
-     * Called when the game has stopped. Used to clean up necessary things, such as objectives, teams, etc.
-     * Things that should always happen upon stop, even during hard stops, should be placed here.
-     */
-    def handlePostStop(): Unit
+  /**
+   * Called when the game is over, but still running.
+   *
+   * @return The ticks to wait before stopping the game
+   */
+  def handleSoftStop: Int
 
-    /**
-     * Called when a player dies.
-     *
-     * @param player The player that died
-     * @return What should happen with the player
-     */
-    def handleDeath(player: Player): DeathContract
+  /**
+   * Called when the game has stopped. Used to clean up necessary things, such as objectives, teams, etc.
+   * Things that should always happen upon stop, even during hard stops, should be placed here.
+   */
+  def handlePostStop(): Unit
 
-    /**
-     * Called when a player's death item drops are selected.
-     *
-     * @note These drops will only append to the drops, and not replace them (for example, if the player does not have keep inventory, then their items will drop together with this)
-     * @param player The player who died
-     * @return The drops that will spawn where the player died
-     */
-    def handlePlayerDrops(player: Player): Seq[ItemStack]
+  /**
+   * Called when a player dies.
+   *
+   * @param player The player that died
+   * @return What should happen with the player
+   */
+  def handleDeath(player: Player): DeathContract
 
-    /**
-     * Called when a player respawns.
-     *
-     * @param player The player that respawned
-     */
-    def handleRespawn(player: Player): Unit
+  /**
+   * Called when a player's death item drops are selected.
+   *
+   * @note These drops will only append to the drops, and not replace them (for example, if the player does not have keep inventory, then their items will drop together with this)
+   * @param player The player who died
+   * @return The drops that will spawn where the player died
+   */
+  def handlePlayerDrops(player: Player): Seq[ItemStack]
 
-    /**
-     * Get the default spawn location for the game.
-     * This is where the players will be warped automatically upon start.
-     *
-     * @return The game's spawn location
-     */
-    def getSpawnLocation: Location
+  /**
+   * Called when a player respawns.
+   *
+   * @param player The player that respawned
+   */
+  def handleRespawn(player: Player): Unit
 
-
-    def touchInit(): Unit =
-        if hasStarted then return
-
-        startTask.foreach(_.cancel)
-
-        val ticksBeforeAttempt =
-            if !enoughPlayers then // Too few players.
-                sendGameMessage(Message(s"§eNeed §7§n${options.getMinPlayers - players.size}§e more to start."))
-                20 * 30
-            else if !isFull then // Enough players, but more can join.
-                sendGameMessage(Message("§eEnough players gathered!"))
-                20 * 20
-            else // Game is full.
-                sendGameMessage(Message("§eGame is filled up!"))
-                20 * 5
-
-        sendGameMessage(Message(s"§aPreliminary start in §e${ticksBeforeAttempt / 20}s§a..."))
-
-        val startTimestamp = System.currentTimeMillis + ticksBeforeAttempt / 20 * 1000
-
-        startTask = scheduleTaskTimer(t => {
-            if System.currentTimeMillis > startTimestamp then
-                t.cancel()
-                attemptStart()
-                return
-
-            val secondRemainder = (System.currentTimeMillis / 1000) % 7
-
-            sendGameMessage(ActionBarMessage(
-                if secondRemainder <= 4 then
-                    s"§eStarting in §6${FancyTimeConverter.deltaSecondsToFancyTime((startTimestamp - System.currentTimeMillis).toInt / 1000 + 1)} §7| §3${players.size}§7 of " +
-                      (if enoughPlayers then s"§3${options.getMaxPlayers}§7 players" else s"§3${options.getMinPlayers}§7 players required")
-                else
-                    "§cExit this queue with §n/game leave"
-            ))
-        }, 0, 20)
-
-    def attemptStart(): Unit =
-        if !enoughPlayers then
-            sendGameMessage(Message("§cNot enough players to start."))
-            sendGameMessage(ActionBarMessage("§cNot enough players!"))
-            stop()
-            return
-
-        sendGameMessage(Message("§bFinally! The game is starting..."))
-        sendGameMessage(ActionBarMessage("§3The game is starting!"))
-
-        start()
+  /**
+   * Get the default spawn location for the game.
+   * This is where the players will be warped automatically upon start.
+   *
+   * @return The game's spawn location
+   */
+  def getSpawnLocation: Location
 
 
-    /**
-     * Adds a player to the game. Can be used on spectators during game, if drop-in is allowed.
-     *
-     * @param player The player to add to the game
-     * @return `true` if player was added, otherwise `false`
-     */
-    def addPlayer(player: Player): Boolean =
-        if isPlayer(player) then
-            ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are already in this game.").send(player)
-            return false
+  def touchInit(): Unit =
+    if hasStarted then return
 
-        if isPlaying && !options.allowPlayerDropIns then
-            ErrorMessage(ErrorMessage.ErrorType.COMMON, "This game is already running.").send(player)
-            return false
+    startTask.foreach(_.cancel)
 
-        if hasEnded then
-            ErrorMessage(ErrorMessage.ErrorType.COMMON, "This game has ended.").send(player)
-            return false
+    val ticksBeforeAttempt =
+      if !enoughPlayers then // Too few players.
+        sendGameMessage(Message(s"§eNeed §7§n${options.getMinPlayers - players.size}§e more to start."))
+        20 * 30
+      else if !isFull then // Enough players, but more can join.
+        sendGameMessage(Message("§eEnough players gathered!"))
+        20 * 20
+      else // Game is full.
+        sendGameMessage(Message("§eGame is filled up!"))
+        20 * 5
 
-        if isFull then
-            ErrorMessage(ErrorMessage.ErrorType.COMMON, "This game is full.").send(player)
-            return false
+    sendGameMessage(Message(s"§aPreliminary start in §e${ticksBeforeAttempt / 20}s§a..."))
 
-        if isSpectator(player) then
-            removeSpectator(player, false)
+    val startTimestamp = System.currentTimeMillis + ticksBeforeAttempt / 20 * 1000
 
-        players.add(player)
+    startTask = scheduleTaskTimer(t => {
+      if System.currentTimeMillis > startTimestamp then
+        t.cancel()
+        attemptStart()
+        return
 
-        if hasStarted then
-            preparePlayer(player)
+      val secondRemainder = (System.currentTimeMillis / 1000) % 7
 
-        sendGameMessage(Message(s"§b${player.getName}§3 joined the game. §7(§e${players.size}§7/§e${options.getMaxPlayers}§7)"))
-
-        handlePlayerJoin(player)
-
-        touchInit()
-
-        true
-
-    def removePlayer(player: Player, disconnect: boolean = true): Unit =
-        if !isPlayer(player) then return
-
-        players.remove(player)
-
-        handlePlayerLeave(player)
-
-        if disconnect then
-            disconnectPlayerFromGame(player)
-
-        if players.size > 0 then
-            if !hasEnded then
-                touchInit()
-                sendGameMessage(Message(s"§c${player.getName}§4 left the game."))
-        else if !disconnect then
-            scheduleTask(softStop, 0) // Delay to allow players to become spectators, in that case.
+      sendGameMessage(ActionBarMessage(
+        if secondRemainder <= 4 then
+          s"§eStarting in §6${FancyTimeConverter.deltaSecondsToFancyTime((startTimestamp - System.currentTimeMillis).toInt / 1000 + 1)} §7| §3${players.size}§7 of " +
+            (if enoughPlayers then s"§3${options.getMaxPlayers}§7 players" else s"§3${options.getMinPlayers}§7 players required")
         else
-            stop()
+          "§cExit this queue with §n/game leave"
+      ))
+    }, 0, 20)
 
-    def addParty(party: Party): Unit =
-        party.sendPartyMessage(Message("§aThe party has collectively entered a game."))
-        party.getMembers.foreach(addPlayer)
+  def attemptStart(): Unit =
+    if !enoughPlayers then
+      sendGameMessage(Message("§cNot enough players to start."))
+      sendGameMessage(ActionBarMessage("§cNot enough players!"))
+      stop()
+      return
 
-    def addSpectator(player: Player): Boolean =
-        if options.getSpectatorContract != MiniGameOptions.SpectatorContract.ALL && !isPlayer(player) then
-            ErrorMessage(ErrorMessage.ErrorType.COMMON, "This game does not allow outside spectators.").send(player)
-            return false
+    sendGameMessage(Message("§bFinally! The game is starting..."))
+    sendGameMessage(ActionBarMessage("§3The game is starting!"))
 
-        if isFullForSpectators then
-            ErrorMessage(ErrorMessage.ErrorType.COMMON, "Enough spectators are in this game.").send(player)
-            return false
+    start()
 
-        if isPlayer(player) then
-            removePlayer(player, false)
 
-        spectators.add(player)
+  /**
+   * Adds a player to the game. Can be used on spectators during game, if drop-in is allowed.
+   *
+   * @param player The player to add to the game
+   * @return `true` if player was added, otherwise `false`
+   */
+  def addPlayer(player: Player): Boolean =
+    if isPlayer(player) then
+      ErrorMessage(ErrorMessage.ErrorType.COMMON, "You are already in this game.").send(player)
+      return false
 
-        if hasStarted then
-            prepareSpectator(player)
+    if isPlaying && !options.allowPlayerDropIns then
+      ErrorMessage(ErrorMessage.ErrorType.COMMON, "This game is already running.").send(player)
+      return false
 
-        sendGameMessage(Message(s"§e${player.getName}§7 is now spectating the game."))
+    if hasEnded then
+      ErrorMessage(ErrorMessage.ErrorType.COMMON, "This game has ended.").send(player)
+      return false
 
-        true
+    if isFull then
+      ErrorMessage(ErrorMessage.ErrorType.COMMON, "This game is full.").send(player)
+      return false
 
-    def removeSpectator(player: Player): Unit = removeSpectator(player, true)
+    if isSpectator(player) then
+      removeSpectator(player, false)
 
-    def removeSpectator(player: Player, disconnect: Boolean): Unit =
-        if !isSpectator(player) then return
+    players.add(player)
 
-        spectators.remove(player)
+    if hasStarted then
+      preparePlayer(player)
 
-        if disconnect then
-            disconnectPlayerFromGame(player)
+    sendGameMessage(Message(s"§b${player.getName}§3 joined the game. §7(§e${players.size}§7/§e${options.getMaxPlayers}§7)"))
 
-        sendGameMessage(Message(s"§e${player.getName}§7 is no longer spectating the game."))
+    handlePlayerJoin(player)
 
-    def disconnectPlayerFromGame(player: Player): Unit =
-        handlePlayerRemoved(player)
-        if hasStarted then
-            RealmManager.goToHub(player)
+    touchInit()
 
-    def isPlayer(player: Player): Boolean = players.contains(player)
+    true
 
-    def isSpectator(player: Player): Boolean = spectators.contains(player)
+  def removePlayer(player: Player, disconnect: Boolean = true): Unit =
+    if !isPlayer(player) then return
 
-    def getPlayers: Set[Player] = players
+    players.remove(player)
 
-    def getSpectators: Set[Player] = spectators
+    handlePlayerLeave(player)
 
-    def getPlayersAndSpectators: Set[Player] = allPlayers
+    if disconnect then
+      disconnectPlayerFromGame(player)
 
-    def isFull: Boolean = players.size == options.getMaxPlayers
+    if players.nonEmpty then
+      if !hasEnded then
+        touchInit()
+        sendGameMessage(Message(s"§c${player.getName}§4 left the game."))
+    else if !disconnect then
+      scheduleTask(softStop, 0) // Delay to allow players to become spectators, in that case.
+    else
+      stop()
 
-    def isFullForSpectators: Boolean = spectators.size >= 100
+  def addParty(party: Party): Unit =
+    party.sendPartyMessage(Message("§aThe party has collectively entered a game."))
+    party.getMembers.foreach(addPlayer)
 
-    /**
-     * Check if the enough players are in the game to start it.
-     *
-     * @return `true` if enough players are in-game, otherwise `false`
-     */
-    def enoughPlayers: Boolean = players.size >= options.getMinPlayers
+  def addSpectator(player: Player): Boolean =
+    if options.getSpectatorContract != MiniGameOptions.SpectatorContract.ALL && !isPlayer(player) then
+      ErrorMessage(ErrorMessage.ErrorType.COMMON, "This game does not allow outside spectators.").send(player)
+      return false
 
-    def preparePlayer(player: Player): Unit =
-        player.teleport(getSpawnLocation)
-        PlayerState.prepareDefault(player)
-        player.setGameMode(options.getDefaultGameMode)
+    if isFullForSpectators then
+      ErrorMessage(ErrorMessage.ErrorType.COMMON, "Enough spectators are in this game.").send(player)
+      return false
 
-        assignPlayerTime(player)
+    if isPlayer(player) then
+      removePlayer(player, false)
 
-    def prepareSpectator(player: Player): Unit =
-        player.teleport(getSpawnLocation())
-        PlayerState.prepareDefault(player)
-        player.setGameMode(GameMode.SPECTATOR)
+    spectators.add(player)
 
-        assignPlayerTime(player)
+    if hasStarted then
+      prepareSpectator(player)
 
-    def assignPlayerTime(player: Player): Unit =
-        player.setPlayerTime(getTicksSinceStart - getMiniGameWorld.getTime, true)
+    sendGameMessage(Message(s"§e${player.getName}§7 is now spectating the game."))
 
-    /**
-     * Whether the game is in play state.
-     *
-     * @return true if the game is in play state
-     */
-    def isPlaying: Boolean = state == MiniGameState.PLAYING
+    true
 
-    /**
-     * Whether the game has started (either is playing, or has ended).
-     *
-     * @return true if the game has started
-     */
-    def hasStarted: Boolean = state != MiniGameState.STALLING
+  def removeSpectator(player: Player): Unit = removeSpectator(player, true)
 
-    /**
-     * Whether the game has ended.
-     *
-     * @return true if the game has ended
-     */
-    def hasEnded: Boolean = state == MiniGameState.ENDED
+  def removeSpectator(player: Player, disconnect: Boolean): Unit =
+    if !isSpectator(player) then return
 
-    /**
-     * Stops the game properly. Game-specific events are called. After events are finished the game will run stop().
-     *
-     * @return The ticks to wait before the game is stopped
-     */
-    def softStop: Int =
-        state = MiniGameState.ENDED
+    spectators.remove(player)
 
-        val ticks = Math.min(handleSoftStop, 20 * 60)
+    if disconnect then
+      disconnectPlayerFromGame(player)
 
-        sendGameMessage(
-            Message("§a§lTHE GAME IS OVER!\n")
-              .addButton("Play again", ChatColor.GREEN, "Join another queue for this game", "game play " + game.getOptions.getId)
-                        .addButton("Different game", ChatColor.DARK_AQUA, "Find another game to play", "games")
-                        .addButton("Lobby", ChatColor.RED, "Head back to hub", "game leave")
-        )
+    sendGameMessage(Message(s"§e${player.getName}§7 is no longer spectating the game."))
 
-        scheduleTask(stop, ticks) // Wait at most 60 seconds.
+  def disconnectPlayerFromGame(player: Player): Unit =
+    handlePlayerRemoved(player)
+    if hasStarted then
+      RealmManager.goToHub(player)
 
-        ticks
+  def isPlayer(player: Player): Boolean = players.contains(player)
 
-    /**
-     * Stops the game immediately. Unregisters this game instance, cancels tasks, unregisters event listener, removes players from world, unloads world, and deletes world.
-     */
-    def stop(): Unit =
-        startTask.foreach(_.cancel)
+  def isSpectator(player: Player): Boolean = spectators.contains(player)
 
-        freezer.empty()
+  def getPlayers: Set[Player] = players
 
-        taskSet.abortAll()
+  def getSpectators: Set[Player] = spectators
 
-        getPlayersAndSpectators.foreach(disconnectPlayerFromGame) // Kick all players from the world.
+  def getPlayersAndSpectators: Set[Player] = players ::: spectators
 
-        state = MiniGameState.ENDED
+  def isFull: Boolean = players.size == options.getMaxPlayers
 
-        MiniGameManager.unregisterGame(this)
+  def isFullForSpectators: Boolean = spectators.size >= 100
 
-        HandlerList.unregisterAll(this) // Stop listening for events.
+  /**
+   * Check if the enough players are in the game to start it.
+   *
+   * @return `true` if enough players are in-game, otherwise `false`
+   */
+  def enoughPlayers: Boolean = players.size >= options.getMinPlayers
 
-        handlePostStop()
+  def preparePlayer(player: Player): Unit =
+    player.teleport(getSpawnLocation)
+    PlayerState.prepareDefault(player)
+    player.setGameMode(options.getDefaultGameMode)
 
-    /**
-     * Disbands a player from this game. Attempts to remove as both player and spectator.
-     *
-     * @param player The player/spectator to remove from the game
-     */
-    def disbandPlayer(player: Player): Unit =
-        removePlayer(player)
-        removeSpectator(player)
+    assignPlayerTime(player)
 
-    @EventHandler def onBedEnterEvent(e: PlayerBedEnterEvent): Unit =
-        if isPlayer(e.getPlayer) then e.setCancelled(true)
+  def prepareSpectator(player: Player): Unit =
+    player.teleport(getSpawnLocation())
+    PlayerState.prepareDefault(player)
+    player.setGameMode(GameMode.SPECTATOR)
 
-    @EventHandler def onPlayerQuit(e: PlayerQuitEvent): Unit = disbandPlayer(e.getPlayer)
+    assignPlayerTime(player)
 
-    @EventHandler def onPlayerDeath(e: PlayerDeathEvent): Unit =
-        if isPlayer(e.getEntity) then
-            val deathContract = handleDeath(e.getEntity)
+  def assignPlayerTime(player: Player): Unit =
+    player.setPlayerTime(getTicksSinceStart - getMiniGameWorld.getTime, true)
 
-            deathContract match
-                case RESPAWN_DROP_INVENTORY =>
-                    new BukkitRunnable:
-                        @Override def run(): Unit = e.getEntity.spigot.respawn()
-                      .runTaskLater(NoxetServer.getPlugin, 0)
-                case RESPAWN_KEEP_INVENTORY =>
-                    e.setKeepInventory(true)
-                    e.setKeepLevel(true)
-                    e.getDrops.clear()
-                    e.setDroppedExp(0)
-                case RESPAWN_SAME_LOCATION_KEEP_INVENTORY =>
-                    val oldSpawnLocation = e.getEntity.getBedSpawnLocation
+  /**
+   * Whether the game is in play state.
+   *
+   * @return true if the game is in play state
+   */
+  def isPlaying: Boolean = state == MiniGameState.Playing
 
-                    Option(e.getEntity.getLastDeathLocation) match
-                        case Some(deathLocation) if deathLocation.getY > getMiniGameWorld.getMinHeight =>
-                            e.getEntity.setBedSpawnLocation(deathLocation, true)
-                        case _ => ()
+  /**
+   * Whether the game has started (either is playing, or has ended).
+   *
+   * @return true if the game has started
+   */
+  def hasStarted: Boolean = state != MiniGameState.Stalling
 
-                    new BukkitRunnable:
-                        @Override def run(): Unit = e.getEntity.setBedSpawnLocation(oldSpawnLocation, true)
-                      .runTaskLater(NoxetServer.getPlugin, 2)
-                case SPECTATE =>
-                    new BukkitRunnable:
-                        @Override def run(): Unit =
-                            if addSpectator(e.getEntity) then
-                                Message("You died. Now spectating.").send(e.getEntity)
-                                e.getEntity.spigot.respawn()
-                            else
-                                removePlayer(e.getEntity) // If player cannot spectate, just remove them from the game.
-                                Message("§cSorry. Could not spectate.").send(e.getEntity)
-                      .runTaskLater(NoxetServer.getPlugin, 0)
+  /**
+   * Whether the game has ended.
+   *
+   * @return true if the game has ended
+   */
+  def hasEnded: Boolean = state == MiniGameState.Ended
 
-            e.getDrops.addAll(handlePlayerDrops(e.getEntity))
-        else if isSpectator(e.getEntity) then
-            prepareSpectator(e.getEntity)
+  /**
+   * Stops the game properly. Game-specific events are called. After events are finished the game will run stop().
+   *
+   * @return The ticks to wait before the game is stopped
+   */
+  def softStop: Int =
+    state = MiniGameState.Ended
 
-    @EventHandler def onPlayerRespawn(e: PlayerRespawnEvent): Unit =
-        if !isSpectator(e.getPlayer) then return
+    val ticks = Math.min(handleSoftStop, 20 * 60)
 
-        if isPlayer(e.getPlayer) && hasStarted then
-            handleRespawn(e.getPlayer)
+    sendGameMessage(
+      Message("§a§lTHE GAME IS OVER!\n")
+        .addButton("Play again", ChatColor.GREEN, "Join another queue for this game", "game play " + game.getOptions.getId)
+        .addButton("Different game", ChatColor.DARK_AQUA, "Find another game to play", "games")
+        .addButton("Lobby", ChatColor.RED, "Head back to hub", "game leave")
+    )
 
-        e.setRespawnLocation(getSpawnLocation)
+    scheduleTask(stop, ticks) // Wait at most 60 seconds.
 
-    @EventHandler def onPlayerChangedWorld(e: PlayerChangedWorldEvent): Unit =
-        if isGameWorld(e.getFrom) then
-            disbandPlayer(e.getPlayer)
+    ticks
 
-    private def canPlayerModifyWorld(player: Player): Boolean = hasStarted && !freezer.isPlayerFrozen(player)
+  /**
+   * Stops the game immediately. Unregisters this game instance, cancels tasks, unregisters event listener, removes players from world, unloads world, and deletes world.
+   */
+  def stop(): Unit =
+    startTask.foreach(_.cancel)
 
-    @EventHandler def onBlockBreak(e: BlockBreakEvent): Unit =
-        if isGameWorld(e.getBlock.getWorld) && !canPlayerModifyWorld(e.getPlayer) then
-            e.setCancelled(true)
+    freezer.empty()
 
-    @EventHandler def onPlayerDropItem(e: PlayerDropItemEvent): Unit =
-        if isGameWorld(e.getPlayer.getWorld) && !canPlayerModifyWorld(e.getPlayer) then
-            e.setCancelled(true)
+    taskSet.abortAll()
 
-    @EventHandler def onEntityPickupItem(e: EntityPickupItemEvent): Unit =
-        if isGameWorld(e.getItem.getWorld) then e.getEntity match
-            case p: Player if !canPlayerModifyWorld(e.getEntity.asInstanceOf[Player]) => e.setCancelled(true)
+    getPlayersAndSpectators.foreach(disconnectPlayerFromGame) // Kick all players from the world.
+
+    state = MiniGameState.Ended
+
+    MiniGameManager.unregisterGame(this)
+
+    HandlerList.unregisterAll(this) // Stop listening for events.
+
+    handlePostStop()
+
+  /**
+   * Disbands a player from this game. Attempts to remove as both player and spectator.
+   *
+   * @param player The player/spectator to remove from the game
+   */
+  def disbandPlayer(player: Player): Unit =
+    removePlayer(player)
+    removeSpectator(player)
+
+  @EventHandler def onBedEnterEvent(e: PlayerBedEnterEvent): Unit =
+    if isPlayer(e.getPlayer) then e.setCancelled(true)
+
+  @EventHandler def onPlayerQuit(e: PlayerQuitEvent): Unit = disbandPlayer(e.getPlayer)
+
+  @EventHandler def onPlayerDeath(e: PlayerDeathEvent): Unit =
+    if isPlayer(e.getEntity) then
+      val deathContract = handleDeath(e.getEntity)
+
+      deathContract match
+        case RESPAWN_DROP_INVENTORY =>
+          QuickRunnable(e.getEntity.spigot.respawn())
+            .runTaskLater(NoxetServer.getPlugin, 0)
+        case RESPAWN_KEEP_INVENTORY =>
+          e.setKeepInventory(true)
+          e.setKeepLevel(true)
+          e.getDrops.clear()
+          e.setDroppedExp(0)
+        case RESPAWN_SAME_LOCATION_KEEP_INVENTORY =>
+          val oldSpawnLocation = e.getEntity.getBedSpawnLocation
+
+          Option(e.getEntity.getLastDeathLocation) match
+            case Some(deathLocation) if deathLocation.getY > getMiniGameWorld.getMinHeight =>
+              e.getEntity.setBedSpawnLocation(deathLocation, true)
             case _ => ()
 
-    @EventHandler def onEntityHurtEntity(e: EntityDamageByEntityEvent): Unit =
-        if isGameWorld(e.getDamager.getWorld) then e.getDamager match
-            case p: Player
-                if !canPlayerModifyWorld(p) ||
-                  (!pvpAllowed && e.getEntityType == EntityType.PLAYER) =>
-                e.setCancelled(true)
-            case _ => ()
+          QuickRunnable(e.getEntity.setBedSpawnLocation(oldSpawnLocation, true))
+            .runTaskLater(NoxetServer.getPlugin, 2)
+        case SPECTATE =>
+          QuickRunnable(() =>
+            if addSpectator(e.getEntity) then
+              Message("You died. Now spectating.").send(e.getEntity)
+              e.getEntity.spigot.respawn()
+            else
+              removePlayer(e.getEntity) // If player cannot spectate, just remove them from the game.
+              Message("§cSorry. Could not spectate.").send(e.getEntity)
+          ).runTaskLater(NoxetServer.getPlugin, 0)
 
-    @EventHandler def onPlayerInteract(e: PlayerInteractEvent): Unit =
-        if isPlayer(e.getPlayer) &&
-          (e.getAction == Action.RIGHT_CLICK_AIR || e.getAction == Action.RIGHT_CLICK_BLOCK) &&
-          actionBoundItems.contains(e.getItem) then
-            e.setCancelled(true)
-            actionBoundItems.remove(e.getItem)(e.getPlayer)
+      e.getDrops.addAll(handlePlayerDrops(e.getEntity))
+    else if isSpectator(e.getEntity) then
+      prepareSpectator(e.getEntity)
 
-    def sendGameMessage(message: Message): Unit = messagingContext.broadcast(message)
+  @EventHandler def onPlayerRespawn(e: PlayerRespawnEvent): Unit =
+    if !isSpectator(e.getPlayer) then return
 
-    def playGameSound(sound: Sound, volume: float, pitch: float): Unit =
-        getPlayersAndSpectators.foreach(_.playSound(_, sound, volume, pitch))
+    if isPlayer(e.getPlayer) && hasStarted then
+      handleRespawn(e.getPlayer)
 
-    def scheduleTask(runnable: Runnable, delayTicks: int): Unit =
-        taskSet.push(new BukkitRunnable:
-            override def run(): Unit = runnable.run()
-          .runTaskLater(NoxetServer.getPlugin, delayTicks))
+    e.setRespawnLocation(getSpawnLocation)
 
-    def scheduleTaskTimer(runnable: BukkitRunnable => Unit, delayTicks: Int, periodTicks: Int): BukkitTask =
-        val task = new BukkitRunnable:
-            override def run(): Unit = runnable(this)
-          .runTaskTimer(NoxetServer.getPlugin, delayTicks, periodTicks)
+  @EventHandler def onPlayerChangedWorld(e: PlayerChangedWorldEvent): Unit =
+    if isGameWorld(e.getFrom) then
+      disbandPlayer(e.getPlayer)
 
-        taskSet.push(task)
-        task
+  private def canPlayerModifyWorld(player: Player): Boolean = hasStarted && !freezer.isPlayerFrozen(player)
 
-    def scheduleTaskTimer(runnable: Runnable, delayTicks: Int, periodTicks: Int): BukkitTask =
-        scheduleTaskTimer(runnable.run(), delayTicks, periodTicks)
+  @EventHandler def onBlockBreak(e: BlockBreakEvent): Unit =
+    if isGameWorld(e.getBlock.getWorld) && !canPlayerModifyWorld(e.getPlayer) then
+      e.setCancelled(true)
 
-    def getRandomPlayer(excludeFrozen: Boolean = false): Player =
-        val availablePlayers = if !excludeFrozen then players else players.filterNot(isPlayerFrozen)
-        availablePlayers(Random().nextInt(availablePlayers.size))
+  @EventHandler def onPlayerDropItem(e: PlayerDropItemEvent): Unit =
+    if isGameWorld(e.getPlayer.getWorld) && !canPlayerModifyWorld(e.getPlayer) then
+      e.setCancelled(true)
 
-    def bindActionToItem(itemStack: ItemStack, action: Consumer[Player]): Unit = actionBoundItems.put(itemStack, action)
+  @EventHandler def onEntityPickupItem(e: EntityPickupItemEvent): Unit =
+    if isGameWorld(e.getItem.getWorld) then e.getEntity match
+      case p: Player if !canPlayerModifyWorld(e.getEntity.asInstanceOf[Player]) => e.setCancelled(true)
+      case _ => ()
 
-    def setPvpRule(enabled: boolean): Unit = pvpAllowed = enabled
+  @EventHandler def onEntityHurtEntity(e: EntityDamageByEntityEvent): Unit =
+    if isGameWorld(e.getDamager.getWorld) then e.getDamager match
+      case p: Player
+        if !canPlayerModifyWorld(p) ||
+          (!pvpAllowed && e.getEntityType == EntityType.PLAYER) =>
+        e.setCancelled(true)
+      case _ => ()
 
-    def getTicksSinceStart: Long = (System.currentTimeMillis - startTimestamp) / 20_000
+  @EventHandler def onPlayerInteract(e: PlayerInteractEvent): Unit =
+    if isPlayer(e.getPlayer) &&
+      (e.getAction == Action.RIGHT_CLICK_AIR || e.getAction == Action.RIGHT_CLICK_BLOCK) &&
+      actionBoundItems.contains(e.getItem) then
+      e.setCancelled(true)
+      actionBoundItems.remove(e.getItem)(e.getPlayer)
 
-    private def allocateChunks(): Unit =
-        allocatedChunks.clear()
+  def sendGameMessage(message: Message): Unit = messagingContext.broadcast(message)
 
-        val chunksSquared = options.getWorldChunksSquared
+  def playGameSound(sound: Sound, volume: float, pitch: float): Unit =
+    getPlayersAndSpectators.foreach(_.playSound(_, sound, volume, pitch))
 
-        val worldChunksSquared = 60_000 / 16 - chunksSquared
+  def scheduleTask(runnable: Runnable, delayTicks: int): Unit =
+    taskSet.push(QuickRunnable(runnable.run())
+      .runTaskLater(NoxetServer.getPlugin, delayTicks))
 
-        val random = Random()
+  def scheduleTaskTimer(runnable: BukkitRunnable => Unit, delayTicks: Int, periodTicks: Int): BukkitTask =
+    val task = QuickRunnable(runnable(this))
+      .runTaskTimer(NoxetServer.getPlugin, delayTicks, periodTicks)
 
-        val offsetX = random.nextInt(worldChunksSquared)
-        val offsetZ = random.nextInt(worldChunksSquared)
+    taskSet.push(task)
+    task
 
-        for
-            x <- chunksSquared
-            z <- chunksSquared
-            chunk = getMiniGameWorld.getChunkAt(x + offsetX, z + offsetZ)
-        do
-            for
-                bX <- 0 until 16
-                bZ <- 0 until 16
-                bY <- getMiniGameWorld.getMinHeight until getMiniGameWorld.getMaxHeight
-                block = chunk.getWorld(bX, bY, bZ)
-                if !block.getType().isAir()
-            do block.setBlockData(Material.AIR.createBlockData)
+  def scheduleTaskTimer(runnable: Runnable, delayTicks: Int, periodTicks: Int): BukkitTask =
+    scheduleTaskTimer(runnable.run(), delayTicks, periodTicks)
 
-            chunk.getEntities.foreach(_.remove)
-            allocatedChunks.add(chunk)
+  def getRandomPlayer(excludeFrozen: Boolean = false): Player =
+    val availablePlayers =
+      if !excludeFrozen then
+        players
+      else
+        players.filterNot(freezer.isPlayerFrozen)
+    availablePlayers(Random().nextInt(availablePlayers.size))
 
-    def getAllocatedChunks: List[Chunk] = allocatedChunks
+  def bindActionToItem(itemStack: ItemStack, action: Consumer[Player]): Unit = actionBoundItems.put(itemStack, action)
 
-    def doesOwnLocation(location: Location): Boolean = allocatedChunks.contains(location.getChunk)
+  def setPvpRule(enabled: boolean): Unit = pvpAllowed = enabled
 
-    def getCenterChunk: Chunk = allocatedChunks.get(allocatedChunks.size / 2)
+  def getTicksSinceStart: Long = (System.currentTimeMillis - startTimestamp) / 20_000
+
+  private def allocateChunks(): Unit =
+    allocatedChunks.clear()
+
+    val chunksSquared = options.getWorldChunksSquared
+
+    val worldChunksSquared = 60_000 / 16 - chunksSquared
+
+    val random = Random()
+
+    val offsetX = random.nextInt(worldChunksSquared)
+    val offsetZ = random.nextInt(worldChunksSquared)
+
+    for
+      x <- chunksSquared
+      z <- chunksSquared
+      chunk = getMiniGameWorld.getChunkAt(x + offsetX, z + offsetZ)
+    do
+      for
+        bX <- 0 until 16
+        bZ <- 0 until 16
+        bY <- getMiniGameWorld.getMinHeight until getMiniGameWorld.getMaxHeight
+        block = chunk.getWorld(bX, bY, bZ)
+        if !block.getType().isAir()
+      do block.setBlockData(Material.AIR.createBlockData)
+
+      chunk.getEntities.foreach(_.remove)
+      allocatedChunks.add(chunk)
+
+  def getAllocatedChunks: List[Chunk] = allocatedChunks
+
+  def doesOwnLocation(location: Location): Boolean = allocatedChunks.contains(location.getChunk)
+
+  def getCenterChunk: Chunk = allocatedChunks.get(allocatedChunks.size / 2)
 
 object MiniGameController:
-    def getMiniGameWorld: World =
-        WorldCreator("mini_game_world").generator(new ChunkGenerator:
-            override def generateChunkData(world: World, random: Random, x: int, z: int, biome: BiomeGrid): ChunkData = createChunkData(world)
-        ).createWorld()
+  def getMiniGameWorld: World =
+    WorldCreator("mini_game_world").generator(new ChunkGenerator:
+      override def generateChunkData(world: World, random: Random, x: int, z: int, biome: BiomeGrid): ChunkData = createChunkData(world)
+    ).createWorld()
 
-    def isGameWorld(world: World): Boolean = getMiniGameWorld.equals(world)
-
+  def isGameWorld(world: World): Boolean = getMiniGameWorld.equals(world)

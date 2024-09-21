@@ -3,29 +3,20 @@ package org.noxet.noxetserver.util
 import org.noxet.noxetserver.NoxetServer
 
 import java.util.UUID
+import scala.util.Try
 
-class UsernameStorageManager extends ConfigManager:
-    protected override def getFileName: String = "usernames"
+object UsernameStorageManager extends ConfigManager:
+  protected override def getFileName: String = "usernames"
 
-    private def getUuidFromString(uuid: String): Option[UUID] =
-        try
-            Some(UUID.fromString(uuid))
-        catch
-            case _: IllegalArgumentException => None
+  private def getUuidFromString(uuid: String): Option[UUID] = Try(UUID.fromString(uuid)).toOption
 
-    def getUuidFromUsernameOrUuid(usernameOrUuid: String): Option[UUID] =
-        val rawUuid = config.getString(usernameOrUuid.toLowerCase()) match
-            // Username is not listed in database. Try parsing it as a UUID directly instead.
-            case null => usernameOrUuid
-            case uuid => uuid
-        getUuidFromString(rawUuid)
+  def getUuidFromUsernameOrUuid(usernameOrUuid: String): Option[UUID] =
+    getUuidFromString(
+      Option(config.getString(usernameOrUuid.toLowerCase)).getOrElse(usernameOrUuid))
 
-    def bindUsernameToUuid(username: String, uuid: UUID): Unit =
-        config.set(username.toLowerCase(), uuid.toString)
-        save()
+  def bindUsernameToUuid(username: String, uuid: UUID): Unit =
+    config.set(username.toLowerCase, uuid.toString)
+    save()
 
-object UsernameStorageManager:
-    def getCasedUsernameFromUuid(uuid: UUID): Option[String] =
-        NoxetServer.getPlugin.getServer.getOfflinePlayer(uuid).getName match
-            case null => None
-            case name => Some(name)
+  def getCasedUsernameFromUuid(uuid: UUID): Option[String] =
+    Option(NoxetServer.getPlugin.getServer.getOfflinePlayer(uuid).getName)

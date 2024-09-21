@@ -9,6 +9,9 @@ trait MiniGameOptions:
     def getMinPlayers: Int
     def getMaxPlayers: Int
 
+    /**
+     * @return `true` if the game allows players to join when the game has started ("mid-game"), otherwise `false`.
+     */
     def allowPlayerDropIns: Boolean
 
     def getDefaultGameMode: GameMode

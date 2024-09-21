@@ -1,6 +1,4 @@
 package org.noxet.noxetserver.messaging;
 
-class ClearChat extends Message(ClearChat.getClearChatMessage)
-
-object ClearChat:
+object ClearChat extends Message(ClearChat.getClearChatMessage):
     private def getClearChatMessage: String = "\n".repeat(200)
