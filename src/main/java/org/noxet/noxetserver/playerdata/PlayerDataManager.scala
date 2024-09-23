@@ -12,13 +12,12 @@ import java.util.UUID
 class PlayerDataManager(uuid: UUID):
   private val config: YamlConfiguration = getConfig(uuid)
 
-  def get[T](attribute: Attribute): T =
-    attribute.getType.getValue(config, attribute.getKey)
+  def get[T](attr: Attribute): T =
+    attr.kind.getValue(config, attr.key)
 
-  def set(attribute: Attribute, value: Any): PlayerDataManager =
-    config.set(attribute.getKey, value)
+  def set[T](attr: Attribute, value: T): Unit =
+    config.set(attr.key, value)
     updateCache(uuid.toUuid, config)
-    this
 
   def toggleBoolean(attribute: Attribute): PlayerDataManager =
     set(attribute, !get(attribute).asInstanceOf[Boolean])
@@ -34,22 +33,22 @@ class PlayerDataManager(uuid: UUID):
   def remove(attribute: Attribute): PlayerDataManager = set(attribute, null)
 
   def addToStringList(attribute: Attribute, value: String): PlayerDataManager =
-    val list = config.getStringList(attribute.getKey)
+    val list = config.getStringList(attribute.key)
     list.add(value)
     set(attribute, list)
 
   def removeFromStringList(attribute: Attribute, value: String): PlayerDataManager =
-    val list = config.getStringList(attribute.getKey)
+    val list = config.getStringList(attribute.key)
     list.remove(value)
     set(attribute, list)
 
   def doesContain(attribute: Attribute, value: Any): Boolean =
-    Option(config.getList(attribute.getKey)) match
+    Option(config.getList(attribute.key)) match
       case Some(list) => list.contains(value)
       case None => false
 
   def getListSize(attribute: Attribute): Int =
-    Option(config.getList(attribute.getKey)) match
+    Option(config.getList(attribute.key)) match
       case Some(list) => list.size
       case None => 0
 
@@ -82,7 +81,7 @@ object PlayerDataManager:
     case CreeperSweeperTotalWinPlaytime extends Attribute(PDTLong)
     case DisallowIncomingPartyInvites extends Attribute(PDTBoolean)
 
-    def getKey: String = name.toLowerCase
+    def key: String = toString.toLowerCase
 
   private def getDirectory: File =
     val playerDataDir = File(NoxetServer.getPlugin.getPluginDirectory, "PlayerData")
