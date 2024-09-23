@@ -293,9 +293,7 @@ abstract class MiniGameController(val game: GameDefinition) extends Listener:
 
     true
 
-  def removeSpectator(player: Player): Unit = removeSpectator(player, true)
-
-  def removeSpectator(player: Player, disconnect: Boolean): Unit =
+  def removeSpectator(player: Player, disconnect: Boolean = true): Unit =
     if !isSpectator(player) then return
 
     spectators.remove(player)
@@ -386,7 +384,7 @@ abstract class MiniGameController(val game: GameDefinition) extends Listener:
         .addButton("Lobby", ChatColor.RED, "Head back to hub", "game leave")
     )
 
-    scheduleTask(stop, ticks) // Wait at most 60 seconds.
+    scheduleTask(stop(), ticks) // Wait at most 60 seconds.
 
     ticks
 
@@ -429,15 +427,15 @@ abstract class MiniGameController(val game: GameDefinition) extends Listener:
       val deathContract = handleDeath(e.getEntity)
 
       deathContract match
-        case RESPAWN_DROP_INVENTORY =>
+        case RespawnDropInventory =>
           QuickRunnable(e.getEntity.spigot.respawn())
             .runTaskLater(NoxetServer.getPlugin, 0)
-        case RESPAWN_KEEP_INVENTORY =>
+        case RespawnKeepInventory =>
           e.setKeepInventory(true)
           e.setKeepLevel(true)
           e.getDrops.clear()
           e.setDroppedExp(0)
-        case RESPAWN_SAME_LOCATION_KEEP_INVENTORY =>
+        case RespawnSameLocationKeepInventory =>
           val oldSpawnLocation = e.getEntity.getBedSpawnLocation
 
           Option(e.getEntity.getLastDeathLocation) match
@@ -447,7 +445,7 @@ abstract class MiniGameController(val game: GameDefinition) extends Listener:
 
           QuickRunnable(e.getEntity.setBedSpawnLocation(oldSpawnLocation, true))
             .runTaskLater(NoxetServer.getPlugin, 2)
-        case SPECTATE =>
+        case Spectate =>
           QuickRunnable(() =>
             if addSpectator(e.getEntity) then
               Message("You died. Now spectating.").send(e.getEntity)
@@ -473,7 +471,8 @@ abstract class MiniGameController(val game: GameDefinition) extends Listener:
     if isGameWorld(e.getFrom) then
       disbandPlayer(e.getPlayer)
 
-  private def canPlayerModifyWorld(player: Player): Boolean = hasStarted && !freezer.isPlayerFrozen(player)
+  private def canPlayerModifyWorld(player: Player): Boolean =
+    hasStarted && !freezer.isPlayerFrozen(player)
 
   @EventHandler def onBlockBreak(e: BlockBreakEvent): Unit =
     if isGameWorld(e.getBlock.getWorld) && !canPlayerModifyWorld(e.getPlayer) then
@@ -558,7 +557,7 @@ abstract class MiniGameController(val game: GameDefinition) extends Listener:
         bZ <- 0 until 16
         bY <- getMiniGameWorld.getMinHeight until getMiniGameWorld.getMaxHeight
         block = chunk.getWorld(bX, bY, bZ)
-        if !block.getType().isAir()
+        if !block.getType.isAir
       do block.setBlockData(Material.AIR.createBlockData)
 
       chunk.getEntities.foreach(_.remove)
@@ -574,6 +573,6 @@ object MiniGameController:
   def getMiniGameWorld: World =
     WorldCreator("mini_game_world").generator(new ChunkGenerator:
       override def generateChunkData(world: World, random: Random, x: int, z: int, biome: BiomeGrid): ChunkData = createChunkData(world)
-    ).createWorld()
+    ).createWorld
 
-  def isGameWorld(world: World): Boolean = getMiniGameWorld.equals(world)
+  def isGameWorld(world: World): Boolean = getMiniGameWorld == world

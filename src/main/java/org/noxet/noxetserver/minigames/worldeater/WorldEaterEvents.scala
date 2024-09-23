@@ -100,7 +100,7 @@ object WorldEaterEvents:
     worldEater.sendGameMessage(Message(
       "§c§lALERT! §eHiders are now visible for 10 seconds!"))
 
-    worldEater.getTeamSet.forEach(WorldEaterTeams.HIDER, hider =>
+    worldEater.getTeamSet.forEach(WorldEaterTeams.Hider, hider =>
       hider.sendTitle("§c§lEXPOSED!", "§eYour location is now visible.", 5, 20 * 10, 5)
       hider.addPotionEffect(
         PotionEffect(

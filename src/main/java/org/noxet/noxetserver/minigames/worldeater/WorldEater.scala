@@ -140,17 +140,18 @@ object WorldEater:
     Option(normalWorldCreator.createWorld).get
 
 
-class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
-  private val teamSet = TeamSet(getPlayers, WorldEaterTeams.SEEKER, WorldEaterTeams.HIDER)
+class WorldEater extends MiniGameController(GameDefinition.WorldEater):
+  private val teamSet = TeamSet(getPlayers, WorldEaterTeams.Seeker, WorldEaterTeams.Hider)
   private val result = GameResult.TIE
-  private val startY
-  private val nextLayer
-  private val layerRemoveSpeed
-  private val nextLayerDisappearsAt
   private val fallingBlockLootBoxes = HashSet[FallingBlock]()
   private val placedLootBoxes = HashSet[Block]()
   private val playerPlacedBlocks = HashSet[Location]()
   private val seekerDeathCount = HashMap[Player, Integer]()
+
+  private var startY = 0
+  private var nextLayer = 0
+  private var layerRemoveSpeed = 0
+  private var nextLayerDisappearsAt = 0
 
   given Random()
 
@@ -206,12 +207,12 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
     val teamSelectionMenu = TeamPickerMenu(this, getTeamSet.getTeams, 40, menu =>
       teamSet.assignPlayersByTeamPickerMenu(menu)
 
-      if teamSet.isTeamEmpty(WorldEaterTeams.HIDER) then
+      if teamSet.isTeamEmpty(WorldEaterTeams.Hider) then
         sendGameMessage(Message("No one wanted to play as a hider! Picking a random hider."))
-        teamSet.putPlayerOnTeam(getRandomPlayer, WorldEaterTeams.HIDER)
-      else if teamSet.isTeamEmpty(WorldEaterTeams.SEEKER) then
+        teamSet.putPlayerOnTeam(getRandomPlayer, WorldEaterTeams.Hider)
+      else if teamSet.isTeamEmpty(WorldEaterTeams.Seeker) then
         sendGameMessage(Message("No one wanted to play as a seeker! Picking a random seeker."))
-        teamSet.putPlayerOnTeam(getRandomPlayer, WorldEaterTeams.SEEKER)
+        teamSet.putPlayerOnTeam(getRandomPlayer, WorldEaterTeams.Seeker)
 
       phaseTeamsPicked()
     )
@@ -231,10 +232,10 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
   override def handlePlayerLeave(player: Player): Unit =
     if !isPlaying then return
 
-    if teamSet.isTeamEmpty(WorldEaterTeams.HIDER) then // Last hider left.
+    if teamSet.isTeamEmpty(WorldEaterTeams.Hider) then // Last hider left.
       sendGameMessage(Message("§cThere is no hider remaining, so the game is over."))
       finish(GameResult.SEEKERS_WIN)
-    else if teamSet.isTeamEmpty(WorldEaterTeams.SEEKER) then // Only hiders remain.
+    else if teamSet.isTeamEmpty(WorldEaterTeams.Seeker) then // Only hiders remain.
       sendGameMessage(Message("§cThere is no seeker remaining, so the game is over."))
       finish(GameResult.HIDERS_WIN)
     else if getPlayers.size == 1 then // Only 1 player remain.
@@ -326,27 +327,23 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
   override def handlePostStop(): Unit = teamSet.unregister()
 
   override def handleDeath(player: Player): DeathContract =
-    if teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER) then
-      if teamSet.countTeamPlayers(WorldEaterTeams.HIDER) == 1 then // This was the last hider.
+    if teamSet.isPlayerOnTeam(player, WorldEaterTeams.Hider) then
+      if teamSet.countTeamPlayers(WorldEaterTeams.Hider) == 1 then // This was the last hider.
         finish(GameResult.SEEKERS_WIN)
-      return DeathContract.SPECTATE
+      return DeathContract.Spectate
 
-    DeathContract.RESPAWN_SAME_LOCATION_KEEP_INVENTORY
+    DeathContract.RespawnSameLocationKeepInventory
 
-  override def handlePlayerDrops(deadPlayer: Player): List[ItemStack] =
-    if teamSet.isPlayerOnTeam(deadPlayer, WorldEaterTeams.SEEKER) then
-      val item = ItemGenerator.generatePlayerSkull(
-        deadPlayer,
-        "§c§lGift of the Ghosts §8[ §eRight-click for invisibility §8]",
-        List("§eRight-click to become invisible for 20 seconds.")
-      )
+  def giftOfTheGhostsItem: ItemStack =
+    val item = ItemGenerator.generatePlayerSkull(
+      deadPlayer,
+      "§c§lGift of the Ghosts §8[ §eRight-click for invisibility §8]",
+      List("§eRight-click to become invisible for 20 seconds.")
+    )
 
-      bindActionToItem(item, affectedPlayer =>
-        if teamSet.isPlayerOnTeam(affectedPlayer, WorldEaterTeams.HIDER) then
-          if affectedPlayer.isInvisible then
-            Message("§cYou are already invisible.").send(affectedPlayer)
-            return
-
+    bindActionToItem(item, affectedPlayer =>
+      if teamSet.isPlayerOnTeam(affectedPlayer, WorldEaterTeams.Hider) then
+        if !affectedPlayer.isInvisible then
           affectedPlayer.playSound(affectedPlayer, Sound.ENTITY_CAT_HISS, 1, 0.5)
           affectedPlayer.sendTitle("§aInvisible", "§3You are now §ninvisible§3.", 10, 20 * 3, 10)
           Message("§eYou are now invisible for §c20§e seconds.").send(affectedPlayer)
@@ -363,17 +360,22 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
             Message("§eYou are visible again.").send(affectedPlayer)
             , 20 * 20)
         else
-          ErrorMessage(Common, "Only hiders can use this item!").send(affectedPlayer)
+          Message("§cYou are already invisible.").send(affectedPlayer)
+      else
+        ErrorMessage(Common, "Only hiders can use this item!").send(affectedPlayer)
 
-        affectedPlayer.getInventory.remove(item)
-      )
+      affectedPlayer.getInventory.remove(item)
+    )
 
-      return List(item)
+    item
 
-    null
+  override def handlePlayerDrops(deadPlayer: Player): List[ItemStack] =
+    if teamSet.isPlayerOnTeam(deadPlayer, WorldEaterTeams.Seeker)
+    then List(item)
+    else Nil
 
   override def handleRespawn(player: Player): Unit =
-    if teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER) then return
+    if teamSet.isPlayerOnTeam(player, WorldEaterTeams.Hider) then return
 
     if player.getLocation.getY < getMiniGameWorld.getMinHeight then
       player.teleport(getSpawnLocation)
@@ -425,7 +427,7 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
   override def getSpawnLocation: Location =
     getAppropriateSpawnLocation(getCenterTopLocation)
 
-  private val timeLeft
+  private var timeLeft = 0
   private val preparedEvents = HashMap[Integer, WorldEaterEvents.GameEvent]()
   private val currentEvents = List[WorldEaterEvents.GameEvent]()
 
@@ -433,14 +435,14 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
     forEachPlayer(PlayerState.prepareIdle(_, true))
 
     teamSet.forEach(
-      WorldEaterTeams.SEEKER,
+      WorldEaterTeams.Seeker,
       _.sendTitle("§c§lSEEKER", "§eFind and eliminate the hiders.", 0, 20 * 5, 0)
     )
 
     sendGameMessage(Message("§eThe §ahiders§e are..."))
 
     teamSet.forEach(
-      WorldEaterTeams.HIDER,
+      WorldEaterTeams.Hider,
       hider =>
         hider.sendTitle("§a§lHIDER", "§eEndure the seekers attempts to kill you.", 0, 20 * 5, 0)
         sendGameMessage(Message(s" - §b${hider.getName}"))
@@ -457,8 +459,6 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
     getFreezer.empty()
 
     // Prepare the chunk muncher (do it already here to let the hiders place blocks before seekers spawn):
-
-    startY = 0
 
     for
       x <- 0 until 16
@@ -477,7 +477,7 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
 
     val seekerCircleTasks = List[BukkitTask]()
 
-    teamSet.forEach(WorldEaterTeams.SEEKER, seeker =>
+    teamSet.forEach(WorldEaterTeams.Seeker, seeker =>
       PlayerState.prepareIdle(seeker, true)
 
       val center = getCenterTopLocation.add(0, 20, 0)
@@ -506,14 +506,14 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
         , 0, 2))
     )
 
-    teamSet.forEach(WorldEaterTeams.HIDER, hider =>
+    teamSet.forEach(WorldEaterTeams.Hider, hider =>
       preparePlayer(hider)
 
       hider.playSound(hider, Sound.BLOCK_NOTE_BLOCK_BASS, 1, 0.5f)
       hider.sendTitle("§c§lHURRY UP!", "§ePrepare and reach §3shelter§e fast!", 5, 20 * 5, 10)
     )
 
-    val secondsToRelease = teamSet.countTeamPlayers(WorldEaterTeams.SEEKER) * 60
+    val secondsToRelease = teamSet.countTeamPlayers(WorldEaterTeams.Seeker) * 60
 
     for i <- secondsToRelease until 0 by -1 do
       scheduleTask(() =>
@@ -526,10 +526,10 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
           sendGameMessage(Message(s"§eSeekers are released in $timeLeftString."))
 
         teamSet.forEach(
-          WorldEaterTeams.SEEKER,
+          WorldEaterTeams.Seeker,
           _.sendTitle(timeLeftString, "§euntil released...", 0, 20 * 2, 0))
         teamSet.forEach(
-          WorldEaterTeams.HIDER,
+          WorldEaterTeams.Hider,
           ActionBarMessage(
             s"§8§l[ §${if i % 2 == 0 then "4" else "f"}§l! §8§l] §bReleasing seekers in $timeLeftString"
           ).send(hider))
@@ -549,14 +549,14 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
     playGameSound(Sound.BLOCK_ANVIL_LAND, 2, 2)
 
     teamSet.forEach(
-      WorldEaterTeams.SEEKER,
+      WorldEaterTeams.Seeker,
       seeker =>
         preparePlayer(seeker)
         seeker.resetTitle()
     )
 
     teamSet.forEach(
-      WorldEaterTeams.HIDER,
+      WorldEaterTeams.Hider,
       ActionBarMessage("§c§lSEEKERS RELEASED!").send
     )
 
@@ -595,8 +595,8 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
       teamSet.updateScoreboard(
         "§c" + FancyTimeConverter.deltaSecondsToFancyTime(timeLeft, true) + "§e remaining",
         "§7---",
-        s"§4\uD83D\uDDE1§c Seeking: §e${teamSet.countTeamPlayers(WorldEaterTeams.SEEKER)}",
-        s"§2\uD83C\uDF56§a Hiding: §e${teamSet.countTeamPlayers(WorldEaterTeams.HIDER)}",
+        s"§4\uD83D\uDDE1§c Seeking: §e${teamSet.countTeamPlayers(WorldEaterTeams.Seeker)}",
+        s"§2\uD83C\uDF56§a Hiding: §e${teamSet.countTeamPlayers(WorldEaterTeams.Hider)}",
         "§7---",
         s"§8☠§7 Spectating: §e${getSpectators.size}",
         "§7---",
@@ -692,9 +692,9 @@ class WorldEater extends MiniGameController(GameDefinition.WORLD_EATER):
           , if !block.isLiquid then random.nextInt(20) else 0)
 
   def didPlayerWin(player: Player, result: GameResult): Boolean =
-    (teamSet.isPlayerOnTeam(player, WorldEaterTeams.SEEKER) &&
+    (teamSet.isPlayerOnTeam(player, WorldEaterTeams.Seeker) &&
       result == GameResult.SEEKERS_WIN) ||
-      (teamSet.isPlayerOnTeam(player, WorldEaterTeams.HIDER) &&
+      (teamSet.isPlayerOnTeam(player, WorldEaterTeams.Hider) &&
         result == GameResult.HIDERS_WIN)
 
   private def finish(result: GameResult): Unit =

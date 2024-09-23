@@ -9,7 +9,7 @@ enum WorldEaterTeams(
                       formattedDisplayName: String,
                       color: ChatColor,
                       teamIcon: Material) extends Team:
-  case SEEKER extends WorldEaterTeams(
+  case Seeker extends WorldEaterTeams(
     "seekers",
     "Seeker",
     "§4§lSEEKER",
@@ -17,7 +17,7 @@ enum WorldEaterTeams(
     Material.STONE_AXE
   )
 
-  case HIDER extends WorldEaterTeams(
+  case Hider extends WorldEaterTeams(
     "hiders",
     "Hider",
     "§2§lHIDER",

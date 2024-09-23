@@ -4,6 +4,7 @@ import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.noxet.noxetserver.NoxetServer
 import org.noxet.noxetserver.playerdata.types.*
+import org.noxet.noxetserver.playerdata.PlayerDataManager.Attribute
 
 import java.io.{File, IOException, StringReader}
 import java.util.UUID
@@ -11,7 +12,7 @@ import java.util.UUID
 class PlayerDataManager(uuid: UUID):
   private val config: YamlConfiguration = getConfig(uuid)
 
-  def get(attribute: Attribute): Any =
+  def get[T](attribute: Attribute): T =
     attribute.getType.getValue(config, attribute.getKey)
 
   def set(attribute: Attribute, value: Any): PlayerDataManager =
@@ -55,7 +56,7 @@ class PlayerDataManager(uuid: UUID):
   def save(): Unit = saveData(uuid.toUuid, config)
 
 object PlayerDataManager:
-  private val configCache: HashMap[UUID, String] = HashMap()
+  private val configCache = HashMap[UUID, String]()
 
   enum Attribute(val kind: PlayerDataType[?]):
     case HasDoneCaptcha extends Attribute(PDTBoolean)
